@@ -61,7 +61,7 @@ export default function RequiredExpensesScreen() {
   const [dueDate, setDueDate] = useState<Date>();
 
   const requiredExpensesPath = useMemo(() => {
-    return user ? `users/${user.uid}/requiredExpenses` : '';
+    return user ? `users/${user.uid}/requiredExpenses` : null;
   }, [user]);
 
   const { data: expenses, loading } = useCollection<RequiredExpense>(
@@ -158,13 +158,13 @@ export default function RequiredExpensesScreen() {
               <h2 className="text-foreground text-base font-bold leading-tight px-1 mb-3">
                 Category
               </h2>
-              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 snap-x">
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 no-scrollbar">
                 {expenseCategories.map(({name, icon: Icon}) => (
                     <Button 
                     key={name}
                     onClick={() => setSelectedCategory(name)}
                     variant={selectedCategory === name ? 'default' : 'outline'}
-                    className="snap-start shrink-0 pl-3 pr-4" size="lg">
+                    className="shrink-0 pl-3 pr-4" size="lg">
                     <Icon className="mr-2 h-5 w-5" />
                     {name}
                   </Button>
