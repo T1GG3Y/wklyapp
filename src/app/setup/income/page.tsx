@@ -16,9 +16,10 @@ import {
   addDoc,
   deleteDoc,
   doc,
+  updateDoc,
   type DocumentData,
 } from 'firebase/firestore';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -46,45 +47,78 @@ interface IncomeSource extends DocumentData {
 export default function IncomeScreen() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const [isAdding, setIsAdding] = useState(false);
-  const [newSource, setNewSource] = useState({
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [sourceToEdit, setSourceToEdit] = useState<IncomeSource | null>(null);
+
+  const [formState, setFormState] = useState({
     name: '',
     amount: '',
     frequency: 'Monthly' as IncomeSource['frequency'],
   });
 
   const incomeSourcesPath = useMemo(() => {
-    return user ? `users/${user.uid}/incomeSources` : '';
+    return user ? `users/${user.uid}/incomeSources` : null;
   }, [user]);
 
   const { data: incomeSources, loading } = useCollection<IncomeSource>(
     incomeSourcesPath
   );
+  
+  useEffect(() => {
+    if (sourceToEdit) {
+        setFormState({
+            name: sourceToEdit.name,
+            amount: sourceToEdit.amount.toString(),
+            frequency: sourceToEdit.frequency,
+        });
+    } else {
+        setFormState({ name: '', amount: '', frequency: 'Monthly' });
+    }
+  }, [sourceToEdit]);
 
 
-  const handleAddSource = async () => {
+  const handleSaveSource = async () => {
     if (!firestore || !user) return;
-    const incomeSourcesCollection = collection(firestore, `users/${user.uid}/incomeSources`);
-
-    const amount = parseFloat(newSource.amount);
-    if (!newSource.name || isNaN(amount) || amount <= 0) {
+    
+    const amount = parseFloat(formState.amount);
+    if (!formState.name || isNaN(amount) || amount <= 0) {
       alert('Please enter a valid name and amount.');
       return;
     }
-    try {
-      await addDoc(incomeSourcesCollection, {
+    
+    const sourceData = {
         userProfileId: user.uid,
-        name: newSource.name,
+        name: formState.name,
         amount: amount,
-        frequency: newSource.frequency,
-      });
-      setIsAdding(false);
-      setNewSource({ name: '', amount: '', frequency: 'Monthly' });
+        frequency: formState.frequency,
+    };
+
+    try {
+        if (sourceToEdit) {
+            const sourceDocRef = doc(firestore, `users/${user.uid}/incomeSources`, sourceToEdit.id);
+            await updateDoc(sourceDocRef, sourceData);
+        } else {
+            const incomeSourcesCollection = collection(firestore, `users/${user.uid}/incomeSources`);
+            await addDoc(incomeSourcesCollection, sourceData);
+        }
+      setIsDialogOpen(false);
+      setSourceToEdit(null);
     } catch (error) {
-      console.error('Error adding income source: ', error);
+      console.error('Error saving income source: ', error);
     }
   };
   
+  const handleOpenAddDialog = () => {
+    setSourceToEdit(null);
+    setFormState({ name: '', amount: '', frequency: 'Monthly' });
+    setIsDialogOpen(true);
+  };
+  
+  const handleOpenEditDialog = (source: IncomeSource) => {
+    setSourceToEdit(source);
+    setIsDialogOpen(true);
+  };
+
   const handleDeleteSource = async (sourceId: string) => {
     if (!firestore || !user) return;
     try {
@@ -175,7 +209,8 @@ export default function IncomeScreen() {
             incomeSources.map((source) => (
               <div
                 key={source.id}
-                className="group flex items-center gap-4 bg-card p-4 rounded-xl shadow-sm border"
+                className="group flex items-center gap-4 bg-card p-4 rounded-xl shadow-sm border cursor-pointer"
+                onClick={() => handleOpenEditDialog(source)}
               >
                 <div className="flex items-center justify-center rounded-xl bg-muted text-foreground shrink-0 size-12 border">
                   <Briefcase />
@@ -195,7 +230,7 @@ export default function IncomeScreen() {
                     ${source.amount.toFixed(2)}
                   </p>
                 </div>
-                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive -mr-2" onClick={() => handleDeleteSource(source.id)}>
+                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive -mr-2" onClick={(e) => { e.stopPropagation(); handleDeleteSource(source.id);}}>
                   <Trash2 className="size-4" />
                 </Button>
               </div>
@@ -208,11 +243,11 @@ export default function IncomeScreen() {
         </section>
       </main>
 
-      {/* Add Dialog */}
-      <Dialog open={isAdding} onOpenChange={setIsAdding}>
+      {/* Add/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add New Income Source</DialogTitle>
+            <DialogTitle>{sourceToEdit ? 'Edit' : 'Add New'} Income Source</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -220,9 +255,9 @@ export default function IncomeScreen() {
               <Input
                 id="name"
                 placeholder="e.g. Salary"
-                value={newSource.name}
+                value={formState.name}
                 onChange={(e) =>
-                  setNewSource({ ...newSource, name: e.target.value })
+                  setFormState({ ...formState, name: e.target.value })
                 }
               />
             </div>
@@ -232,19 +267,19 @@ export default function IncomeScreen() {
                 id="amount"
                 type="number"
                 placeholder="0.00"
-                value={newSource.amount}
+                value={formState.amount}
                 onChange={(e) =>
-                  setNewSource({ ...newSource, amount: e.target.value })
+                  setFormState({ ...formState, amount: e.target.value })
                 }
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="frequency">Frequency</Label>
               <Select
-                value={newSource.frequency}
+                value={formState.frequency}
                 onValueChange={(
                   value: 'Weekly' | 'Bi-weekly' | 'Monthly' | 'Yearly'
-                ) => setNewSource({ ...newSource, frequency: value })}
+                ) => setFormState({ ...formState, frequency: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select frequency" />
@@ -259,10 +294,10 @@ export default function IncomeScreen() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsAdding(false)}>
+            <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddSource}>Add Source</Button>
+            <Button onClick={handleSaveSource}>{sourceToEdit ? 'Update' : 'Add'} Source</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -271,7 +306,7 @@ export default function IncomeScreen() {
         <Button
             className="pointer-events-auto w-full h-12 text-base font-bold tracking-wide shadow-lg shadow-primary/20"
             size="lg"
-            onClick={() => setIsAdding(true)}
+            onClick={handleOpenAddDialog}
         >
             <Plus className="mr-2 h-5 w-5" />
             Add New Income
