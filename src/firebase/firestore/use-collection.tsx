@@ -33,7 +33,7 @@ export type CollectionOptions = {
 };
 
 export const useCollection = <T extends DocumentData>(
-  path: string,
+  path: string | null | undefined,
   options?: CollectionOptions
 ) => {
   const firestore = useFirestore();
@@ -44,7 +44,8 @@ export const useCollection = <T extends DocumentData>(
   const memoizedOptions = useMemo(() => options, [JSON.stringify(options)]);
 
   useEffect(() => {
-    if (!firestore) {
+    if (!firestore || !path) {
+      setLoading(false);
       return;
     }
 
