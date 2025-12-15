@@ -7,6 +7,20 @@ import {
   Utensils,
   Trash2,
   Plus,
+  DollarSign,
+  Sparkles,
+  Shirt,
+  Wrench,
+  Tv,
+  Wifi,
+  Coffee,
+  Users,
+  Plane,
+  Dumbbell,
+  Gift,
+  Dog,
+  MoreHorizontal,
+  CreditCard,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection } from '@/firebase';
@@ -34,6 +48,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+import type { LucideIcon } from 'lucide-react';
 
 interface DiscretionaryExpense extends DocumentData {
   id: string;
@@ -41,6 +57,26 @@ interface DiscretionaryExpense extends DocumentData {
   amount: number;
   frequency: 'Weekly' | 'Monthly';
 }
+
+const expenseCategories: { name: string, icon: LucideIcon }[] = [
+    { name: 'Dining Out', icon: Utensils },
+    { name: 'Personal Care', icon: Sparkles },
+    { name: 'Clothes', icon: Shirt },
+    { name: 'House Maintenance', icon: Wrench },
+    { name: 'Cable TV', icon: Tv },
+    { name: 'Internet', icon: Wifi },
+    { name: 'Date', icon: Coffee },
+    { name: 'Family Activities', icon: Users },
+    { name: 'Vacation', icon: Plane },
+    { name: 'Gym', icon: Dumbbell },
+    { name: 'Gifts', icon: Gift },
+    { name: 'Pets', icon: Dog },
+    { name: 'Subscriptions', icon: CreditCard },
+    { name: 'Miscellaneous', icon: MoreHorizontal },
+];
+
+const categoryIconMap = new Map(expenseCategories.map(c => [c.name, c.icon]));
+
 
 export default function DiscretionaryExpensesScreen() {
   const { user } = useUser();
@@ -87,6 +123,15 @@ export default function DiscretionaryExpensesScreen() {
       console.error('Error adding discretionary expense: ', error);
     }
   };
+  
+  const handleOpenAddDialog = (category: string) => {
+    setNewExpense({
+      category: category,
+      amount: '',
+      frequency: 'Monthly',
+    });
+    setIsAdding(true);
+  };
 
   const handleDeleteExpense = async (expenseId: string) => {
     if (!firestore || !user) return;
@@ -103,7 +148,7 @@ export default function DiscretionaryExpensesScreen() {
     if (!expenses) return 0;
     return expenses.reduce((total, expense) => {
       if (expense.frequency === 'Monthly') {
-        return total + expense.amount / 4;
+        return total + expense.amount / 4.33;
       }
       if (expense.frequency === 'Weekly') {
         return total + expense.amount;
@@ -137,68 +182,86 @@ export default function DiscretionaryExpensesScreen() {
             Set Your Lifestyle Budget
           </h2>
           <p className="text-muted-foreground text-base font-normal leading-normal mb-6">
-            Add flexible expenses like dining, shopping, or fun.
+            Add flexible expenses like dining, shopping, or fun by tapping a category.
           </p>
         </div>
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 px-4 mb-6">
+            {expenseCategories.map(({name, icon: Icon}) => {
+                const isAdded = expenses?.some(e => e.category === name);
+                return (
+                    <button
+                        key={name}
+                        onClick={() => handleOpenAddDialog(name)}
+                        className={cn("flex flex-col items-center justify-center gap-2 text-center p-4 rounded-xl border-2 transition-all duration-200", 
+                            isAdded 
+                            ? 'bg-primary/10 border-primary text-primary'
+                            : 'bg-card hover:bg-muted border-dashed'
+                        )}
+                    >
+                        <Icon className="size-6" />
+                        <span className="text-sm font-semibold">{name}</span>
+                    </button>
+                )
+            })}
+        </div>
+
         <div className="flex flex-col gap-4 px-4">
+          <h3 className="text-muted-foreground font-bold uppercase tracking-wider text-sm">Added Expenses</h3>
           {loading ? (
              <p>Loading expenses...</p>
           ) : expenses && expenses.length > 0 ? (
-            expenses.map((expense) => (
-              <div
-                key={expense.id}
-                className="bg-card rounded-xl p-4 border shadow-sm relative group"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="size-10 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center border border-transparent">
-                      <Utensils />
+            expenses.map((expense) => {
+              const Icon = categoryIconMap.get(expense.category) || MoreHorizontal;
+              return (
+                <div
+                  key={expense.id}
+                  className="bg-card rounded-xl p-4 border shadow-sm relative group"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                        <Icon className="size-5" />
+                      </div>
+                      <span className="text-foreground font-bold text-lg">
+                        {expense.category}
+                      </span>
                     </div>
-                    <span className="text-foreground font-bold text-lg">
-                      {expense.category}
-                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => handleDeleteExpense(expense.id)}
+                    >
+                      <Trash2 className="size-5" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground hover:text-destructive"
-                    onClick={() => handleDeleteExpense(expense.id)}
-                  >
-                    <Trash2 />
-                  </Button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-background rounded-lg px-3 py-2 border">
+                      <label className="block text-xs text-muted-foreground mb-0.5 uppercase tracking-wider font-semibold">
+                        Amount
+                      </label>
+                      <div className="flex items-center text-foreground">
+                        <span className="mr-1 text-muted-foreground">$</span>
+                        <span className="font-bold text-lg">{expense.amount.toFixed(2)}</span>
+                      </div>
+                    </div>
+                    <div className="relative bg-background rounded-lg px-3 py-2 border">
+                      <label className="block text-xs text-muted-foreground mb-0.5 uppercase tracking-wider font-semibold">
+                        Frequency
+                      </label>
+                      <div className="text-foreground font-bold text-base">
+                        {expense.frequency}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div className="bg-background rounded-lg px-3 py-2 border">
-                    <label className="block text-xs text-muted-foreground mb-0.5 uppercase tracking-wider font-semibold">
-                      Amount
-                    </label>
-                    <div className="flex items-center text-foreground">
-                      <span className="mr-1 text-muted-foreground">$</span>
-                      <span className="font-bold text-lg">{expense.amount.toFixed(2)}</span>
-                    </div>
-                  </div>
-                  <div className="relative bg-background rounded-lg px-3 py-2 border">
-                    <label className="block text-xs text-muted-foreground mb-0.5 uppercase tracking-wider font-semibold">
-                      Frequency
-                    </label>
-                    <div className="text-foreground font-bold text-base">
-                      {expense.frequency}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))
+              );
+            })
           ) : (
-            <p className="text-center text-muted-foreground">No discretionary expenses added yet.</p>
+            <p className="text-center text-muted-foreground py-6">No discretionary expenses added yet.</p>
           )}
 
-          <Button
-            variant="outline"
-            className="w-full h-12 border-dashed"
-            onClick={() => setIsAdding(true)}
-          >
-            <Plus className="mr-2 h-4 w-4" /> Add Expense
-          </Button>
         </div>
       </main>
 
@@ -206,30 +269,24 @@ export default function DiscretionaryExpensesScreen() {
       <Dialog open={isAdding} onOpenChange={setIsAdding}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Discretionary Expense</DialogTitle>
+            <DialogTitle>Add {newExpense.category} Expense</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Input
-                id="category"
-                value={newExpense.category}
-                onChange={(e) =>
-                  setNewExpense({ ...newExpense, category: e.target.value })
-                }
-              />
-            </div>
+          <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="amount">Amount</Label>
-              <Input
-                id="amount"
-                type="number"
-                placeholder="0.00"
-                value={newExpense.amount}
-                onChange={(e) =>
-                  setNewExpense({ ...newExpense, amount: e.target.value })
-                }
-              />
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
+                <Input
+                    id="amount"
+                    type="number"
+                    placeholder="0.00"
+                    value={newExpense.amount}
+                    onChange={(e) =>
+                    setNewExpense({ ...newExpense, amount: e.target.value })
+                    }
+                    className="pl-10 h-12 text-lg"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="frequency">Frequency</Label>
@@ -239,7 +296,7 @@ export default function DiscretionaryExpensesScreen() {
                   setNewExpense({ ...newExpense, frequency: value })
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="h-12 text-base">
                   <SelectValue placeholder="Select frequency" />
                 </SelectTrigger>
                 <SelectContent>
