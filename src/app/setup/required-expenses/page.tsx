@@ -12,7 +12,7 @@ import {
   TrendingUp,
   Home,
   Utensils,
-  CalendarMonth,
+  Calendar,
   Droplet,
   PlusCircle,
 } from "lucide-react";
@@ -108,7 +108,7 @@ export default function RequiredExpensesScreen() {
                 </label>
                 <Button variant="outline" className="flex items-center justify-between w-full rounded-xl bg-input border text-muted-foreground py-4 h-auto hover:bg-accent group">
                   <span className="text-base truncate">Select Date</span>
-                  <CalendarMonth className="text-muted-foreground group-hover:text-primary transition-colors" />
+                  <Calendar className="text-muted-foreground group-hover:text-primary transition-colors" />
                 </Button>
               </div>
             </div>
