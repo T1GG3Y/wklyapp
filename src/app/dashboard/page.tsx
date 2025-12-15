@@ -1,8 +1,104 @@
-import { Button } from "@/components/ui/button";
-import { Menu, Calendar, Receipt } from "lucide-react";
-import Link from "next/link";
+'use client';
+
+import { useCollection, useFirestore, useUser } from '@/firebase';
+import { Button } from '@/components/ui/button';
+import { Menu, Calendar, Receipt } from 'lucide-react';
+import Link from 'next/link';
+import { useMemo } from 'react';
+import type { DocumentData } from 'firebase/firestore';
+
+interface IncomeSource extends DocumentData {
+  id: string;
+  name: string;
+  amount: number;
+  frequency: 'Weekly' | 'Bi-weekly' | 'Monthly' | 'Yearly';
+}
+
+interface RequiredExpense extends DocumentData {
+  id: string;
+  category: string;
+  amount: number;
+  frequency: 'Weekly' | 'Monthly' | 'Yearly';
+}
+
+interface Loan extends DocumentData {
+  id: string;
+  name: string;
+  category: string;
+  totalBalance: number;
+  interestRate?: number;
+  paymentFrequency: 'Weekly' | 'Monthly';
+}
+
+interface DiscretionaryExpense extends DocumentData {
+  id:string;
+  category: string;
+  amount: number;
+  frequency: 'Weekly' | 'Monthly';
+}
+
+interface SavingsGoal extends DocumentData {
+    id: string;
+    name: string;
+    targetAmount: number;
+    currentAmount: number;
+}
+
 
 export default function DashboardScreen() {
+  const { user } = useUser();
+
+  const incomeSourcesPath = useMemo(() => (user ? `users/${user.uid}/incomeSources` : null), [user]);
+  const requiredExpensesPath = useMemo(() => (user ? `users/${user.uid}/requiredExpenses` : null), [user]);
+  const loansPath = useMemo(() => (user ? `users/${user.uid}/loans` : null), [user]);
+  const discretionaryExpensesPath = useMemo(() => (user ? `users/${user.uid}/discretionaryExpenses` : null), [user]);
+  const savingsGoalsPath = useMemo(() => (user ? `users/${user.uid}/savingsGoals` : null), [user]);
+
+  const { data: incomeSources } = useCollection<IncomeSource>(incomeSourcesPath);
+  const { data: requiredExpenses } = useCollection<RequiredExpense>(requiredExpensesPath);
+  const { data: loans } = useCollection<Loan>(loansPath);
+  const { data: discretionaryExpenses } = useCollection<DiscretionaryExpense>(discretionaryExpensesPath);
+  const { data: savingsGoals } = useCollection<SavingsGoal>(savingsGoalsPath);
+
+
+  const getWeeklyAmount = (amount: number, frequency: string) => {
+    switch (frequency) {
+      case 'Weekly':
+        return amount;
+      case 'Bi-weekly':
+        return amount / 2;
+      case 'Monthly':
+        return amount / 4.33;
+      case 'Yearly':
+        return amount / 52;
+      default:
+        return 0;
+    }
+  };
+
+  const safeToSpend = useMemo(() => {
+    const weeklyIncome = (incomeSources || []).reduce((total, source) => {
+        return total + getWeeklyAmount(source.amount, source.frequency);
+    }, 0);
+
+    const weeklyRequiredExpenses = (requiredExpenses || []).reduce((total, expense) => {
+        return total + getWeeklyAmount(expense.amount, expense.frequency);
+    }, 0);
+
+    const weeklyDiscretionaryExpenses = (discretionaryExpenses || []).reduce((total, expense) => {
+        return total + getWeeklyAmount(expense.amount, expense.frequency);
+    }, 0);
+
+    // Assuming loan payments are not explicitly stored, so not including them for now.
+    // Also assuming savings contributions are not explicitly stored as transactions yet.
+
+    return weeklyIncome - weeklyRequiredExpenses - weeklyDiscretionaryExpenses;
+  }, [incomeSources, requiredExpenses, discretionaryExpenses]);
+
+
+  const safeToSpendDollars = Math.floor(safeToSpend);
+  const safeToSpendCents = Math.round((safeToSpend - safeToSpendDollars) * 100);
+
   return (
     <>
       <header className="px-5 py-3 flex items-center justify-between sticky top-0 bg-background/90 backdrop-blur-sm z-20 border-b">
@@ -22,7 +118,7 @@ export default function DashboardScreen() {
             <div className="progress-circle">
               <div className="absolute inset-0 flex flex-col items-center justify-center pt-4">
                 <div className="text-4xl font-bold text-primary tracking-tight font-headline">
-                  $448.<span className="text-2xl align-top">87</span>
+                  ${safeToSpendDollars}.<span className="text-2xl align-top">{safeToSpendCents.toString().padStart(2, '0')}</span>
                 </div>
                 <div className="text-sm font-medium text-muted-foreground mt-1">
                   Safe-to-Spend
