@@ -1,0 +1,243 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's profile in the application.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The unique identifier for the user, matching the Firebase Auth UID."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "photoURL": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the user's profile picture."
+        },
+        "startDayOfWeek": {
+          "type": "string",
+          "enum": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+          "description": "The day the user considers the start of their week for budgeting purposes."
+        }
+      },
+      "required": ["id", "email"]
+    },
+    "IncomeSource": {
+      "title": "Income Source",
+      "description": "Represents a source of income for a user.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "userProfileId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "frequency": {
+          "type": "string",
+          "enum": ["Weekly", "Bi-weekly", "Monthly", "Yearly"]
+        }
+      },
+      "required": ["userProfileId", "name", "amount", "frequency"]
+    },
+    "RequiredExpense": {
+      "title": "Required Expense",
+      "description": "Represents a necessary, recurring expense.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "userProfileId": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "frequency": {
+          "type": "string",
+          "enum": ["Weekly", "Monthly", "Yearly"]
+        },
+        "dueDate": {
+          "type": "string",
+          "format": "date"
+        }
+      },
+      "required": ["userProfileId", "category", "amount", "frequency"]
+    },
+    "Loan": {
+      "title": "Loan",
+      "description": "Represents a loan or debt.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "userProfileId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "totalBalance": {
+          "type": "number"
+        },
+        "interestRate": {
+          "type": "number"
+        },
+        "paymentFrequency": {
+          "type": "string",
+          "enum": ["Weekly", "Monthly"]
+        }
+      },
+      "required": ["userProfileId", "name", "category", "totalBalance"]
+    },
+    "DiscretionaryExpense": {
+      "title": "Discretionary Expense",
+      "description": "Represents a non-essential, flexible expense.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "userProfileId": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "frequency": {
+          "type": "string",
+          "enum": ["Weekly", "Monthly"]
+        }
+      },
+      "required": ["userProfileId", "category", "amount", "frequency"]
+    },
+    "SavingsGoal": {
+      "title": "Savings Goal",
+      "description": "Represents a financial savings goal.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "userProfileId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "targetAmount": {
+          "type": "number"
+        },
+        "currentAmount": {
+          "type": "number"
+        }
+      },
+      "required": ["userProfileId", "name", "targetAmount"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Represents a single financial transaction (income or expense).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "userProfileId": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["Income", "Expense"]
+        },
+        "amount": {
+          "type": "number"
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "category": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": ["userProfileId", "type", "amount", "date", "category"]
+    }
+  },
+  "auth": {
+    "providers": ["email-password", "google"]
+  },
+  "firestore": {
+    "/users/{userProfileId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "A user's own profile document."
+    },
+    "/users/{userProfileId}/incomeSources/{incomeSourceId}": {
+      "schema": {
+        "$ref": "#/entities/IncomeSource"
+      },
+      "description": "A user's sources of income."
+    },
+    "/users/{userProfileId}/requiredExpenses/{requiredExpenseId}": {
+      "schema": {
+        "$ref": "#/entities/RequiredExpense"
+      },
+      "description": "A user's required, recurring expenses."
+    },
+    "/users/{userProfileId}/loans/{loanId}": {
+      "schema": {
+        "$ref": "#/entities/Loan"
+      },
+      "description": "A user's loans or debts."
+    },
+    "/users/{userProfileId}/discretionaryExpenses/{discretionaryExpenseId}": {
+      "schema": {
+        "$ref": "#/entities/DiscretionaryExpense"
+      },
+      "description": "A user's discretionary (non-essential) expenses."
+    },
+    "/users/{userProfileId}/savingsGoals/{savingsGoalId}": {
+      "schema": {
+        "$ref": "#/entities/SavingsGoal"
+      },
+      "description": "A user's savings goals."
+    },
+    "/users/{userProfileId}/transactions/{transactionId}": {
+      "schema": {
+        "$ref": "#/entities/Transaction"
+      },
+      "description": "A user's financial transactions."
+    }
+  }
+}

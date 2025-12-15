@@ -3,18 +3,56 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function SignupPage() {
   const router = useRouter();
+  const { toast } = useToast();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Placeholder for signup logic
-    console.log("Signing up...");
-    // On successful signup, redirect to onboarding
-    router.push("/setup/start-day");
+    setError(null);
+    const auth = getAuth();
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      toast({
+        title: "Account Created",
+        description: "Welcome to FinanceFlow!",
+      });
+      router.push("/setup/start-day");
+    } catch (error: any) {
+      console.error("Error signing up:", error);
+      let errorMessage = "An unexpected error occurred.";
+      if (error.code) {
+        switch (error.code) {
+          case "auth/email-already-in-use":
+            errorMessage =
+              "This email is already in use. Please log in or use a different email.";
+            break;
+          case "auth/weak-password":
+            errorMessage = "Password should be at least 6 characters.";
+            break;
+          case "auth/invalid-email":
+            errorMessage = "Please enter a valid email address.";
+            break;
+          default:
+            errorMessage = error.message;
+        }
+      }
+      setError(errorMessage);
+      toast({
+        variant: "destructive",
+        title: "Signup Failed",
+        description: errorMessage,
+      });
+    }
   };
 
   return (
@@ -37,6 +75,8 @@ export default function SignupPage() {
               placeholder="you@example.com"
               required
               className="h-12"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div className="space-y-2">
@@ -46,12 +86,12 @@ export default function SignupPage() {
               type="password"
               required
               className="h-12"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <Button
-            type="submit"
-            className="w-full h-12 text-lg font-bold"
-          >
+          {error && <p className="text-destructive text-sm">{error}</p>}
+          <Button type="submit" className="w-full h-12 text-lg font-bold">
             Create Account
           </Button>
         </form>

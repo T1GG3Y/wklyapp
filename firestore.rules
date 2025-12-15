@@ -1,0 +1,202 @@
+
+/**
+ * This ruleset enforces a strict user-ownership model for a personal finance application.
+ *
+ * Core Philosophy:
+ * Access is denied by default. All data is considered private to the user who created it.
+ * A user can only read, write, and delete their own profile and associated financial data.
+ * No user can see or interact with another user's data.
+ *
+ * Data Structure:
+ * All user-specific data is hierarchically organized under the `/users/{userId}` path, where `{userId}`
+ * corresponds to the user's Firebase Authentication UID. This structure provides a clear security boundary.
+ *
+ * Key Security Decisions:
+ * - User Listing Disabled: It is not possible to query the list of all users in the application (`/users`).
+ * - Strict Ownership: All subcollections (like incomeSources, loans, etc.) are only accessible by the owner of the parent user profile.
+ * - Denormalization for Security: Every document within a user's data tree contains a denormalized `userProfileId` field.
+ *   This allows security rules to validate ownership without performing costly and slow lookups on parent documents,
+ *   ensuring both performance and strong security.
+ *
+ * Denormalization for Authorization:
+ * To create simple and performant rules, data required for authorization is denormalized.
+ * For instance, an `IncomeSource` document under `/users/{userId}/incomeSources/{incomeSourceId}` contains a
+ * `userProfileId` field that must match the `{userId}` in the path. This avoids `get()` calls to the parent
+ * UserProfile document and makes rules fast and efficient.
+ *
+ * Structural Segregation:
+ * All private user data is segregated under the `/users/{userId}` path. There are no public or shared
+ * collections in this model, simplifying the rules and preventing data leakage.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ----------------------------------------------------------------------
+    // Helper Functions
+    // ----------------------------------------------------------------------
+
+    /**
+     * Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the authenticated user's UID matches the requested document's owner ID.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Checks for ownership on existing documents, preventing writes to non-existent paths.
+     * Used for update and delete operations.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * CREATE: Validates that the new UserProfile document contains an 'id' field
+     * that matches the user's auth UID and the document's path ID.
+     */
+    function hasCorrectIdOnCreate(userId) {
+      return request.resource.data.id == userId;
+    }
+
+    /**
+     * UPDATE: Validates that the 'id' field of a UserProfile is immutable.
+     */
+    function idIsImmutable() {
+      return request.resource.data.id == resource.data.id;
+    }
+
+    /**
+     * CREATE: Validates that a new subcollection document contains a 'userProfileId' field
+     * that matches the parent user's auth UID.
+     */
+    function hasCorrectOwnerIdOnCreate(userId) {
+      return request.resource.data.userProfileId == userId;
+    }
+
+    /**
+     * UPDATE: Validates that the 'userProfileId' field of a subcollection document is immutable.
+     */
+    function ownerIdIsImmutable() {
+      return request.resource.data.userProfileId == resource.data.userProfileId;
+    }
+
+    // ----------------------------------------------------------------------
+    // Collection Rules
+    // ----------------------------------------------------------------------
+
+    /**
+     * @description A user's own profile document.
+     * @path /users/{userProfileId}
+     * @allow (create) An authenticated user can create their own profile document, where the document ID matches their auth UID.
+     * @allow (get, update, delete) The owner of the profile can read, update, and delete their own document.
+     * @deny (list) No user can list all user profiles in the system.
+     * @deny (create) A user cannot create a profile for another user's UID.
+     * @principle Restricts access to a user's own data tree and allows self-creation of a root profile.
+     */
+    match /users/{userProfileId} {
+      allow get: if isOwner(userProfileId);
+      allow list: if false;
+      allow create: if isOwner(userProfileId) && hasCorrectIdOnCreate(userProfileId);
+      allow update: if isExistingOwner(userProfileId) && idIsImmutable();
+      allow delete: if isExistingOwner(userProfileId);
+
+      /**
+       * @description A user's sources of income.
+       * @path /users/{userProfileId}/incomeSources/{incomeSourceId}
+       * @allow (create, get, list, update, delete) The owner can perform full CRUD operations on their own income sources.
+       * @deny (create) A user cannot create an income source under another user's profile.
+       * @deny (get) A user cannot read another user's income sources.
+       * @principle Enforces strict document ownership within a user's private data tree.
+       */
+      match /incomeSources/{incomeSourceId} {
+        allow get, list: if isOwner(userProfileId);
+        allow create: if isOwner(userProfileId) && hasCorrectOwnerIdOnCreate(userProfileId);
+        allow update: if isExistingOwner(userProfileId) && ownerIdIsImmutable();
+        allow delete: if isExistingOwner(userProfileId);
+      }
+
+      /**
+       * @description A user's required, recurring expenses.
+       * @path /users/{userProfileId}/requiredExpenses/{requiredExpenseId}
+       * @allow (create, get, list, update, delete) The owner can perform full CRUD operations on their own required expenses.
+       * @deny (create) A user cannot create a required expense under another user's profile.
+       * @deny (get) A user cannot read another user's required expenses.
+       * @principle Enforces strict document ownership within a user's private data tree.
+       */
+      match /requiredExpenses/{requiredExpenseId} {
+        allow get, list: if isOwner(userProfileId);
+        allow create: if isOwner(userProfileId) && hasCorrectOwnerIdOnCreate(userProfileId);
+        allow update: if isExistingOwner(userProfileId) && ownerIdIsImmutable();
+        allow delete: if isExistingOwner(userProfileId);
+      }
+
+      /**
+       * @description A user's loans or debts.
+       * @path /users/{userProfileId}/loans/{loanId}
+       * @allow (create, get, list, update, delete) The owner can perform full CRUD operations on their own loans.
+       * @deny (create) A user cannot create a loan under another user's profile.
+       * @deny (get) A user cannot read another user's loans.
+       * @principle Enforces strict document ownership within a user's private data tree.
+       */
+      match /loans/{loanId} {
+        allow get, list: if isOwner(userProfileId);
+        allow create: if isOwner(userProfileId) && hasCorrectOwnerIdOnCreate(userProfileId);
+        allow update: if isExistingOwner(userProfileId) && ownerIdIsImmutable();
+        allow delete: if isExistingOwner(userProfileId);
+      }
+
+      /**
+       * @description A user's discretionary (non-essential) expenses.
+       * @path /users/{userProfileId}/discretionaryExpenses/{discretionaryExpenseId}
+       * @allow (create, get, list, update, delete) The owner can perform full CRUD operations on their own discretionary expenses.
+       * @deny (create) A user cannot create a discretionary expense under another user's profile.
+       * @deny (get) A user cannot read another user's discretionary expenses.
+       * @principle Enforces strict document ownership within a user's private data tree.
+       */
+      match /discretionaryExpenses/{discretionaryExpenseId} {
+        allow get, list: if isOwner(userProfileId);
+        allow create: if isOwner(userProfileId) && hasCorrectOwnerIdOnCreate(userProfileId);
+        allow update: if isExistingOwner(userProfileId) && ownerIdIsImmutable();
+        allow delete: if isExistingOwner(userProfileId);
+      }
+
+      /**
+       * @description A user's savings goals.
+       * @path /users/{userProfileId}/savingsGoals/{savingsGoalId}
+       * @allow (create, get, list, update, delete) The owner can perform full CRUD operations on their own savings goals.
+       * @deny (create) A user cannot create a savings goal under another user's profile.
+       * @deny (get) A user cannot read another user's savings goals.
+       * @principle Enforces strict document ownership within a user's private data tree.
+       */
+      match /savingsGoals/{savingsGoalId} {
+        allow get, list: if isOwner(userProfileId);
+        allow create: if isOwner(userProfileId) && hasCorrectOwnerIdOnCreate(userProfileId);
+        allow update: if isExistingOwner(userProfileId) && ownerIdIsImmutable();
+        allow delete: if isExistingOwner(userProfileId);
+      }
+
+      /**
+       * @description A user's financial transactions.
+       * @path /users/{userProfileId}/transactions/{transactionId}
+       * @allow (create, get, list, update, delete) The owner can perform full CRUD operations on their own transactions.
+       * @deny (create) A user cannot create a transaction under another user's profile.
+       * @deny (get) A user cannot read another user's transactions.
+       * @principle Enforces strict document ownership within a user's private data tree.
+       */
+      match /transactions/{transactionId} {
+        allow get, list: if isOwner(userProfileId);
+        allow create: if isOwner(userProfileId) && hasCorrectOwnerIdOnCreate(userProfileId);
+        allow update: if isExistingOwner(userProfileId) && ownerIdIsImmutable();
+        allow delete: if isExistingOwner(userProfileId);
+      }
+    }
+  }
+}
