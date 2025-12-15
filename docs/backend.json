@@ -128,15 +128,12 @@
         "category": {
           "type": "string"
         },
-        "amount": {
-          "type": "number"
-        },
-        "frequency": {
-          "type": "string",
-          "enum": ["Weekly", "Monthly"]
+        "plannedAmount": {
+          "type": "number",
+          "description": "The planned weekly spending amount for this category."
         }
       },
-      "required": ["userProfileId", "category", "amount", "frequency"]
+      "required": ["userProfileId", "category", "plannedAmount"]
     },
     "SavingsGoal": {
       "title": "Savings Goal",
@@ -225,7 +222,7 @@
       "schema": {
         "$ref": "#/entities/DiscretionaryExpense"
       },
-      "description": "A user's discretionary (non-essential) expenses."
+      "description": "A user's discretionary (non-essential) planned spending."
     },
     "/users/{userProfileId}/savingsGoals/{savingsGoalId}": {
       "schema": {

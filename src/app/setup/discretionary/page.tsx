@@ -29,7 +29,11 @@ import {
   addDoc,
   doc,
   deleteDoc,
+  setDoc,
   type DocumentData,
+  query,
+  where,
+  getDocs,
 } from 'firebase/firestore';
 import { useMemo, useState } from 'react';
 import {
@@ -38,24 +42,17 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
 
 interface DiscretionaryExpense extends DocumentData {
   id: string;
   category: string;
-  amount: number;
-  frequency: 'Weekly' | 'Monthly';
+  plannedAmount: number;
 }
 
 const expenseCategories: { name: string, icon: LucideIcon }[] = [
@@ -81,15 +78,14 @@ const categoryIconMap = new Map(expenseCategories.map(c => [c.name, c.icon]));
 export default function DiscretionaryExpensesScreen() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const [isAdding, setIsAdding] = useState(false);
-  const [newExpense, setNewExpense] = useState<{
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  const [currentExpense, setCurrentExpense] = useState<{
     category: string;
-    amount: string;
-    frequency: 'Weekly' | 'Monthly';
+    plannedAmount: string;
   }>({
     category: 'Dining Out',
-    amount: '',
-    frequency: 'Monthly',
+    plannedAmount: '',
   });
 
   const discretionaryExpensesPath = useMemo(() => {
@@ -100,39 +96,53 @@ export default function DiscretionaryExpensesScreen() {
     discretionaryExpensesPath
   );
 
+  const handleOpenDialog = (category: string) => {
+    const existingExpense = expenses?.find(e => e.category === category);
+    setCurrentExpense({
+      category: category,
+      plannedAmount: existingExpense ? existingExpense.plannedAmount.toString() : '',
+    });
+    setIsDialogOpen(true);
+  };
 
-  const handleAddExpense = async () => {
+  const handleSaveExpense = async () => {
     if (!firestore || !user) return;
-    const discretionaryExpensesCollection = collection(firestore, `users/${user.uid}/discretionaryExpenses`);
-    const amount = parseFloat(newExpense.amount);
-    if (isNaN(amount) || amount <= 0) {
+    
+    const amount = parseFloat(currentExpense.plannedAmount);
+    if (isNaN(amount) || amount < 0) {
       alert('Please enter a valid amount.');
       return;
     }
 
+    const discretionaryExpensesCollection = collection(firestore, `users/${user.uid}/discretionaryExpenses`);
+    const q = query(discretionaryExpensesCollection, where("category", "==", currentExpense.category));
+    
     try {
-      await addDoc(discretionaryExpensesCollection, {
-        userProfileId: user.uid,
-        category: newExpense.category,
-        amount: amount,
-        frequency: newExpense.frequency,
-      });
-      setIsAdding(false);
-      setNewExpense({ category: 'Dining Out', amount: '', frequency: 'Monthly' });
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            // Update existing document
+            const docId = querySnapshot.docs[0].id;
+            const docRef = doc(firestore, `users/${user.uid}/discretionaryExpenses`, docId);
+            if (amount > 0) {
+                await setDoc(docRef, { plannedAmount: amount }, { merge: true });
+            } else {
+                await deleteDoc(docRef);
+            }
+        } else if (amount > 0) {
+            // Add new document
+            await addDoc(discretionaryExpensesCollection, {
+                userProfileId: user.uid,
+                category: currentExpense.category,
+                plannedAmount: amount,
+            });
+        }
+
+      setIsDialogOpen(false);
     } catch (error) {
-      console.error('Error adding discretionary expense: ', error);
+      console.error('Error saving discretionary expense: ', error);
     }
   };
   
-  const handleOpenAddDialog = (category: string) => {
-    setNewExpense({
-      category: category,
-      amount: '',
-      frequency: 'Monthly',
-    });
-    setIsAdding(true);
-  };
-
   const handleDeleteExpense = async (expenseId: string) => {
     if (!firestore || !user) return;
     try {
@@ -146,15 +156,7 @@ export default function DiscretionaryExpensesScreen() {
 
   const weeklyTotal = useMemo(() => {
     if (!expenses) return 0;
-    return expenses.reduce((total, expense) => {
-      if (expense.frequency === 'Monthly') {
-        return total + expense.amount / 4.33;
-      }
-      if (expense.frequency === 'Weekly') {
-        return total + expense.amount;
-      }
-      return total;
-    }, 0);
+    return expenses.reduce((total, expense) => total + expense.plannedAmount, 0);
   }, [expenses]);
 
   return (
@@ -182,135 +184,66 @@ export default function DiscretionaryExpensesScreen() {
             Set Your Lifestyle Budget
           </h2>
           <p className="text-muted-foreground text-base font-normal leading-normal mb-6">
-            Add flexible expenses like dining, shopping, or fun by tapping a category.
+            Plan your weekly flexible spending. Tap a category to set a budget. Any unspent funds will be available next week.
           </p>
         </div>
         
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 px-4 mb-6">
             {expenseCategories.map(({name, icon: Icon}) => {
-                const isAdded = expenses?.some(e => e.category === name);
+                const expense = expenses?.find(e => e.category === name);
                 return (
                     <button
                         key={name}
-                        onClick={() => handleOpenAddDialog(name)}
+                        onClick={() => handleOpenDialog(name)}
                         className={cn("flex flex-col items-center justify-center gap-2 text-center p-4 rounded-xl border-2 transition-all duration-200", 
-                            isAdded 
+                            expense 
                             ? 'bg-primary/10 border-primary text-primary'
                             : 'bg-card hover:bg-muted border-dashed'
                         )}
                     >
                         <Icon className="size-6" />
                         <span className="text-sm font-semibold">{name}</span>
+                        {expense && (
+                             <span className="text-xs font-bold">${expense.plannedAmount.toFixed(2)}/wk</span>
+                        )}
                     </button>
                 )
             })}
         </div>
-
-        <div className="flex flex-col gap-4 px-4">
-          <h3 className="text-muted-foreground font-bold uppercase tracking-wider text-sm">Added Expenses</h3>
-          {loading ? (
-             <p>Loading expenses...</p>
-          ) : expenses && expenses.length > 0 ? (
-            expenses.map((expense) => {
-              const Icon = categoryIconMap.get(expense.category) || MoreHorizontal;
-              return (
-                <div
-                  key={expense.id}
-                  className="bg-card rounded-xl p-4 border shadow-sm relative group"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                        <Icon className="size-5" />
-                      </div>
-                      <span className="text-foreground font-bold text-lg">
-                        {expense.category}
-                      </span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDeleteExpense(expense.id)}
-                    >
-                      <Trash2 className="size-5" />
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-background rounded-lg px-3 py-2 border">
-                      <label className="block text-xs text-muted-foreground mb-0.5 uppercase tracking-wider font-semibold">
-                        Amount
-                      </label>
-                      <div className="flex items-center text-foreground">
-                        <span className="mr-1 text-muted-foreground">$</span>
-                        <span className="font-bold text-lg">{expense.amount.toFixed(2)}</span>
-                      </div>
-                    </div>
-                    <div className="relative bg-background rounded-lg px-3 py-2 border">
-                      <label className="block text-xs text-muted-foreground mb-0.5 uppercase tracking-wider font-semibold">
-                        Frequency
-                      </label>
-                      <div className="text-foreground font-bold text-base">
-                        {expense.frequency}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <p className="text-center text-muted-foreground py-6">No discretionary expenses added yet.</p>
-          )}
-
-        </div>
       </main>
 
-      {/* Add Expense Dialog */}
-      <Dialog open={isAdding} onOpenChange={setIsAdding}>
+      {/* Add/Edit Expense Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add {newExpense.category} Expense</DialogTitle>
+            <DialogTitle>Planned {currentExpense.category} Spending</DialogTitle>
+            <DialogDescription>
+                How much do you plan to spend per week on {currentExpense.category.toLowerCase()}? You can change this later.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount</Label>
+              <Label htmlFor="amount">Planned Weekly Amount</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
                 <Input
                     id="amount"
                     type="number"
                     placeholder="0.00"
-                    value={newExpense.amount}
+                    value={currentExpense.plannedAmount}
                     onChange={(e) =>
-                    setNewExpense({ ...newExpense, amount: e.target.value })
+                        setCurrentExpense({ ...currentExpense, plannedAmount: e.target.value })
                     }
                     className="pl-10 h-12 text-lg"
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="frequency">Frequency</Label>
-              <Select
-                value={newExpense.frequency}
-                onValueChange={(value: 'Weekly' | 'Monthly') =>
-                  setNewExpense({ ...newExpense, frequency: value })
-                }
-              >
-                <SelectTrigger className="h-12 text-base">
-                  <SelectValue placeholder="Select frequency" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Weekly">Weekly</SelectItem>
-                  <SelectItem value="Monthly">Monthly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsAdding(false)}>
+            <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddExpense}>Add Expense</Button>
+            <Button onClick={handleSaveExpense}>Set Plan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -319,7 +252,7 @@ export default function DiscretionaryExpensesScreen() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-1">
-              Estimated Weekly Spend
+              Total Planned Weekly Spend
             </p>
             <div className="flex items-baseline gap-1.5">
               <span className="text-3xl font-extrabold text-primary tracking-tight">

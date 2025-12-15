@@ -24,17 +24,14 @@ interface RequiredExpense extends DocumentData {
 interface Loan extends DocumentData {
   id: string;
   name: string;
-  category: string;
   totalBalance: number;
-  interestRate?: number;
   paymentFrequency: 'Weekly' | 'Monthly';
 }
 
 interface DiscretionaryExpense extends DocumentData {
   id:string;
   category: string;
-  amount: number;
-  frequency: 'Weekly' | 'Monthly';
+  plannedAmount: number;
 }
 
 interface SavingsGoal extends DocumentData {
@@ -86,14 +83,17 @@ export default function DashboardScreen() {
     }, 0);
 
     const weeklyDiscretionaryExpenses = (discretionaryExpenses || []).reduce((total, expense) => {
-        return total + getWeeklyAmount(expense.amount, expense.frequency);
+        // Discretionary expenses are stored as weekly planned amounts
+        return total + expense.plannedAmount;
     }, 0);
 
-    // Assuming loan payments are not explicitly stored, so not including them for now.
-    // Also assuming savings contributions are not explicitly stored as transactions yet.
+    // TODO: Add loan payments and savings contributions to the calculation
+    const weeklyLoanPayments = 0;
+    const weeklySavingsContributions = 0;
 
-    return weeklyIncome - weeklyRequiredExpenses - weeklyDiscretionaryExpenses;
-  }, [incomeSources, requiredExpenses, discretionaryExpenses]);
+
+    return weeklyIncome - weeklyRequiredExpenses - weeklyDiscretionaryExpenses - weeklyLoanPayments - weeklySavingsContributions;
+  }, [incomeSources, requiredExpenses, discretionaryExpenses, loans, savingsGoals]);
 
 
   const safeToSpendDollars = Math.floor(safeToSpend);
