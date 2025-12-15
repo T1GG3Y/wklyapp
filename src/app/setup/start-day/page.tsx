@@ -1,21 +1,51 @@
-"use client";
+'use client';
 
-import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { cn } from "@/lib/utils";
-import Image from "next/image";
-import Link from "next/link";
-import { useState } from "react";
-import {
-  Signal,
-  Wifi,
-  BatteryFull,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { cn } from '@/lib/utils';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useState } from 'react';
+import { Signal, Wifi, BatteryFull } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 
 export default function StartDayScreen() {
-  const startDayImage = PlaceHolderImages.find((img) => img.id === "start-day");
-  const [selectedDay, setSelectedDay] = useState("Sun");
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const startDayImage = PlaceHolderImages.find((img) => img.id === 'start-day');
+  const [selectedDay, setSelectedDay] = useState('Sunday');
+  const days = [
+    'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+  ];
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const router = useRouter();
+
+  const handleSetStartDay = async () => {
+    if (!user || !firestore) {
+      // Should probably show a toast or error message
+      console.error('User or firestore not available');
+      return;
+    }
+    try {
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await setDoc(
+        userDocRef,
+        { startDayOfWeek: selectedDay },
+        { merge: true }
+      );
+      router.push('/setup/income');
+    } catch (error) {
+      console.error('Error setting start day:', error);
+      // Handle error, e.g., show a toast message
+    }
+  };
 
   return (
     <div className="bg-muted min-h-screen flex items-center justify-center font-headline p-4">
@@ -55,13 +85,13 @@ export default function StartDayScreen() {
                 key={day}
                 onClick={() => setSelectedDay(day)}
                 className={cn(
-                  "flex flex-col items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-lg transition-all",
+                  'flex flex-col items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-lg transition-all',
                   selectedDay === day
-                    ? "bg-primary text-primary-foreground shadow-md transform scale-105"
-                    : "bg-muted text-muted-foreground hover:bg-accent"
+                    ? 'bg-primary text-primary-foreground shadow-md transform scale-105'
+                    : 'bg-muted text-muted-foreground hover:bg-accent'
                 )}
               >
-                <span className="text-xs md:text-sm font-bold">{day}</span>
+                <span className="text-xs md:text-sm font-bold">{day.substring(0, 3)}</span>
               </button>
             ))}
           </div>
@@ -70,10 +100,10 @@ export default function StartDayScreen() {
               <Link href="/">Back</Link>
             </Button>
             <Button
-              asChild
+              onClick={handleSetStartDay}
               className="px-8 py-3.5 rounded-full font-bold text-base shadow-lg"
             >
-              <Link href="/setup/income">Set Start Day</Link>
+              Set Start Day
             </Button>
           </div>
         </div>

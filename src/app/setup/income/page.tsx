@@ -1,13 +1,126 @@
-import { Button } from "@/components/ui/button";
+'use client';
+
+import { Button } from '@/components/ui/button';
 import {
   CalendarDays,
   Calendar,
   Briefcase,
   Plus,
-} from "lucide-react";
-import Link from "next/link";
+  Trash2,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useUser, useFirestore, useCollection } from '@/firebase';
+import {
+  collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  type DocumentData,
+} from 'firebase/firestore';
+import { useMemo, useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+interface IncomeSource extends DocumentData {
+  id: string;
+  name: string;
+  amount: number;
+  frequency: 'Weekly' | 'Bi-weekly' | 'Monthly' | 'Yearly';
+}
 
 export default function IncomeScreen() {
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const [isAdding, setIsAdding] = useState(false);
+  const [newSource, setNewSource] = useState({
+    name: '',
+    amount: '',
+    frequency: 'Monthly' as IncomeSource['frequency'],
+  });
+
+  const incomeSourcesCollection = useMemo(() => {
+    if (!user || !firestore) return null;
+    return collection(firestore, `users/${user.uid}/incomeSources`);
+  }, [user, firestore]);
+
+  const { data: incomeSources, loading } = useCollection<IncomeSource>(
+    incomeSourcesCollection?.path || ''
+  );
+
+  const handleAddSource = async () => {
+    if (!incomeSourcesCollection || !user) return;
+    const amount = parseFloat(newSource.amount);
+    if (!newSource.name || isNaN(amount) || amount <= 0) {
+      alert('Please enter a valid name and amount.');
+      return;
+    }
+    try {
+      await addDoc(incomeSourcesCollection, {
+        userProfileId: user.uid,
+        name: newSource.name,
+        amount: amount,
+        frequency: newSource.frequency,
+      });
+      setIsAdding(false);
+      setNewSource({ name: '', amount: '', frequency: 'Monthly' });
+    } catch (error) {
+      console.error('Error adding income source: ', error);
+    }
+  };
+  
+  const handleDeleteSource = async (sourceId: string) => {
+    if (!firestore || !user) return;
+    try {
+      await deleteDoc(doc(firestore, `users/${user.uid}/incomeSources`, sourceId));
+    } catch (error) {
+      console.error('Error deleting income source:', error);
+    }
+  };
+
+  const { weeklyTotal, monthlyTotal } = useMemo(() => {
+    if (!incomeSources) return { weeklyTotal: 0, monthlyTotal: 0 };
+
+    let monthly = 0;
+    let weekly = 0;
+
+    incomeSources.forEach((source) => {
+      switch (source.frequency) {
+        case 'Weekly':
+          weekly += source.amount;
+          monthly += source.amount * 4.33;
+          break;
+        case 'Bi-weekly':
+          weekly += source.amount / 2;
+          monthly += source.amount * 2.165;
+          break;
+        case 'Monthly':
+          weekly += source.amount / 4.33;
+          monthly += source.amount;
+          break;
+        case 'Yearly':
+          weekly += source.amount / 52;
+          monthly += source.amount / 12;
+          break;
+      }
+    });
+
+    return { weeklyTotal: weekly, monthlyTotal: monthly };
+  }, [incomeSources]);
+
   return (
     <div className="relative flex min-h-screen w-full flex-col max-w-md mx-auto shadow-2xl overflow-hidden bg-background">
       <header className="sticky top-0 z-50 flex items-center bg-background/95 backdrop-blur-md p-4 pb-2 justify-between border-b">
@@ -34,7 +147,7 @@ export default function IncomeScreen() {
                 </p>
               </div>
               <p className="text-foreground text-2xl font-extrabold tabular-nums">
-                $1,250.00
+                ${weeklyTotal.toFixed(2)}
               </p>
             </div>
             <div className="flex flex-col gap-3 rounded-2xl p-5 bg-card shadow-sm border relative overflow-hidden group">
@@ -45,7 +158,7 @@ export default function IncomeScreen() {
                 </p>
               </div>
               <p className="text-foreground text-2xl font-extrabold tabular-nums">
-                $5,416.00
+                ${monthlyTotal.toFixed(2)}
               </p>
             </div>
           </div>
@@ -56,32 +169,109 @@ export default function IncomeScreen() {
               Active Sources
             </p>
           </div>
-          <div className="group flex items-center gap-4 bg-card p-4 rounded-xl shadow-sm border">
-            <div className="flex items-center justify-center rounded-xl bg-muted text-foreground shrink-0 size-12 border">
-              <Briefcase />
-            </div>
-            <div className="flex flex-col flex-1 min-w-0">
-              <p className="text-foreground text-base font-bold truncate">
-                Software Engineer Salary
-              </p>
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-muted-foreground font-medium">
-                  Bi-weekly
-                </span>
+          {loading ? (
+            <p>Loading...</p>
+          ) : incomeSources && incomeSources.length > 0 ? (
+            incomeSources.map((source) => (
+              <div
+                key={source.id}
+                className="group flex items-center gap-4 bg-card p-4 rounded-xl shadow-sm border"
+              >
+                <div className="flex items-center justify-center rounded-xl bg-muted text-foreground shrink-0 size-12 border">
+                  <Briefcase />
+                </div>
+                <div className="flex flex-col flex-1 min-w-0">
+                  <p className="text-foreground text-base font-bold truncate">
+                    {source.name}
+                  </p>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-muted-foreground font-medium">
+                      {source.frequency}
+                    </span>
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-foreground text-base font-bold tabular-nums">
+                    ${source.amount.toFixed(2)}
+                  </p>
+                </div>
+                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive -mr-2" onClick={() => handleDeleteSource(source.id)}>
+                  <Trash2 className="size-4" />
+                </Button>
               </div>
-            </div>
-            <div className="shrink-0 text-right">
-              <p className="text-foreground text-base font-bold tabular-nums">
-                $2,500.00
-              </p>
-            </div>
-          </div>
+            ))
+          ) : (
+            <p className="text-muted-foreground text-center">
+              No income sources added yet.
+            </p>
+          )}
         </section>
       </main>
+
+      {/* Add Dialog */}
+      <Dialog open={isAdding} onOpenChange={setIsAdding}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Income Source</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Source Name</Label>
+              <Input
+                id="name"
+                placeholder="e.g. Salary"
+                value={newSource.name}
+                onChange={(e) =>
+                  setNewSource({ ...newSource, name: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="amount">Amount</Label>
+              <Input
+                id="amount"
+                type="number"
+                placeholder="0.00"
+                value={newSource.amount}
+                onChange={(e) =>
+                  setNewSource({ ...newSource, amount: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="frequency">Frequency</Label>
+              <Select
+                value={newSource.frequency}
+                onValueChange={(
+                  value: 'Weekly' | 'Bi-weekly' | 'Monthly' | 'Yearly'
+                ) => setNewSource({ ...newSource, frequency: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select frequency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Weekly">Weekly</SelectItem>
+                  <SelectItem value="Bi-weekly">Bi-weekly</SelectItem>
+                  <SelectItem value="Monthly">Monthly</SelectItem>
+                  <SelectItem value="Yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsAdding(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddSource}>Add Source</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent pointer-events-none max-w-md mx-auto">
         <Button
           className="pointer-events-auto w-full h-14 text-base font-bold tracking-wide shadow-lg shadow-primary/20"
           size="lg"
+          onClick={() => setIsAdding(true)}
         >
           <Plus className="mr-2 h-6 w-6" />
           Add New Income Source
