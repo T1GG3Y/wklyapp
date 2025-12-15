@@ -60,17 +60,18 @@ export default function RequiredExpensesScreen() {
   const [frequency, setFrequency] = useState<'Weekly' | 'Monthly' | 'Yearly'>('Monthly');
   const [dueDate, setDueDate] = useState<Date>();
 
-  const requiredExpensesCollection = useMemo(() => {
-    if (!user || !firestore) return null;
-    return collection(firestore, `users/${user.uid}/requiredExpenses`);
-  }, [user, firestore]);
+  const requiredExpensesPath = useMemo(() => {
+    return user ? `users/${user.uid}/requiredExpenses` : '';
+  }, [user]);
 
   const { data: expenses, loading } = useCollection<RequiredExpense>(
-    requiredExpensesCollection?.path || ''
+    requiredExpensesPath
   );
 
+
   const handleAddExpense = async () => {
-    if (!requiredExpensesCollection || !user) return;
+    if (!firestore || !user) return;
+    const requiredExpensesCollection = collection(firestore, `users/${user.uid}/requiredExpenses`);
     const expenseAmount = parseFloat(amount);
     if (isNaN(expenseAmount) || expenseAmount <= 0) {
       alert('Please enter a valid amount.');

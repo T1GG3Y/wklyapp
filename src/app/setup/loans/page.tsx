@@ -48,17 +48,16 @@ export default function LoansScreen() {
   const [interestRate, setInterestRate] = useState('');
   const [frequency, setFrequency] = useState<'Weekly' | 'Monthly'>('Monthly');
 
-  const loansCollection = useMemo(() => {
-    if (!user || !firestore) return null;
-    return collection(firestore, `users/${user.uid}/loans`);
-  }, [user, firestore]);
+  const loansPath = useMemo(() => {
+    return user ? `users/${user.uid}/loans` : '';
+  }, [user]);
 
-  const { data: loans, loading } = useCollection<Loan>(
-    loansCollection?.path || ''
-  );
+  const { data: loans, loading } = useCollection<Loan>(loansPath);
+
 
   const handleSaveLoan = async () => {
-    if (!loansCollection || !user) return;
+    if (!firestore || !user) return;
+    const loansCollection = collection(firestore, `users/${user.uid}/loans`);
     const totalBalance = parseFloat(balance);
     if (isNaN(totalBalance) || totalBalance <= 0 || !loanName) {
       alert('Please enter a valid loan name and balance.');

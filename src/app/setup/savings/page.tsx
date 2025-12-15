@@ -18,6 +18,7 @@ import { useMemo, useState } from 'react';
 interface SavingsGoal extends DocumentData {
   id: string;
   name: string;
+  category: string;
   targetAmount: number;
   currentAmount: number;
 }
@@ -36,17 +37,17 @@ export default function PlannedSavingsScreen() {
   const [goalName, setGoalName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
 
-  const savingsGoalsCollection = useMemo(() => {
-    if (!user || !firestore) return null;
-    return collection(firestore, `users/${user.uid}/savingsGoals`);
-  }, [user, firestore]);
+  const savingsGoalsPath = useMemo(() => {
+    return user ? `users/${user.uid}/savingsGoals` : '';
+  }, [user]);
 
   const { data: goals, loading } = useCollection<SavingsGoal>(
-    savingsGoalsCollection?.path || ''
+    savingsGoalsPath
   );
 
   const handleAddGoal = async () => {
-    if (!savingsGoalsCollection || !user) return;
+    if (!firestore || !user) return;
+    const savingsGoalsCollection = collection(firestore, `users/${user.uid}/savingsGoals`);
     const amount = parseFloat(targetAmount);
     if (!goalName || isNaN(amount) || amount <= 0) {
       alert('Please enter a valid goal name and target amount.');

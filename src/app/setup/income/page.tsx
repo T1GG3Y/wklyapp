@@ -52,17 +52,19 @@ export default function IncomeScreen() {
     frequency: 'Monthly' as IncomeSource['frequency'],
   });
 
-  const incomeSourcesCollection = useMemo(() => {
-    if (!user || !firestore) return null;
-    return collection(firestore, `users/${user.uid}/incomeSources`);
-  }, [user, firestore]);
+  const incomeSourcesPath = useMemo(() => {
+    return user ? `users/${user.uid}/incomeSources` : '';
+  }, [user]);
 
   const { data: incomeSources, loading } = useCollection<IncomeSource>(
-    incomeSourcesCollection?.path || ''
+    incomeSourcesPath
   );
 
+
   const handleAddSource = async () => {
-    if (!incomeSourcesCollection || !user) return;
+    if (!firestore || !user) return;
+    const incomeSourcesCollection = collection(firestore, `users/${user.uid}/incomeSources`);
+
     const amount = parseFloat(newSource.amount);
     if (!newSource.name || isNaN(amount) || amount <= 0) {
       alert('Please enter a valid name and amount.');

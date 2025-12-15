@@ -56,17 +56,18 @@ export default function DiscretionaryExpensesScreen() {
     frequency: 'Monthly',
   });
 
-  const discretionaryExpensesCollection = useMemo(() => {
-    if (!user || !firestore) return null;
-    return collection(firestore, `users/${user.uid}/discretionaryExpenses`);
-  }, [user, firestore]);
+  const discretionaryExpensesPath = useMemo(() => {
+    return user ? `users/${user.uid}/discretionaryExpenses` : '';
+  }, [user]);
 
   const { data: expenses, loading } = useCollection<DiscretionaryExpense>(
-    discretionaryExpensesCollection?.path || ''
+    discretionaryExpensesPath
   );
 
+
   const handleAddExpense = async () => {
-    if (!discretionaryExpensesCollection || !user) return;
+    if (!firestore || !user) return;
+    const discretionaryExpensesCollection = collection(firestore, `users/${user.uid}/discretionaryExpenses`);
     const amount = parseFloat(newExpense.amount);
     if (isNaN(amount) || amount <= 0) {
       alert('Please enter a valid amount.');
