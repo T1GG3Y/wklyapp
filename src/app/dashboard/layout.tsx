@@ -7,7 +7,7 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="bg-background text-foreground min-h-screen flex justify-center">
-      <div className="w-full max-w-md bg-background min-h-screen flex flex-col relative shadow-2xl overflow-hidden">
+      <div className="w-full max-w-md bg-background min-h-screen flex flex-col relative shadow-2xl">
         {children}
         <BottomNav />
       </div>

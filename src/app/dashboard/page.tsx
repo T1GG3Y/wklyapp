@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Menu, Calendar, Receipt } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo } from 'react';
-import type { DocumentData } from 'firebase/firestore';
+import type { DocumentData, Timestamp } from 'firebase/firestore';
+import { startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 
 interface IncomeSource extends DocumentData {
   id: string;
@@ -41,22 +42,38 @@ interface SavingsGoal extends DocumentData {
     currentAmount: number;
 }
 
+interface Transaction extends DocumentData {
+  id: string;
+  type: 'Income' | 'Expense';
+  amount: number;
+  date: Timestamp;
+  category: string;
+}
+
+interface UserProfile extends DocumentData {
+    startDayOfWeek?: 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
+}
+
 
 export default function DashboardScreen() {
   const { user } = useUser();
+  const dayIndexMap = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
 
+  const userProfilePath = useMemo(() => (user ? `users/${user.uid}` : null), [user]);
   const incomeSourcesPath = useMemo(() => (user ? `users/${user.uid}/incomeSources` : null), [user]);
   const requiredExpensesPath = useMemo(() => (user ? `users/${user.uid}/requiredExpenses` : null), [user]);
   const loansPath = useMemo(() => (user ? `users/${user.uid}/loans` : null), [user]);
   const discretionaryExpensesPath = useMemo(() => (user ? `users/${user.uid}/discretionaryExpenses` : null), [user]);
   const savingsGoalsPath = useMemo(() => (user ? `users/${user.uid}/savingsGoals` : null), [user]);
+  const transactionsPath = useMemo(() => (user ? `users/${user.uid}/transactions` : null), [user]);
 
+  const { data: userProfile } = useCollection<UserProfile>(userProfilePath);
   const { data: incomeSources } = useCollection<IncomeSource>(incomeSourcesPath);
   const { data: requiredExpenses } = useCollection<RequiredExpense>(requiredExpensesPath);
   const { data: loans } = useCollection<Loan>(loansPath);
   const { data: discretionaryExpenses } = useCollection<DiscretionaryExpense>(discretionaryExpensesPath);
   const { data: savingsGoals } = useCollection<SavingsGoal>(savingsGoalsPath);
-
+  const { data: transactions } = useCollection<Transaction>(transactionsPath);
 
   const getWeeklyAmount = (amount: number, frequency: string) => {
     switch (frequency) {
@@ -81,19 +98,58 @@ export default function DashboardScreen() {
     const weeklyRequiredExpenses = (requiredExpenses || []).reduce((total, expense) => {
         return total + getWeeklyAmount(expense.amount, expense.frequency);
     }, 0);
-
-    const weeklyDiscretionaryExpenses = (discretionaryExpenses || []).reduce((total, expense) => {
-        // Discretionary expenses are stored as weekly planned amounts
+    
+    // Discretionary expenses are stored as weekly planned amounts, so they represent the baseline spend.
+    // The "Safe to Spend" is what's left *after* accounting for these plans.
+    const weeklyPlannedDiscretionary = (discretionaryExpenses || []).reduce((total, expense) => {
         return total + expense.plannedAmount;
+    }, 0);
+
+    // Filter transactions to only include those from the current week
+    const startDay = userProfile?.[0]?.startDayOfWeek || 'Sunday';
+    const weekStartsOn = dayIndexMap[startDay];
+    const now = new Date();
+    const weekStart = startOfWeek(now, { weekStartsOn });
+    const weekEnd = endOfWeek(now, { weekStartsOn });
+
+    const weeklyTransactions = (transactions || []).filter(t => {
+        if (!t.date) return false;
+        const transactionDate = t.date.toDate();
+        return isWithinInterval(transactionDate, { start: weekStart, end: weekEnd });
+    });
+
+    const weeklyActualSpending = weeklyTransactions.reduce((total, transaction) => {
+        if (transaction.type === 'Expense') {
+            return total + transaction.amount;
+        }
+        return total;
+    }, 0);
+    
+    const weeklyActualIncome = weeklyTransactions.reduce((total, transaction) => {
+        if (transaction.type === 'Income') {
+            return total + transaction.amount;
+        }
+        return total;
     }, 0);
 
     // TODO: Add loan payments and savings contributions to the calculation
     const weeklyLoanPayments = 0;
     const weeklySavingsContributions = 0;
 
+    const totalBudgetedExpenses = weeklyRequiredExpenses + weeklyPlannedDiscretionary + weeklyLoanPayments + weeklySavingsContributions;
+    
+    // Start with weekly income, subtract all budgeted expenses, then adjust for actual transactions this week.
+    // We add back actual income and subtract actual expenses. This way, if you spend less than planned, your safe-to-spend increases.
+    // This model assumes planned discretionary spending is the "budget" and actual transactions are deviations from it.
+    const availableAfterBudget = weeklyIncome - totalBudgetedExpenses;
+    const spentFromDiscretionary = weeklyActualSpending; // For now, assume all expense transactions are discretionary
+    
+    // A simpler model: weekly income - required expenses - actual discretionary spending.
+    const safeToSpendThisWeek = weeklyIncome - weeklyRequiredExpenses - weeklyActualSpending + weeklyActualIncome;
 
-    return weeklyIncome - weeklyRequiredExpenses - weeklyDiscretionaryExpenses - weeklyLoanPayments - weeklySavingsContributions;
-  }, [incomeSources, requiredExpenses, discretionaryExpenses, loans, savingsGoals]);
+
+    return safeToSpendThisWeek;
+  }, [incomeSources, requiredExpenses, discretionaryExpenses, loans, savingsGoals, transactions, userProfile]);
 
 
   const safeToSpendDollars = Math.floor(safeToSpend);
