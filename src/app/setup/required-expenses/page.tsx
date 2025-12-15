@@ -23,13 +23,14 @@ import {
   DollarSign,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import {
   collection,
   addDoc,
   deleteDoc,
   doc,
+  updateDoc,
   type DocumentData,
 } from 'firebase/firestore';
 import {
@@ -38,7 +39,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -87,8 +88,10 @@ const categoryIconMap = new Map(expenseCategories.map((c) => [c.name, c.icon]));
 export default function RequiredExpensesScreen() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const [isAdding, setIsAdding] = useState(false);
-  const [newExpense, setNewExpense] = useState<{
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [expenseToEdit, setExpenseToEdit] = useState<RequiredExpense | null>(null);
+
+  const [formState, setFormState] = useState<{
     category: string;
     amount: string;
     frequency: 'Weekly' | 'Monthly' | 'Yearly';
@@ -107,44 +110,72 @@ export default function RequiredExpensesScreen() {
   const { data: expenses, loading } = useCollection<RequiredExpense>(
     requiredExpensesPath
   );
+  
+  useEffect(() => {
+    if (expenseToEdit) {
+      setFormState({
+        category: expenseToEdit.category,
+        amount: expenseToEdit.amount.toString(),
+        frequency: expenseToEdit.frequency,
+        dueDate: expenseToEdit.dueDate ? parseISO(expenseToEdit.dueDate) : undefined,
+      });
+    } else {
+      setFormState({
+        category: 'Groceries',
+        amount: '',
+        frequency: 'Monthly',
+        dueDate: undefined,
+      });
+    }
+  }, [expenseToEdit]);
 
   const handleOpenAddDialog = (category: string) => {
-    setNewExpense({
+    setExpenseToEdit(null);
+    setFormState({
       category: category,
       amount: '',
       frequency: 'Monthly',
       dueDate: undefined,
     });
-    setIsAdding(true);
+    setIsDialogOpen(true);
+  };
+  
+  const handleOpenEditDialog = (expense: RequiredExpense) => {
+    setExpenseToEdit(expense);
+    setIsDialogOpen(true);
   };
 
-  const handleAddExpense = async () => {
+  const handleSaveExpense = async () => {
     if (!firestore || !user) return;
-    const requiredExpensesCollection = collection(
-      firestore,
-      `users/${user.uid}/requiredExpenses`
-    );
-    const expenseAmount = parseFloat(newExpense.amount);
+    
+    const expenseAmount = parseFloat(formState.amount);
     if (isNaN(expenseAmount) || expenseAmount <= 0) {
       alert('Please enter a valid amount.');
       return;
     }
 
-    const expenseData: Omit<RequiredExpense, 'id'> = {
+    const expenseData = {
       userProfileId: user.uid,
-      category: newExpense.category,
+      category: formState.category,
       amount: expenseAmount,
-      frequency: newExpense.frequency,
-      ...(newExpense.dueDate && {
-        dueDate: format(newExpense.dueDate, 'yyyy-MM-dd'),
+      frequency: formState.frequency,
+      ...(formState.dueDate && {
+        dueDate: format(formState.dueDate, 'yyyy-MM-dd'),
       }),
     };
 
     try {
-      await addDoc(requiredExpensesCollection, expenseData);
-      setIsAdding(false);
+      if (expenseToEdit) {
+        const expenseDocRef = doc(firestore, `users/${user.uid}/requiredExpenses`, expenseToEdit.id);
+        await updateDoc(expenseDocRef, expenseData);
+      } else {
+        const requiredExpensesCollection = collection(firestore, `users/${user.uid}/requiredExpenses`);
+        await addDoc(requiredExpensesCollection, expenseData);
+      }
+      setIsDialogOpen(false);
+      setExpenseToEdit(null);
     } catch (error) {
-      console.error('Error adding required expense:', error);
+      console.error('Error saving required expense:', error);
     }
   };
 
@@ -250,7 +281,8 @@ export default function RequiredExpensesScreen() {
               return (
                 <div
                   key={expense.id}
-                  className="bg-card rounded-xl p-4 border shadow-sm relative group"
+                  className="bg-card rounded-xl p-4 border shadow-sm relative group cursor-pointer"
+                  onClick={() => handleOpenEditDialog(expense)}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3">
@@ -265,7 +297,10 @@ export default function RequiredExpensesScreen() {
                       variant="ghost"
                       size="icon"
                       className="text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDeleteExpense(expense.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteExpense(expense.id);
+                      }}
                     >
                       <Trash2 className="size-5" />
                     </Button>
@@ -286,7 +321,7 @@ export default function RequiredExpensesScreen() {
                       <label className="block text-xs text-muted-foreground mb-0.5 uppercase tracking-wider font-semibold">
                         Info
                       </label>
-                      <div className="text-foreground font-bold text-base">
+                      <div className="text-foreground font-bold text-base truncate">
                         {expense.frequency}
                         {expense.dueDate
                           ? ` • Due ${format(new Date(expense.dueDate), 'do')}`
@@ -305,11 +340,11 @@ export default function RequiredExpensesScreen() {
         </div>
       </main>
 
-      {/* Add Expense Dialog */}
-      <Dialog open={isAdding} onOpenChange={setIsAdding}>
+      {/* Add/Edit Expense Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add {newExpense.category} Expense</DialogTitle>
+            <DialogTitle>{expenseToEdit ? `Edit` : 'Add'} {formState.category} Expense</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -320,9 +355,9 @@ export default function RequiredExpensesScreen() {
                   id="amount"
                   type="number"
                   placeholder="0.00"
-                  value={newExpense.amount}
+                  value={formState.amount}
                   onChange={(e) =>
-                    setNewExpense({ ...newExpense, amount: e.target.value })
+                    setFormState({ ...formState, amount: e.target.value })
                   }
                   className="pl-10 h-12 text-lg"
                 />
@@ -332,9 +367,9 @@ export default function RequiredExpensesScreen() {
               <div className="space-y-2">
                 <Label htmlFor="frequency">Frequency</Label>
                 <Select
-                  value={newExpense.frequency}
+                  value={formState.frequency}
                   onValueChange={(value: 'Weekly' | 'Monthly' | 'Yearly') =>
-                    setNewExpense({ ...newExpense, frequency: value })
+                    setFormState({ ...formState, frequency: value })
                   }
                 >
                   <SelectTrigger className="h-12 text-base">
@@ -355,12 +390,12 @@ export default function RequiredExpensesScreen() {
                       variant={'outline'}
                       className={cn(
                         'w-full justify-start text-left font-normal h-12 text-base',
-                        !newExpense.dueDate && 'text-muted-foreground'
+                        !formState.dueDate && 'text-muted-foreground'
                       )}
                     >
                       <Calendar className="mr-2 h-4 w-4" />
-                      {newExpense.dueDate ? (
-                        format(newExpense.dueDate, 'PPP')
+                      {formState.dueDate ? (
+                        format(formState.dueDate, 'PPP')
                       ) : (
                         <span>Pick a date</span>
                       )}
@@ -369,9 +404,9 @@ export default function RequiredExpensesScreen() {
                   <PopoverContent className="w-auto p-0">
                     <CalendarPicker
                       mode="single"
-                      selected={newExpense.dueDate}
+                      selected={formState.dueDate}
                       onSelect={(date) =>
-                        setNewExpense({ ...newExpense, dueDate: date })
+                        setFormState({ ...formState, dueDate: date as Date })
                       }
                       initialFocus
                     />
@@ -381,10 +416,10 @@ export default function RequiredExpensesScreen() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsAdding(false)}>
+            <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddExpense}>Add Expense</Button>
+            <Button onClick={handleSaveExpense}>{expenseToEdit ? 'Update' : 'Add'} Expense</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
