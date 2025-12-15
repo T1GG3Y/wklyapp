@@ -57,7 +57,7 @@ export default function DiscretionaryExpensesScreen() {
   });
 
   const discretionaryExpensesPath = useMemo(() => {
-    return user ? `users/${user.uid}/discretionaryExpenses` : '';
+    return user ? `users/${user.uid}/discretionaryExpenses` : null;
   }, [user]);
 
   const { data: expenses, loading } = useCollection<DiscretionaryExpense>(
@@ -258,7 +258,7 @@ export default function DiscretionaryExpensesScreen() {
         </DialogContent>
       </Dialog>
 
-      <div className="fixed bottom-0 left-0 w-full bg-card/85 backdrop-blur-xl border-t p-5 z-20 pb-8 shadow-up max-w-md mx-auto">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-card/85 backdrop-blur-xl border-t p-5 z-20 pb-8 shadow-up">
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-1">
