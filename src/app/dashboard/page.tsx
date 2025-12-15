@@ -1,6 +1,6 @@
 'use client';
 
-import { useCollection, useFirestore, useUser } from '@/firebase';
+import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Menu, Calendar, Receipt } from 'lucide-react';
 import Link from 'next/link';
@@ -59,7 +59,7 @@ export default function DashboardScreen() {
   const { user } = useUser();
   const dayIndexMap = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
 
-  const userProfilePath = useMemo(() => (user ? `users/${user.uid}` : null), [user]);
+  const userProfilePath = useMemo(() => (user ? `users/${user.uid}` : ''), [user]);
   const incomeSourcesPath = useMemo(() => (user ? `users/${user.uid}/incomeSources` : null), [user]);
   const requiredExpensesPath = useMemo(() => (user ? `users/${user.uid}/requiredExpenses` : null), [user]);
   const loansPath = useMemo(() => (user ? `users/${user.uid}/loans` : null), [user]);
@@ -67,7 +67,7 @@ export default function DashboardScreen() {
   const savingsGoalsPath = useMemo(() => (user ? `users/${user.uid}/savingsGoals` : null), [user]);
   const transactionsPath = useMemo(() => (user ? `users/${user.uid}/transactions` : null), [user]);
 
-  const { data: userProfile } = useCollection<UserProfile>(userProfilePath);
+  const { data: userProfile } = useDoc<UserProfile>(userProfilePath);
   const { data: incomeSources } = useCollection<IncomeSource>(incomeSourcesPath);
   const { data: requiredExpenses } = useCollection<RequiredExpense>(requiredExpensesPath);
   const { data: loans } = useCollection<Loan>(loansPath);
@@ -106,8 +106,8 @@ export default function DashboardScreen() {
     }, 0);
 
     // Filter transactions to only include those from the current week
-    const startDay = userProfile?.[0]?.startDayOfWeek || 'Sunday';
-    const weekStartsOn = dayIndexMap[startDay];
+    const startDay = userProfile?.startDayOfWeek || 'Sunday';
+    const weekStartsOn = dayIndexMap[startDay as keyof typeof dayIndexMap];
     const now = new Date();
     const weekStart = startOfWeek(now, { weekStartsOn });
     const weekEnd = endOfWeek(now, { weekStartsOn });
