@@ -1,3 +1,22 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "welcome-screen",
+      "description": "A vibrant image representing financial tracking and management.",
+      "imageUrl": "https://images.unsplash.com/photo-1764231467860-aaa2a307ec56?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxmaW5hbmNlJTIwbWFuYWdlbWVudHxlbnwwfHx8fDE3NjU3NzEyMjF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "finance management"
+    },
+    {
+      "id": "start-day",
+      "description": "An illustration of a calendar to signify starting the week.",
+      "imageUrl": "https://images.unsplash.com/photo-1643446757604-c2b7c45c45dc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxjYWxlbmRhciUyMHNjaGVkdWxlfGVufDB8fHx8MTc2NTc3MTIyMXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "calendar schedule"
+    },
+    {
+      "id": "weekly-summary",
+      "description": "An illustration celebrating the completion of the setup.",
+      "imageUrl": "https://images.unsplash.com/photo-1695891583421-3cbbf1c2e3bd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxjZWxlYnJhdGlvbiUyMHN1Y2Nlc3N8ZW58MHx8fHwxNzY1NzcxMjIxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "celebration success"
+    }
+  ]
 }
