@@ -19,6 +19,7 @@ import {
   Dumbbell,
   FileText,
   Gift,
+  GraduationCap,
   Heart,
   Home,
   Landmark,
