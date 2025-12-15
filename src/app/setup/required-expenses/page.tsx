@@ -67,7 +67,6 @@ interface RequiredExpense extends DocumentData {
 }
 
 const expenseCategories: { name: string; icon: LucideIcon }[] = [
-  { name: 'Groceries', icon: Utensils },
   { name: 'Rent/Mortgage', icon: Home },
   { name: 'Insurance', icon: Shield },
   { name: 'Taxes', icon: Landmark },

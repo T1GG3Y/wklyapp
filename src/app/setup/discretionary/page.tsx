@@ -21,6 +21,7 @@ import {
   Dog,
   MoreHorizontal,
   CreditCard,
+  ShoppingBasket,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection } from '@/firebase';
@@ -56,6 +57,7 @@ interface DiscretionaryExpense extends DocumentData {
 }
 
 const expenseCategories: { name: string, icon: LucideIcon }[] = [
+    { name: 'Groceries', icon: ShoppingBasket },
     { name: 'Dining Out', icon: Utensils },
     { name: 'Personal Care', icon: Sparkles },
     { name: 'Clothes', icon: Shirt },
