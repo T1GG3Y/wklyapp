@@ -20,6 +20,15 @@ import {
   Car,
   Heart,
   Trash2,
+  Landmark,
+  Shield,
+  Lightbulb,
+  Phone,
+  Recycle,
+  Wrench,
+  FileText,
+  Briefcase,
+  type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useMemo } from 'react';
@@ -34,6 +43,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface RequiredExpense extends DocumentData {
   id: string;
@@ -43,19 +53,31 @@ interface RequiredExpense extends DocumentData {
   dueDate?: string;
 }
 
-const expenseCategories = [
-    { name: 'Housing', icon: Home },
-    { name: 'Food', icon: Utensils },
-    { name: 'Utilities', icon: Droplet },
-    { name: 'Transport', icon: Car },
-    { name: 'Health', icon: Heart },
+const expenseCategories: { name: string, icon: LucideIcon }[] = [
+    { name: 'Groceries', icon: Utensils },
+    { name: 'Rent/Mortgage', icon: Home },
+    { name: 'Insurance', icon: Shield },
+    { name: 'Taxes', icon: Landmark },
+    { name: 'Natural Gas', icon: Droplet },
+    { name: 'Electrical', icon: Lightbulb },
+    { name: 'Water', icon: Droplet },
+    { name: 'Garbage', icon: Recycle },
+    { name: 'Phone', icon: Phone },
+    { name: 'Gas/Parking/Tolls', icon: Car },
+    { name: 'Auto Maintenance', icon: Wrench },
+    { name: 'Auto Registration', icon: FileText },
+    { name: 'Medical', icon: Heart },
+    { name: 'Dental', icon: Briefcase }, // No 'tooth' icon, using briefcase
 ];
+
+const categoryIconMap = new Map(expenseCategories.map(c => [c.name, c.icon]));
+
 
 export default function RequiredExpensesScreen() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  const [selectedCategory, setSelectedCategory] = useState('Housing');
+  const [selectedCategory, setSelectedCategory] = useState('Groceries');
   const [amount, setAmount] = useState('');
   const [frequency, setFrequency] = useState<'Weekly' | 'Monthly' | 'Yearly'>('Monthly');
   const [dueDate, setDueDate] = useState<Date>();
@@ -164,9 +186,10 @@ export default function RequiredExpensesScreen() {
                     key={name}
                     onClick={() => setSelectedCategory(name)}
                     variant={selectedCategory === name ? 'default' : 'outline'}
-                    className="shrink-0 pl-3 pr-4" size="lg">
-                    <Icon className="mr-2 h-5 w-5" />
-                    {name}
+                    className={cn("shrink-0 pl-3 pr-4 flex flex-col items-center justify-center h-20 w-20 text-center", selectedCategory === name && "text-primary-foreground")}
+                    >
+                    <Icon className="size-6 mb-1" />
+                    <span className="text-xs font-semibold leading-tight">{name}</span>
                   </Button>
                 ))}
               </div>
@@ -243,18 +266,12 @@ export default function RequiredExpensesScreen() {
                 </h2>
               </div>
               {loading ? <p>Loading...</p> : expenses && expenses.length > 0 ? (
-                expenses.map(expense => (
+                expenses.map(expense => {
+                    const Icon = categoryIconMap.get(expense.category) || Droplet;
+                    return (
                     <div key={expense.id} className="flex items-center gap-4 bg-card p-3 rounded-xl border">
                         <div className="size-10 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
-                        {
-                            {
-                                'Housing': <Home className="text-blue-400 h-5 w-5"/>,
-                                'Food': <Utensils className="text-blue-400 h-5 w-5"/>,
-                                'Utilities': <Droplet className="text-blue-400 h-5 w-5"/>,
-                                'Transport': <Car className="text-blue-400 h-5 w-5"/>,
-                                'Health': <Heart className="text-blue-400 h-5 w-5"/>,
-                            }[expense.category]
-                        }
+                          <Icon className="text-blue-400 h-5 w-5"/>
                         </div>
                         <div className="flex-1 min-w-0">
                         <p className="text-foreground text-sm font-bold truncate">
@@ -269,14 +286,14 @@ export default function RequiredExpensesScreen() {
                             <Trash2 className="size-4 text-muted-foreground" />
                         </Button>
                     </div>
-                ))
+                )})
               ) : (
                 <p className="text-center text-muted-foreground">No expenses added yet.</p>
               )}
             </div>
           </div>
         </main>
-        <div className="p-4 bg-background/95 backdrop-blur-md border-t absolute bottom-0 w-full z-30">
+        <div className="p-4 bg-background/95 backdrop-blur-md border-t fixed bottom-0 w-full z-30 max-w-md mx-auto left-0 right-0">
           <Button asChild className="w-full h-14 rounded-xl text-lg font-bold shadow-lg shadow-primary/20">
             <Link href="/setup/loans">
                Continue
