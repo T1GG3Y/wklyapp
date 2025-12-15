@@ -7,6 +7,7 @@ import {
   Briefcase,
   Plus,
   Trash2,
+  ArrowRight,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection } from '@/firebase';
@@ -129,11 +130,8 @@ export default function IncomeScreen() {
         <h2 className="text-foreground text-xl font-bold font-headline leading-tight flex-1">
           Income Setup
         </h2>
-        <Button variant="link" asChild className="text-primary font-bold">
-          <Link href="/setup/required-expenses">Done</Link>
-        </Button>
       </header>
-      <main className="flex-1 flex flex-col gap-6 p-4 pb-24">
+      <main className="flex-1 flex flex-col gap-6 p-4 pb-48">
         <section>
           <div className="flex flex-col gap-2 mb-4">
             <p className="text-muted-foreground text-sm font-medium uppercase tracking-wider">
@@ -268,17 +266,25 @@ export default function IncomeScreen() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background to-transparent pointer-events-none max-w-md mx-auto">
+      
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none max-w-md mx-auto flex flex-col gap-4">
         <Button
-          className="pointer-events-auto w-full h-14 text-base font-bold tracking-wide shadow-lg shadow-primary/20"
-          size="lg"
-          onClick={() => setIsAdding(true)}
+            className="pointer-events-auto w-full h-12 text-base font-bold tracking-wide shadow-lg shadow-primary/20"
+            size="lg"
+            onClick={() => setIsAdding(true)}
         >
-          <Plus className="mr-2 h-6 w-6" />
-          Add New Income Source
+            <Plus className="mr-2 h-5 w-5" />
+            Add New Income
+        </Button>
+        <Button
+            asChild
+            className="pointer-events-auto w-full h-12 text-lg font-bold shadow-[0_4px_20px_rgba(19,236,91,0.3)]"
+            size="lg"
+        >
+            <Link href="/setup/required-expenses">Continue <ArrowRight className="ml-2 h-5 w-5" /></Link>
         </Button>
       </div>
+
     </div>
   );
 }
