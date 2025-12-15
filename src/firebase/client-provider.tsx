@@ -1,6 +1,7 @@
 'use client';
 
-import { FirebaseProvider, initializeFirebase } from '.';
+import { FirebaseProvider } from './provider';
+import { initializeFirebase } from './init';
 
 // Re-export for use in app layout.
 export {
