@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
+import { useCollection, useDoc, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { Menu, Calendar, Receipt, ArrowDownLeft, ArrowUpRight, Edit } from 'lucide-react';
+import { Menu, Calendar, Receipt, ArrowDownLeft, ArrowUpRight, Edit, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo } from 'react';
 import type { DocumentData, Timestamp } from 'firebase/firestore';
@@ -62,20 +62,16 @@ export default function DashboardScreen() {
   const { user } = useUser();
   const dayIndexMap = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
 
-  const userProfilePath = useMemo(() => (user ? `users/${user.uid}` : ''), [user]);
+  const userProfilePath = useMemo(() => (user ? `users/${user.uid}` : null), [user]);
   const incomeSourcesPath = useMemo(() => (user ? `users/${user.uid}/incomeSources` : null), [user]);
   const requiredExpensesPath = useMemo(() => (user ? `users/${user.uid}/requiredExpenses` : null), [user]);
-  const loansPath = useMemo(() => (user ? `users/${user.uid}/loans` : null), [user]);
   const discretionaryExpensesPath = useMemo(() => (user ? `users/${user.uid}/discretionaryExpenses` : null), [user]);
-  const savingsGoalsPath = useMemo(() => (user ? `users/${user.uid}/savingsGoals` : null), [user]);
   const transactionsPath = useMemo(() => (user ? `users/${user.uid}/transactions` : null), [user]);
 
   const { data: userProfile } = useDoc<UserProfile>(userProfilePath);
   const { data: incomeSources } = useCollection<IncomeSource>(incomeSourcesPath);
   const { data: requiredExpenses } = useCollection<RequiredExpense>(requiredExpensesPath);
-  const { data: loans } = useCollection<Loan>(loansPath);
   const { data: discretionaryExpenses } = useCollection<DiscretionaryExpense>(discretionaryExpensesPath);
-  const { data: savingsGoals } = useCollection<SavingsGoal>(savingsGoalsPath);
   const { data: transactions } = useCollection<Transaction>(transactionsPath, { orderBy: ['date', 'desc'], limit: 15 });
 
   const getWeeklyAmount = (amount: number, frequency: string) => {
@@ -93,7 +89,7 @@ export default function DashboardScreen() {
     }
   };
 
-  const safeToSpend = useMemo(() => {
+  const weeklyCalculations = useMemo(() => {
     const weeklyIncome = (incomeSources || []).reduce((total, source) => {
         return total + getWeeklyAmount(source.amount, source.frequency);
     }, 0);
@@ -102,11 +98,12 @@ export default function DashboardScreen() {
         return total + getWeeklyAmount(expense.amount, expense.frequency);
     }, 0);
     
-    // Discretionary expenses are stored as weekly planned amounts, so they represent the baseline spend.
-    // The "Safe to Spend" is what's left *after* accounting for these plans.
     const weeklyPlannedDiscretionary = (discretionaryExpenses || []).reduce((total, expense) => {
         return total + expense.plannedAmount;
     }, 0);
+    
+    // "Safe to Spend" is what's left after required expenses.
+    const safeToSpend = weeklyIncome - weeklyRequiredExpenses;
 
     // Filter transactions to only include those from the current week
     const startDay = userProfile?.startDayOfWeek || 'Sunday';
@@ -128,35 +125,21 @@ export default function DashboardScreen() {
         return total;
     }, 0);
     
-    const weeklyActualIncome = weeklyTransactions.reduce((total, transaction) => {
-        if (transaction.type === 'Income') {
-            return total + transaction.amount;
-        }
-        return total;
-    }, 0);
+    const remainingBudget = weeklyPlannedDiscretionary - weeklyActualSpending;
+    const weeklyNet = weeklyIncome - weeklyRequiredExpenses - weeklyActualSpending;
 
-    // TODO: Add loan payments and savings contributions to the calculation
-    const weeklyLoanPayments = 0;
-    const weeklySavingsContributions = 0;
-
-    const totalBudgetedExpenses = weeklyRequiredExpenses + weeklyPlannedDiscretionary + weeklyLoanPayments + weeklySavingsContributions;
-    
-    // Start with weekly income, subtract all budgeted expenses, then adjust for actual transactions this week.
-    // We add back actual income and subtract actual expenses. This way, if you spend less than planned, your safe-to-spend increases.
-    // This model assumes planned discretionary spending is the "budget" and actual transactions are deviations from it.
-    const availableAfterBudget = weeklyIncome - totalBudgetedExpenses;
-    const spentFromDiscretionary = weeklyActualSpending; // For now, assume all expense transactions are discretionary
-    
-    // A simpler model: weekly income - required expenses - actual discretionary spending.
-    const safeToSpendThisWeek = weeklyIncome - weeklyRequiredExpenses - weeklyActualSpending + weeklyActualIncome;
+    return {
+      safeToSpend,
+      weeklyPlannedDiscretionary,
+      weeklyActualSpending,
+      remainingBudget,
+      weeklyNet,
+      weeklyIncome
+    };
+  }, [incomeSources, requiredExpenses, discretionaryExpenses, transactions, userProfile]);
 
 
-    return safeToSpendThisWeek;
-  }, [incomeSources, requiredExpenses, discretionaryExpenses, loans, savingsGoals, transactions, userProfile]);
-
-
-  const safeToSpendDollars = Math.floor(safeToSpend);
-  const safeToSpendCents = Math.round((safeToSpend - safeToSpendDollars) * 100);
+  const { safeToSpend, weeklyPlannedDiscretionary, remainingBudget, weeklyNet, weeklyIncome } = weeklyCalculations;
 
   return (
     <>
@@ -172,20 +155,27 @@ export default function DashboardScreen() {
         </Button>
       </header>
       <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-24 space-y-4 pt-2">
-        <div className="bg-card rounded-2xl p-6 shadow-soft flex flex-col items-center relative">
-          <div className="mt-4 mb-2 relative flex flex-col items-center justify-center">
-            <div className="progress-circle">
-              <div className="absolute inset-0 flex flex-col items-center justify-center pt-4">
-                <div className="text-4xl font-bold text-primary tracking-tight font-headline">
-                  ${safeToSpendDollars}.<span className="text-2xl align-top">{safeToSpendCents.toString().padStart(2, '0')}</span>
-                </div>
-                <div className="text-sm font-medium text-muted-foreground mt-1">
-                  Safe-to-Spend
-                </div>
-              </div>
+        <div className="bg-card rounded-2xl p-6 shadow-soft flex flex-col relative">
+           <div className="text-center mb-6">
+                <p className="text-sm font-medium text-muted-foreground">Safe to Spend</p>
+                <p className="text-4xl font-bold text-primary tracking-tight font-headline">${safeToSpend.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground">per week after required bills</p>
             </div>
-          </div>
+            
+            <div className="grid grid-cols-2 gap-4 text-center">
+                <div>
+                    <p className="text-sm font-semibold text-muted-foreground">Weekly Budget</p>
+                    <p className="text-2xl font-bold text-foreground">${weeklyPlannedDiscretionary.toFixed(2)}</p>
+                </div>
+                <div>
+                    <p className="text-sm font-semibold text-muted-foreground">Remaining</p>
+                    <p className={cn("text-2xl font-bold", remainingBudget >= 0 ? 'text-green-500' : 'text-red-500')}>
+                      ${remainingBudget.toFixed(2)}
+                    </p>
+                </div>
+            </div>
         </div>
+        
         <div className="bg-card rounded-2xl p-5 shadow-soft">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -236,3 +226,5 @@ export default function DashboardScreen() {
     </>
   );
 }
+
+    
