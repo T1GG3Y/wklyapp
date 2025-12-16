@@ -1,13 +1,15 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { getDoc, doc, getFirestore } from "firebase/firestore";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,7 +23,18 @@ export default function LoginPage() {
     setError(null);
     const auth = getAuth();
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+      if (!userCredential.user.emailVerified) {
+        toast({
+          variant: "destructive",
+          title: "Email Not Verified",
+          description: "Please verify your email before logging in. Check your inbox for a verification link.",
+        });
+        await auth.signOut(); // Sign out user until they verify
+        return;
+      }
+
       toast({
         title: "Login Successful",
         description: "Welcome back!",
@@ -33,7 +46,8 @@ export default function LoginPage() {
       if (error.code) {
         switch (error.code) {
           case "auth/user-not-found":
-            errorMessage = "No user found with this email.";
+          case "auth/invalid-credential":
+            errorMessage = "Incorrect email or password. Please try again.";
             break;
           case "auth/wrong-password":
             errorMessage = "Incorrect password. Please try again.";
@@ -53,6 +67,50 @@ export default function LoginPage() {
       });
     }
   };
+  
+  const handleGoogleLogin = async () => {
+    const auth = getAuth();
+    const firestore = getFirestore();
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      const userDocRef = doc(firestore, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        // This is a new user signing up via Google on the login page
+        await setDoc(userDocRef, {
+          id: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          startDayOfWeek: 'Sunday',
+        });
+        toast({
+          title: "Account Created",
+          description: "Welcome to FinanceFlow!",
+        });
+        router.push('/setup/start-day');
+      } else {
+        // Existing user
+        toast({
+          title: "Login Successful",
+          description: "Welcome back!",
+        });
+        router.push("/dashboard");
+      }
+    } catch (error: any) {
+      console.error("Google sign-in error:", error);
+      toast({
+        variant: "destructive",
+        title: "Google Sign-In Failed",
+        description: error.message,
+      });
+    }
+  };
+
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
@@ -64,6 +122,23 @@ export default function LoginPage() {
           <p className="mt-2 text-muted-foreground">
             Log in to continue to FinanceFlow.
           </p>
+        </div>
+         <div className="space-y-4">
+           <Button onClick={handleGoogleLogin} variant="outline" className="w-full h-12 text-base">
+            <svg className="mr-2 -ml-1 w-4 h-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 61.9l-76.3 64.5c-24.5-23.4-58.3-38.2-96.6-38.2-73.3 0-133.5 60.5-133.5 134.5s60.2 134.5 133.5 134.5c82.8 0 120.9-61.9 124.8-92.4H248v-83.8h236.1c2.3 12.7 3.9 26.9 3.9 41.4z"></path></svg>
+            Continue with Google
+          </Button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with
+              </span>
+            </div>
+          </div>
         </div>
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-2">
@@ -83,6 +158,7 @@ export default function LoginPage() {
             <Input
               id="password"
               type="password"
+              placeholder="••••••••"
               required
               className="h-12"
               value={password}
