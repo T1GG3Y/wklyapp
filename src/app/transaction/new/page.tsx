@@ -35,6 +35,8 @@ interface SavingsGoal extends DocumentData {
   name: string;
 }
 
+const SAFE_TO_SPEND_CATEGORY = "Safe to Spend";
+
 export default function NewTransactionScreen() {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -44,7 +46,7 @@ export default function NewTransactionScreen() {
   const [type, setType] = useState<'Income' | 'Expense'>('Expense');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState(SAFE_TO_SPEND_CATEGORY);
 
   // Fetch categories
   const requiredExpensesPath = useMemo(() => user ? `users/${user.uid}/requiredExpenses` : null, [user]);
@@ -109,7 +111,7 @@ export default function NewTransactionScreen() {
       if (andNew) {
         setAmount('');
         setDescription('');
-        setCategory('');
+        setCategory(SAFE_TO_SPEND_CATEGORY);
       } else {
         router.push('/dashboard');
       }
@@ -157,7 +159,7 @@ export default function NewTransactionScreen() {
               <Button
                 onClick={() => {
                     setType('Expense');
-                    setCategory('');
+                    setCategory(SAFE_TO_SPEND_CATEGORY);
                 }}
                 variant={type === 'Expense' ? 'default' : 'ghost'}
                 className={cn('flex-1 rounded-md h-auto py-2 text-sm font-medium', type === 'Expense' && 'bg-secondary text-secondary-foreground shadow-sm')}
@@ -189,6 +191,9 @@ export default function NewTransactionScreen() {
                     <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
+                    <SelectGroup>
+                        <SelectItem value={SAFE_TO_SPEND_CATEGORY}>{SAFE_TO_SPEND_CATEGORY}</SelectItem>
+                    </SelectGroup>
                     {discretionaryExpenses && discretionaryExpenses.length > 0 && (
                         <SelectGroup>
                             <SelectLabel className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">Discretionary</SelectLabel>
@@ -251,3 +256,5 @@ export default function NewTransactionScreen() {
     </div>
   );
 }
+
+    

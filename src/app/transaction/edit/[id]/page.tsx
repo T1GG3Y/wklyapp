@@ -60,6 +60,7 @@ interface SavingsGoal extends DocumentData {
   name: string;
 }
 
+const SAFE_TO_SPEND_CATEGORY = "Safe to Spend";
 
 export default function EditTransactionScreen() {
   const { user } = useUser();
@@ -227,7 +228,10 @@ export default function EditTransactionScreen() {
             </Label>
             <div className="flex bg-muted rounded-lg p-1 mb-2">
               <Button
-                onClick={() => setType('Income')}
+                onClick={() => {
+                    setType('Income');
+                    setCategory('');
+                }}
                 variant={type === 'Income' ? 'default' : 'ghost'}
                 className={cn(
                   'flex-1 rounded-md h-auto py-2 text-sm font-medium',
@@ -237,7 +241,10 @@ export default function EditTransactionScreen() {
                 Income
               </Button>
               <Button
-                onClick={() => setType('Expense')}
+                onClick={() => {
+                    setType('Expense');
+                    setCategory(SAFE_TO_SPEND_CATEGORY);
+                }}
                 variant={type === 'Expense' ? 'default' : 'ghost'}
                 className={cn(
                   'flex-1 rounded-md h-auto py-2 text-sm font-medium',
@@ -283,6 +290,9 @@ export default function EditTransactionScreen() {
                     <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
+                    <SelectGroup>
+                        <SelectItem value={SAFE_TO_SPEND_CATEGORY}>{SAFE_TO_SPEND_CATEGORY}</SelectItem>
+                    </SelectGroup>
                      {discretionaryExpenses && discretionaryExpenses.length > 0 && (
                         <SelectGroup>
                             <SelectLabel className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">Discretionary</SelectLabel>
@@ -340,3 +350,5 @@ export default function EditTransactionScreen() {
     </div>
   );
 }
+
+    

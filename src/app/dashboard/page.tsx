@@ -57,6 +57,7 @@ interface UserProfile extends DocumentData {
     startDayOfWeek?: 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
 }
 
+const SAFE_TO_SPEND_CATEGORY = "Safe to Spend";
 
 export default function DashboardScreen() {
   const { user } = useUser();
@@ -102,8 +103,7 @@ export default function DashboardScreen() {
         return total + expense.plannedAmount;
     }, 0);
     
-    // "Safe to Spend" is what's left after required expenses.
-    const safeToSpend = weeklyIncome - weeklyRequiredExpenses;
+    const initialSafeToSpend = weeklyIncome - weeklyRequiredExpenses;
 
     // Filter transactions to only include those from the current week
     const startDay = userProfile?.startDayOfWeek || 'Sunday';
@@ -119,16 +119,22 @@ export default function DashboardScreen() {
     });
 
     const discretionaryCategories = (discretionaryExpenses || []).map(e => e.category);
-
-    const weeklyActualDiscretionarySpending = weeklyTransactions.reduce((total, transaction) => {
-        if (transaction.type === 'Expense' && discretionaryCategories.includes(transaction.category)) {
-            return total + transaction.amount;
-        }
-        return total;
-    }, 0);
     
+    let weeklyActualDiscretionarySpending = 0;
+    let actualSafeToSpendSpending = 0;
+
+    for (const transaction of weeklyTransactions) {
+      if (transaction.type === 'Expense') {
+        if (discretionaryCategories.includes(transaction.category)) {
+            weeklyActualDiscretionarySpending += transaction.amount;
+        } else if (transaction.category === SAFE_TO_SPEND_CATEGORY) {
+            actualSafeToSpendSpending += transaction.amount;
+        }
+      }
+    }
+    
+    const safeToSpend = initialSafeToSpend - actualSafeToSpendSpending;
     const remainingBudget = weeklyPlannedDiscretionary - weeklyActualDiscretionarySpending;
-    const weeklyNet = weeklyIncome - weeklyRequiredExpenses - weeklyActualDiscretionarySpending; // This might need refinement based on total spending
     const spendingProgress = weeklyPlannedDiscretionary > 0 ? (weeklyActualDiscretionarySpending / weeklyPlannedDiscretionary) * 100 : 0;
 
     return {
@@ -136,14 +142,13 @@ export default function DashboardScreen() {
       weeklyPlannedDiscretionary,
       weeklyActualSpending: weeklyActualDiscretionarySpending,
       remainingBudget,
-      weeklyNet,
       weeklyIncome,
       spendingProgress,
     };
   }, [incomeSources, requiredExpenses, discretionaryExpenses, transactions, userProfile]);
 
 
-  const { safeToSpend, weeklyPlannedDiscretionary, remainingBudget, weeklyNet, weeklyIncome, spendingProgress } = weeklyCalculations;
+  const { safeToSpend, weeklyPlannedDiscretionary, remainingBudget, spendingProgress } = weeklyCalculations;
 
   return (
     <>
@@ -232,5 +237,7 @@ export default function DashboardScreen() {
     </>
   );
 }
+
+    
 
     
