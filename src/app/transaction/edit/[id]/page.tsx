@@ -4,20 +4,20 @@
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useFirestore, useUser, useDoc } from '@/firebase';
+import { useFirestore, useUser, useDoc, useCollection } from '@/firebase';
 import {
   deleteDoc,
   doc,
   serverTimestamp,
   updateDoc,
+  type DocumentData
 } from 'firebase/firestore';
 import { ArrowLeft, DollarSign, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { DocumentData } from 'firebase/firestore';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +29,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SelectGroup,
+  SelectLabel,
+} from '@/components/ui/select';
 
 interface Transaction extends DocumentData {
   id: string;
@@ -37,6 +46,20 @@ interface Transaction extends DocumentData {
   description: string;
   category: string;
 }
+
+interface RequiredExpense extends DocumentData {
+  category: string;
+}
+interface DiscretionaryExpense extends DocumentData {
+  category: string;
+}
+interface Loan extends DocumentData {
+  name: string;
+}
+interface SavingsGoal extends DocumentData {
+  name: string;
+}
+
 
 export default function EditTransactionScreen() {
   const { user } = useUser();
@@ -54,12 +77,26 @@ export default function EditTransactionScreen() {
   const [type, setType] = useState<'Income' | 'Expense'>('Expense');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('');
+
+  // Fetch categories
+  const requiredExpensesPath = useMemo(() => user ? `users/${user.uid}/requiredExpenses` : null, [user]);
+  const discretionaryExpensesPath = useMemo(() => user ? `users/${user.uid}/discretionaryExpenses` : null, [user]);
+  const loansPath = useMemo(() => user ? `users/${user.uid}/loans` : null, [user]);
+  const savingsGoalsPath = useMemo(() => user ? `users/${user.uid}/savingsGoals` : null, [user]);
+
+  const { data: requiredExpenses } = useCollection<RequiredExpense>(requiredExpensesPath);
+  const { data: discretionaryExpenses } = useCollection<DiscretionaryExpense>(discretionaryExpensesPath);
+  const { data: loans } = useCollection<Loan>(loansPath);
+  const { data: savingsGoals } = useCollection<SavingsGoal>(savingsGoalsPath);
+
 
   useEffect(() => {
     if (transaction) {
       setType(transaction.type);
       setAmount(transaction.amount.toString());
       setDescription(transaction.description);
+      setCategory(transaction.category);
     }
   }, [transaction]);
 
@@ -86,6 +123,7 @@ export default function EditTransactionScreen() {
         type,
         amount: transactionAmount,
         description,
+        category,
       });
 
       toast({
@@ -234,6 +272,44 @@ export default function EditTransactionScreen() {
                 onChange={(e) => setAmount(e.target.value)}
               />
             </div>
+          </div>
+          
+          <div className="space-y-3">
+            <Label htmlFor="category" className="block text-sm font-semibold text-muted-foreground">
+              Category
+            </Label>
+             <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger className="h-12 text-base">
+                    <SelectValue placeholder="Select a category" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value={type === 'Expense' ? "General Expense" : "General Income"}>One-Time Transaction</SelectItem>
+                     {discretionaryExpenses && discretionaryExpenses.length > 0 && (
+                        <SelectGroup>
+                            <SelectLabel>Discretionary</SelectLabel>
+                            {discretionaryExpenses.map(item => <SelectItem key={item.id} value={item.category}>{item.category}</SelectItem>)}
+                        </SelectGroup>
+                    )}
+                     {requiredExpenses && requiredExpenses.length > 0 && (
+                        <SelectGroup>
+                            <SelectLabel>Required</SelectLabel>
+                            {requiredExpenses.map(item => <SelectItem key={item.id} value={item.category}>{item.category}</SelectItem>)}
+                        </SelectGroup>
+                    )}
+                    {savingsGoals && savingsGoals.length > 0 && (
+                         <SelectGroup>
+                            <SelectLabel>Savings</SelectLabel>
+                            {savingsGoals.map(item => <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>)}
+                        </SelectGroup>
+                    )}
+                    {loans && loans.length > 0 && (
+                        <SelectGroup>
+                            <SelectLabel>Loans</SelectLabel>
+                            {loans.map(item => <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>)}
+                        </SelectGroup>
+                    )}
+                </SelectContent>
+             </Select>
           </div>
 
           <div className="space-y-3">
