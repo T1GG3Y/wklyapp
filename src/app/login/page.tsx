@@ -9,7 +9,7 @@ import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopu
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { getDoc, doc, getFirestore } from "firebase/firestore";
+import { getDoc, doc, getFirestore, setDoc } from "firebase/firestore";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,10 +22,17 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     const auth = getAuth();
+    const firestore = getFirestore();
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-      if (!userCredential.user.emailVerified) {
+      // The user object from signInWithEmailAndPassword doesn't always have the latest emailVerified status.
+      // We need to reload the user to get the most up-to-date information.
+      await user.reload();
+      const freshUser = auth.currentUser;
+
+      if (!freshUser?.emailVerified) {
         toast({
           variant: "destructive",
           title: "Email Not Verified",
@@ -39,7 +46,17 @@ export default function LoginPage() {
         title: "Login Successful",
         description: "Welcome back!",
       });
-      router.push("/dashboard");
+
+      // Check if user has completed onboarding
+      const userDocRef = doc(firestore, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists() && userDoc.data().startDayOfWeek !== 'Sunday') {
+         router.push("/dashboard");
+      } else {
+         router.push('/setup/start-day');
+      }
+
     } catch (error: any) {
       console.error("Error signing in:", error);
       let errorMessage = "An unexpected error occurred.";
