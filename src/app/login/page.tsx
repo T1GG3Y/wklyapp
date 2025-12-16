@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { getDoc, doc, getFirestore, setDoc } from "firebase/firestore";
+import { LineChart } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,8 +28,6 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // The user object from signInWithEmailAndPassword doesn't always have the latest emailVerified status.
-      // We need to reload the user to get the most up-to-date information.
       await user.reload();
       const freshUser = auth.currentUser;
 
@@ -38,7 +37,7 @@ export default function LoginPage() {
           title: "Email Not Verified",
           description: "Please verify your email before logging in. Check your inbox for a verification link.",
         });
-        await auth.signOut(); // Sign out user until they verify
+        await auth.signOut();
         return;
       }
 
@@ -47,7 +46,6 @@ export default function LoginPage() {
         description: "Welcome back!",
       });
 
-      // Check if user has completed onboarding
       const userDocRef = doc(firestore, "users", user.uid);
       const userDoc = await getDoc(userDocRef);
 
@@ -97,7 +95,6 @@ export default function LoginPage() {
       const userDoc = await getDoc(userDocRef);
 
       if (!userDoc.exists()) {
-        // This is a new user signing up via Google on the login page
         await setDoc(userDocRef, {
           id: user.uid,
           email: user.email,
@@ -111,12 +108,15 @@ export default function LoginPage() {
         });
         router.push('/setup/start-day');
       } else {
-        // Existing user
         toast({
           title: "Login Successful",
           description: "Welcome back!",
         });
-        router.push("/dashboard");
+        if (userDoc.data().startDayOfWeek !== 'Sunday') {
+          router.push("/dashboard");
+        } else {
+          router.push('/setup/start-day');
+        }
       }
     } catch (error: any) {
       console.error("Google sign-in error:", error);
@@ -128,19 +128,23 @@ export default function LoginPage() {
     }
   };
 
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold font-headline text-foreground">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 font-body">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+            <Link href="/" className="inline-flex items-center gap-2 mb-4">
+                <LineChart className="text-primary h-8 w-8" />
+                <h1 className="text-2xl font-bold font-headline text-foreground">FinanceFlow</h1>
+            </Link>
+          <h2 className="text-3xl font-bold font-headline text-foreground">
             Welcome Back
-          </h1>
+          </h2>
           <p className="mt-2 text-muted-foreground">
-            Log in to continue to FinanceFlow.
+            Log in to continue to your dashboard.
           </p>
         </div>
-         <div className="space-y-4">
+
+        <div className="space-y-4">
            <Button onClick={handleGoogleLogin} variant="outline" className="w-full h-12 text-base">
             <svg className="mr-2 -ml-1 w-4 h-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 61.9l-76.3 64.5c-24.5-23.4-58.3-38.2-96.6-38.2-73.3 0-133.5 60.5-133.5 134.5s60.2 134.5 133.5 134.5c82.8 0 120.9-61.9 124.8-92.4H248v-83.8h236.1c2.3 12.7 3.9 26.9 3.9 41.4z"></path></svg>
             Continue with Google
@@ -152,12 +156,13 @@ export default function LoginPage() {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
+                Or continue with email
               </span>
             </div>
           </div>
         </div>
-        <form onSubmit={handleLogin} className="space-y-6">
+
+        <form onSubmit={handleLogin} className="space-y-4 mt-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -182,14 +187,14 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          {error && <p className="text-destructive text-sm">{error}</p>}
+          {error && <p className="text-destructive text-sm font-medium">{error}</p>}
           <Button type="submit" className="w-full h-12 text-lg font-bold">
             Log In
           </Button>
         </form>
-        <p className="text-center text-muted-foreground">
+        <p className="mt-8 text-center text-muted-foreground">
           Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-primary hover:underline">
+          <Link href="/signup" className="text-primary hover:underline font-semibold">
             Sign up
           </Link>
         </p>

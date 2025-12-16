@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+import { LineChart } from 'lucide-react';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -129,7 +130,11 @@ export default function SignupPage() {
           title: 'Login Successful',
           description: 'Welcome back!',
         });
-        router.push('/dashboard');
+        if (userDoc.data().startDayOfWeek !== 'Sunday') {
+            router.push("/dashboard");
+        } else {
+            router.push('/setup/start-day');
+        }
       }
     } catch (error: any) {
       console.error("Google sign-up error:", error);
@@ -143,12 +148,16 @@ export default function SignupPage() {
 
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold font-headline text-foreground">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 font-body">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+            <Link href="/" className="inline-flex items-center gap-2 mb-4">
+                <LineChart className="text-primary h-8 w-8" />
+                <h1 className="text-2xl font-bold font-headline text-foreground">FinanceFlow</h1>
+            </Link>
+          <h2 className="text-3xl font-bold font-headline text-foreground">
             Create an Account
-          </h1>
+          </h2>
           <p className="mt-2 text-muted-foreground">
             Start your journey with FinanceFlow today.
           </p>
@@ -165,12 +174,12 @@ export default function SignupPage() {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
+                Or continue with email
               </span>
             </div>
           </div>
         </div>
-        <form onSubmit={handleSignup} className="space-y-6">
+        <form onSubmit={handleSignup} className="space-y-4 mt-4">
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
             <Input
@@ -207,14 +216,14 @@ export default function SignupPage() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          {error && <p className="text-destructive text-sm">{error}</p>}
+          {error && <p className="text-destructive text-sm font-medium">{error}</p>}
           <Button type="submit" className="w-full h-12 text-lg font-bold">
             Create Account
           </Button>
         </form>
-        <p className="text-center text-muted-foreground">
-          Already have an account?{' '}
-          <Link href="/login" className="text-primary hover:underline">
+        <p className="mt-8 text-center text-muted-foreground">
+          Already have an account?{" "}
+          <Link href="/login" className="text-primary hover:underline font-semibold">
             Log in
           </Link>
         </p>
