@@ -118,21 +118,23 @@ export default function DashboardScreen() {
         return isWithinInterval(transactionDate, { start: weekStart, end: weekEnd });
     });
 
-    const weeklyActualSpending = weeklyTransactions.reduce((total, transaction) => {
-        if (transaction.type === 'Expense') {
+    const discretionaryCategories = (discretionaryExpenses || []).map(e => e.category);
+
+    const weeklyActualDiscretionarySpending = weeklyTransactions.reduce((total, transaction) => {
+        if (transaction.type === 'Expense' && discretionaryCategories.includes(transaction.category)) {
             return total + transaction.amount;
         }
         return total;
     }, 0);
     
-    const remainingBudget = weeklyPlannedDiscretionary - weeklyActualSpending;
-    const weeklyNet = weeklyIncome - weeklyRequiredExpenses - weeklyActualSpending;
-    const spendingProgress = weeklyPlannedDiscretionary > 0 ? (weeklyActualSpending / weeklyPlannedDiscretionary) * 100 : 0;
+    const remainingBudget = weeklyPlannedDiscretionary - weeklyActualDiscretionarySpending;
+    const weeklyNet = weeklyIncome - weeklyRequiredExpenses - weeklyActualDiscretionarySpending; // This might need refinement based on total spending
+    const spendingProgress = weeklyPlannedDiscretionary > 0 ? (weeklyActualDiscretionarySpending / weeklyPlannedDiscretionary) * 100 : 0;
 
     return {
       safeToSpend,
       weeklyPlannedDiscretionary,
-      weeklyActualSpending,
+      weeklyActualSpending: weeklyActualDiscretionarySpending,
       remainingBudget,
       weeklyNet,
       weeklyIncome,
