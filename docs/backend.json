@@ -188,6 +188,37 @@
         }
       },
       "required": ["userProfileId", "type", "amount", "date", "category"]
+    },
+    "WeeklySummary": {
+      "title": "Weekly Summary",
+      "description": "A snapshot of a user's financial activity for a specific week.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "userProfileId": {
+          "type": "string"
+        },
+        "weekStartDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "weekEndDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "totalIncome": {
+          "type": "number"
+        },
+        "totalExpenses": {
+          "type": "number"
+        },
+        "netChange": {
+          "type": "number"
+        }
+      },
+      "required": ["userProfileId", "weekStartDate", "weekEndDate", "totalIncome", "totalExpenses", "netChange"]
     }
   },
   "auth": {
@@ -235,6 +266,12 @@
         "$ref": "#/entities/Transaction"
       },
       "description": "A user's financial transactions."
+    },
+    "/users/{userProfileId}/weeklySummaries/{weeklySummaryId}": {
+      "schema": {
+        "$ref": "#/entities/WeeklySummary"
+      },
+      "description": "A user's historical weekly financial summaries."
     }
   }
 }

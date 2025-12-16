@@ -197,6 +197,21 @@ service cloud.firestore {
         allow update: if isExistingOwner(userProfileId) && ownerIdIsImmutable();
         allow delete: if isExistingOwner(userProfileId);
       }
+      
+      /**
+       * @description A user's historical weekly financial summaries.
+       * @path /users/{userProfileId}/weeklySummaries/{weeklySummaryId}
+       * @allow (create, get, list, update, delete) The owner can perform full CRUD operations on their own weekly summaries.
+       * @deny (create) A user cannot create a weekly summary under another user's profile.
+       * @deny (get) A user cannot read another user's weekly summaries.
+       * @principle Enforces strict document ownership within a user's private data tree.
+       */
+      match /weeklySummaries/{weeklySummaryId} {
+        allow get, list: if isOwner(userProfileId);
+        allow create: if isOwner(userProfileId) && hasCorrectOwnerIdOnCreate(userProfileId);
+        allow update: if isExistingOwner(userProfileId) && ownerIdIsImmutable();
+        allow delete: if isExistingOwner(userProfileId);
+      }
     }
   }
 }
