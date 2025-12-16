@@ -3,7 +3,7 @@
 
 import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { Menu, Calendar, Receipt, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { Menu, Calendar, Receipt, ArrowDownLeft, ArrowUpRight, Edit } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo } from 'react';
 import type { DocumentData, Timestamp } from 'firebase/firestore';
@@ -203,25 +203,28 @@ export default function DashboardScreen() {
             </Button>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-1">
             {transactions && transactions.length > 0 ? (
               transactions.map((transaction) => (
-                <div key={transaction.id} className="flex items-center gap-4">
-                  <div className={cn("size-10 rounded-lg flex items-center justify-center", transaction.type === 'Income' ? 'bg-primary/10' : 'bg-secondary/10')}>
-                    {transaction.type === 'Income' ? (
-                      <ArrowUpRight className="text-primary" />
-                    ) : (
-                      <ArrowDownLeft className="text-secondary" />
-                    )}
+                <Link key={transaction.id} href={`/transaction/edit/${transaction.id}`} className="block group">
+                  <div className="flex items-center gap-4 p-2 rounded-lg group-hover:bg-muted">
+                    <div className={cn("size-10 rounded-lg flex items-center justify-center", transaction.type === 'Income' ? 'bg-primary/10' : 'bg-secondary/10')}>
+                      {transaction.type === 'Income' ? (
+                        <ArrowUpRight className="text-primary" />
+                      ) : (
+                        <ArrowDownLeft className="text-secondary" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-foreground truncate">{transaction.description || transaction.category}</p>
+                      <p className="text-xs text-muted-foreground">{transaction.date ? format(transaction.date.toDate(), 'MMM d, yyyy') : ''}</p>
+                    </div>
+                    <p className={cn("font-bold text-lg", transaction.type === 'Income' ? 'text-primary' : 'text-secondary')}>
+                      {transaction.type === 'Income' ? '+' : '-'}${transaction.amount.toFixed(2)}
+                    </p>
+                     <Edit className="size-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-foreground truncate">{transaction.description || transaction.category}</p>
-                    <p className="text-xs text-muted-foreground">{transaction.date ? format(transaction.date.toDate(), 'MMM d, yyyy') : ''}</p>
-                  </div>
-                  <p className={cn("font-bold text-lg", transaction.type === 'Income' ? 'text-primary' : 'text-secondary')}>
-                    {transaction.type === 'Income' ? '+' : '-'}${transaction.amount.toFixed(2)}
-                  </p>
-                </div>
+                </Link>
               ))
             ) : (
               <p className="text-center text-muted-foreground py-4">No recent transactions.</p>
@@ -233,5 +236,3 @@ export default function DashboardScreen() {
     </>
   );
 }
-
-    
