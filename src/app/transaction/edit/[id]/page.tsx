@@ -71,7 +71,7 @@ export default function EditTransactionScreen() {
 
   const transactionPath = user
     ? `users/${user.uid}/transactions/${transactionId}`
-    : '';
+    : null;
   const { data: transaction, loading } = useDoc<Transaction>(transactionPath);
 
   const [type, setType] = useState<'Income' | 'Expense'>('Expense');
@@ -283,7 +283,6 @@ export default function EditTransactionScreen() {
                     <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value={type === 'Expense' ? "General Expense" : "General Income"}>One-Time Transaction</SelectItem>
                      {discretionaryExpenses && discretionaryExpenses.length > 0 && (
                         <SelectGroup>
                             <SelectLabel>Discretionary</SelectLabel>

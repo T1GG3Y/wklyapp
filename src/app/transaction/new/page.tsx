@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -43,7 +44,7 @@ export default function NewTransactionScreen() {
   const [type, setType] = useState<'Income' | 'Expense'>('Expense');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('General Expense');
+  const [category, setCategory] = useState('');
 
   // Fetch categories
   const requiredExpensesPath = useMemo(() => user ? `users/${user.uid}/requiredExpenses` : null, [user]);
@@ -76,6 +77,15 @@ export default function NewTransactionScreen() {
       });
       return;
     }
+    
+    if (!category) {
+      toast({
+        variant: 'destructive',
+        title: 'Category Required',
+        description: 'Please select a category for this transaction.',
+      });
+      return;
+    }
 
     try {
       const transactionsCollection = collection(
@@ -99,7 +109,7 @@ export default function NewTransactionScreen() {
       if (andNew) {
         setAmount('');
         setDescription('');
-        setCategory(type === 'Expense' ? 'General Expense' : 'General Income');
+        setCategory('');
       } else {
         router.push('/dashboard');
       }
@@ -137,7 +147,7 @@ export default function NewTransactionScreen() {
               <Button
                 onClick={() => {
                     setType('Income');
-                    setCategory('General Income');
+                    setCategory('');
                 }}
                 variant={type === 'Income' ? 'default' : 'ghost'}
                 className={cn('flex-1 rounded-md h-auto py-2 text-sm font-medium', type === 'Income' && 'bg-primary text-primary-foreground shadow-sm')}
@@ -147,7 +157,7 @@ export default function NewTransactionScreen() {
               <Button
                 onClick={() => {
                     setType('Expense');
-                    setCategory('General Expense');
+                    setCategory('');
                 }}
                 variant={type === 'Expense' ? 'default' : 'ghost'}
                 className={cn('flex-1 rounded-md h-auto py-2 text-sm font-medium', type === 'Expense' && 'bg-secondary text-secondary-foreground shadow-sm')}
@@ -179,7 +189,6 @@ export default function NewTransactionScreen() {
                     <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value={type === 'Expense' ? "General Expense" : "General Income"}>One-Time Transaction</SelectItem>
                     {discretionaryExpenses && discretionaryExpenses.length > 0 && (
                         <SelectGroup>
                             <SelectLabel>Discretionary</SelectLabel>
