@@ -50,7 +50,7 @@ export default function ReportsScreen() {
             </CardHeader>
             <CardContent>
                 <p className="text-muted-foreground">
-                    Once you complete a week, your summary will appear here. For now, this page is empty. We will build the feature to save your weekly data next.
+                    Once you complete a week, your summary will appear here.
                 </p>
             </CardContent>
           </Card>
