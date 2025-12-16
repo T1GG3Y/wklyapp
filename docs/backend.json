@@ -216,6 +216,14 @@
         },
         "netChange": {
           "type": "number"
+        },
+        "safeToSpendRollover": {
+            "type": "number",
+            "description": "The remaining 'Safe to Spend' amount from the week, to be carried over."
+        },
+        "needToSpendRollover": {
+            "type": "number",
+            "description": "The remaining 'Need to Spend' amount from the week, to be carried over."
         }
       },
       "required": ["userProfileId", "weekStartDate", "weekEndDate", "totalIncome", "totalExpenses", "netChange"]

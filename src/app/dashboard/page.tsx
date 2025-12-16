@@ -3,12 +3,13 @@
 
 import { useCollection, useDoc, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { Menu, Calendar, Receipt, ArrowDownLeft, ArrowUpRight, Edit, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import { Menu, Calendar, Receipt, ArrowDownLeft, ArrowUpRight, Edit, TrendingDown, TrendingUp, Wallet, Info } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo } from 'react';
 import type { DocumentData, Timestamp } from 'firebase/firestore';
 import { startOfWeek, endOfWeek, isWithinInterval, format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface IncomeSource extends DocumentData {
   id: string;
@@ -57,9 +58,14 @@ interface UserProfile extends DocumentData {
     startDayOfWeek?: 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
 }
 
+interface WeeklySummary extends DocumentData {
+    safeToSpendRollover?: number;
+    needToSpendRollover?: number;
+}
+
 const SAFE_TO_SPEND_CATEGORY = "Safe to Spend";
 
-const ProgressCircle = ({ title, remaining, total, progress, colorClass }: { title: string, remaining: number, total: number, progress: number, colorClass: string }) => (
+const ProgressCircle = ({ title, remaining, total, progress, colorClass, rollover }: { title: string, remaining: number, total: number, progress: number, colorClass: string, rollover?: number }) => (
     <div className="flex flex-col items-center gap-2">
         <div className="progress-circle-sm" style={{ background: `conic-gradient(${colorClass} ${progress}%, hsl(var(--muted)) 0deg)` }}>
             <div className="relative z-10 text-center">
@@ -69,7 +75,21 @@ const ProgressCircle = ({ title, remaining, total, progress, colorClass }: { tit
                 <p className="text-xs text-muted-foreground">of ${total.toFixed(2)}</p>
             </div>
         </div>
-        <p className="text-sm font-semibold text-muted-foreground">{title}</p>
+        <div className="flex items-center gap-1">
+          <p className="text-sm font-semibold text-muted-foreground">{title}</p>
+          {rollover !== undefined && rollover !== 0 && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="size-3 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Includes ${rollover.toFixed(2)} from last week.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </div>
     </div>
 );
 
@@ -83,12 +103,17 @@ export default function DashboardScreen() {
   const requiredExpensesPath = useMemo(() => (user ? `users/${user.uid}/requiredExpenses` : null), [user]);
   const discretionaryExpensesPath = useMemo(() => (user ? `users/${user.uid}/discretionaryExpenses` : null), [user]);
   const transactionsPath = useMemo(() => (user ? `users/${user.uid}/transactions` : null), [user]);
+  const weeklySummariesPath = useMemo(() => (user ? `users/${user.uid}/weeklySummaries` : null), [user]);
 
   const { data: userProfile } = useDoc<UserProfile>(userProfilePath);
   const { data: incomeSources } = useCollection<IncomeSource>(incomeSourcesPath);
   const { data: requiredExpenses } = useCollection<RequiredExpense>(requiredExpensesPath);
   const { data: discretionaryExpenses } = useCollection<DiscretionaryExpense>(discretionaryExpensesPath);
   const { data: transactions } = useCollection<Transaction>(transactionsPath, { orderBy: ['date', 'desc'], limit: 15 });
+  const { data: weeklySummaries } = useCollection<WeeklySummary>(weeklySummariesPath, { orderBy: ['weekStartDate', 'desc'], limit: 1 });
+  
+  const lastWeekSummary = useMemo(() => (weeklySummaries && weeklySummaries.length > 0 ? weeklySummaries[0] : null), [weeklySummaries]);
+
 
   const getWeeklyAmount = (amount: number, frequency: string) => {
     switch (frequency) {
@@ -106,6 +131,9 @@ export default function DashboardScreen() {
   };
 
   const weeklyCalculations = useMemo(() => {
+    const safeToSpendRollover = lastWeekSummary?.safeToSpendRollover ?? 0;
+    const needToSpendRollover = lastWeekSummary?.needToSpendRollover ?? 0;
+
     const weeklyIncome = (incomeSources || []).reduce((total, source) => {
         return total + getWeeklyAmount(source.amount, source.frequency);
     }, 0);
@@ -118,7 +146,8 @@ export default function DashboardScreen() {
         return total + expense.plannedAmount;
     }, 0);
     
-    const initialSafeToSpend = weeklyIncome - weeklyRequiredExpenses;
+    const initialSafeToSpend = (weeklyIncome - weeklyRequiredExpenses) + safeToSpendRollover;
+    const totalNeedToSpend = weeklyPlannedDiscretionary + needToSpendRollover;
 
     const startDay = userProfile?.startDayOfWeek || 'Sunday';
     const weekStartsOn = dayIndexMap[startDay as keyof typeof dayIndexMap];
@@ -148,29 +177,33 @@ export default function DashboardScreen() {
     }
     
     const remainingSafeToSpend = initialSafeToSpend - actualSafeToSpendSpending;
-    const remainingNeedToSpend = weeklyPlannedDiscretionary - weeklyActualDiscretionarySpending;
+    const remainingNeedToSpend = totalNeedToSpend - weeklyActualDiscretionarySpending;
     
     const safeToSpendProgress = initialSafeToSpend > 0 ? (actualSafeToSpendSpending / initialSafeToSpend) * 100 : 0;
-    const needToSpendProgress = weeklyPlannedDiscretionary > 0 ? (weeklyActualDiscretionarySpending / weeklyPlannedDiscretionary) * 100 : 0;
+    const needToSpendProgress = totalNeedToSpend > 0 ? (weeklyActualDiscretionarySpending / totalNeedToSpend) * 100 : 0;
 
     return {
       initialSafeToSpend,
       remainingSafeToSpend,
       safeToSpendProgress,
-      weeklyPlannedDiscretionary,
+      safeToSpendRollover,
+      totalNeedToSpend,
       remainingNeedToSpend,
       needToSpendProgress,
+      needToSpendRollover,
     };
-  }, [incomeSources, requiredExpenses, discretionaryExpenses, transactions, userProfile]);
+  }, [incomeSources, requiredExpenses, discretionaryExpenses, transactions, userProfile, lastWeekSummary]);
 
 
   const { 
       initialSafeToSpend, 
       remainingSafeToSpend, 
-      safeToSpendProgress, 
-      weeklyPlannedDiscretionary,
+      safeToSpendProgress,
+      safeToSpendRollover,
+      totalNeedToSpend,
       remainingNeedToSpend,
-      needToSpendProgress 
+      needToSpendProgress,
+      needToSpendRollover,
   } = weeklyCalculations;
 
   return (
@@ -187,20 +220,22 @@ export default function DashboardScreen() {
         </Button>
       </header>
       <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-24 space-y-4 pt-2">
-        <div className="bg-card rounded-2xl p-6 shadow-soft flex items-center justify-around relative">
+        <div className="bg-card rounded-2xl p-6 shadow-soft flex items-start justify-around relative">
             <ProgressCircle 
                 title="Safe to Spend"
                 remaining={remainingSafeToSpend}
                 total={initialSafeToSpend}
                 progress={safeToSpendProgress}
                 colorClass="hsl(var(--primary))"
+                rollover={safeToSpendRollover}
             />
             <ProgressCircle 
                 title="Need to Spend"
                 remaining={remainingNeedToSpend}
-                total={weeklyPlannedDiscretionary}
+                total={totalNeedToSpend}
                 progress={needToSpendProgress}
                 colorClass="hsl(var(--secondary))"
+                rollover={needToSpendRollover}
             />
         </div>
         
