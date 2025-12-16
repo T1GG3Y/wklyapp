@@ -1,12 +1,14 @@
+
 'use client';
 
 import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { Menu, Calendar, Receipt } from 'lucide-react';
+import { Menu, Calendar, Receipt, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo } from 'react';
 import type { DocumentData, Timestamp } from 'firebase/firestore';
-import { startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import { startOfWeek, endOfWeek, isWithinInterval, format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface IncomeSource extends DocumentData {
   id: string;
@@ -48,6 +50,7 @@ interface Transaction extends DocumentData {
   amount: number;
   date: Timestamp;
   category: string;
+  description?: string;
 }
 
 interface UserProfile extends DocumentData {
@@ -73,7 +76,7 @@ export default function DashboardScreen() {
   const { data: loans } = useCollection<Loan>(loansPath);
   const { data: discretionaryExpenses } = useCollection<DiscretionaryExpense>(discretionaryExpensesPath);
   const { data: savingsGoals } = useCollection<SavingsGoal>(savingsGoalsPath);
-  const { data: transactions } = useCollection<Transaction>(transactionsPath);
+  const { data: transactions } = useCollection<Transaction>(transactionsPath, { orderBy: ['date', 'desc'], limit: 15 });
 
   const getWeeklyAmount = (amount: number, frequency: string) => {
     switch (frequency) {
@@ -184,23 +187,51 @@ export default function DashboardScreen() {
           </div>
         </div>
         <div className="bg-card rounded-2xl p-5 shadow-soft">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Receipt className="text-primary h-5 w-5" />
               </div>
               <h2 className="text-lg font-bold font-headline text-foreground">
-                Transactions
+                Recent Activity
               </h2>
             </div>
           </div>
-          <div className="flex flex-col items-center text-center py-4">
+          <div className="flex flex-col items-center text-center mb-6">
             <Button asChild className="w-full h-12 shadow-lg shadow-primary/25" size="lg">
               <Link href="/transaction/new">Add a transaction</Link>
             </Button>
           </div>
+
+          <div className="space-y-3">
+            {transactions && transactions.length > 0 ? (
+              transactions.map((transaction) => (
+                <div key={transaction.id} className="flex items-center gap-4">
+                  <div className={cn("size-10 rounded-lg flex items-center justify-center", transaction.type === 'Income' ? 'bg-primary/10' : 'bg-secondary/10')}>
+                    {transaction.type === 'Income' ? (
+                      <ArrowUpRight className="text-primary" />
+                    ) : (
+                      <ArrowDownLeft className="text-secondary" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-foreground truncate">{transaction.description || transaction.category}</p>
+                    <p className="text-xs text-muted-foreground">{transaction.date ? format(transaction.date.toDate(), 'MMM d, yyyy') : ''}</p>
+                  </div>
+                  <p className={cn("font-bold text-lg", transaction.type === 'Income' ? 'text-primary' : 'text-secondary')}>
+                    {transaction.type === 'Income' ? '+' : '-'}${transaction.amount.toFixed(2)}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-muted-foreground py-4">No recent transactions.</p>
+            )}
+          </div>
+
         </div>
       </main>
     </>
   );
 }
+
+    
