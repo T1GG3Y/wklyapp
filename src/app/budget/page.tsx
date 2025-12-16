@@ -41,10 +41,12 @@ import {
   Wrench,
   Wifi,
   Droplet,
+  Edit,
 } from 'lucide-react';
 import { useMemo } from 'react';
 import type { DocumentData } from 'firebase/firestore';
 import type { LucideIcon } from 'lucide-react';
+import Link from 'next/link';
 
 // Data Interfaces
 interface IncomeSource extends DocumentData {
@@ -223,6 +225,13 @@ export default function BudgetScreen() {
                 </div>
             </AccordionTrigger>
             <AccordionContent className='divide-y border-t'>
+              <div className="pt-2 pb-3">
+                  <Button variant="outline" className="w-full" asChild>
+                      <Link href="/setup/income">
+                          <Edit className="mr-2 size-4" /> Edit Income
+                      </Link>
+                  </Button>
+              </div>
               {incomeSources?.map(item => renderListItem(
                 item.id,
                 Briefcase,
@@ -244,6 +253,13 @@ export default function BudgetScreen() {
                 </div>
             </AccordionTrigger>
             <AccordionContent className='divide-y border-t'>
+              <div className="pt-2 pb-3">
+                  <Button variant="outline" className="w-full" asChild>
+                      <Link href="/setup/required-expenses">
+                          <Edit className="mr-2 size-4" /> Edit Required
+                      </Link>
+                  </Button>
+              </div>
               {requiredExpenses?.map(item => renderListItem(
                 item.id,
                 requiredExpenseIcons[item.category] || Wallet,
@@ -265,6 +281,13 @@ export default function BudgetScreen() {
                 </div>
             </AccordionTrigger>
             <AccordionContent className='divide-y border-t'>
+               <div className="pt-2 pb-3">
+                  <Button variant="outline" className="w-full" asChild>
+                      <Link href="/setup/discretionary">
+                          <Edit className="mr-2 size-4" /> Edit Discretionary
+                      </Link>
+                  </Button>
+              </div>
               {discretionaryExpenses?.map(item => renderListItem(
                 item.id,
                 discretionaryExpenseIcons[item.category] || Wallet,
@@ -286,6 +309,13 @@ export default function BudgetScreen() {
                 </div>
             </AccordionTrigger>
             <AccordionContent className='divide-y border-t'>
+               <div className="pt-2 pb-3">
+                  <Button variant="outline" className="w-full" asChild>
+                      <Link href="/setup/loans">
+                          <Edit className="mr-2 size-4" /> Edit Loans
+                      </Link>
+                  </Button>
+              </div>
               {loans?.map(item => renderListItem(
                 item.id,
                 loanIcons[item.category] || CreditCard,
@@ -307,6 +337,13 @@ export default function BudgetScreen() {
                 </div>
             </AccordionTrigger>
             <AccordionContent className='divide-y border-t'>
+               <div className="pt-2 pb-3">
+                  <Button variant="outline" className="w-full" asChild>
+                      <Link href="/setup/savings">
+                          <Edit className="mr-2 size-4" /> Edit Savings
+                      </Link>
+                  </Button>
+              </div>
               {savingsGoals?.map(item => renderListItem(
                 item.id,
                 savingsGoalIcons[item.category] || PiggyBank,
