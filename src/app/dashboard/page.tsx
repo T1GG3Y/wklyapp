@@ -59,6 +59,21 @@ interface UserProfile extends DocumentData {
 
 const SAFE_TO_SPEND_CATEGORY = "Safe to Spend";
 
+const ProgressCircle = ({ title, remaining, total, progress, colorClass }: { title: string, remaining: number, total: number, progress: number, colorClass: string }) => (
+    <div className="flex flex-col items-center gap-2">
+        <div className="progress-circle-sm" style={{ background: `conic-gradient(${colorClass} ${progress}%, hsl(var(--muted)) 0deg)` }}>
+            <div className="relative z-10 text-center">
+                <p className={cn("text-2xl font-bold tracking-tight font-headline", remaining >= 0 ? 'text-foreground' : 'text-red-500')}>
+                    ${remaining.toFixed(2)}
+                </p>
+                <p className="text-xs text-muted-foreground">of ${total.toFixed(2)}</p>
+            </div>
+        </div>
+        <p className="text-sm font-semibold text-muted-foreground">{title}</p>
+    </div>
+);
+
+
 export default function DashboardScreen() {
   const { user } = useUser();
   const dayIndexMap = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
@@ -105,7 +120,6 @@ export default function DashboardScreen() {
     
     const initialSafeToSpend = weeklyIncome - weeklyRequiredExpenses;
 
-    // Filter transactions to only include those from the current week
     const startDay = userProfile?.startDayOfWeek || 'Sunday';
     const weekStartsOn = dayIndexMap[startDay as keyof typeof dayIndexMap];
     const now = new Date();
@@ -133,29 +147,31 @@ export default function DashboardScreen() {
       }
     }
     
-    const safeToSpend = initialSafeToSpend - actualSafeToSpendSpending;
-    const remainingBudget = weeklyPlannedDiscretionary - weeklyActualDiscretionarySpending;
+    const remainingSafeToSpend = initialSafeToSpend - actualSafeToSpendSpending;
+    const remainingNeedToSpend = weeklyPlannedDiscretionary - weeklyActualDiscretionarySpending;
     
-    const totalBudget = initialSafeToSpend + weeklyPlannedDiscretionary;
-    const totalSpent = actualSafeToSpendSpending + weeklyActualDiscretionarySpending;
-    const spendingProgress = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
-    const totalRemaining = safeToSpend + remainingBudget;
-
+    const safeToSpendProgress = initialSafeToSpend > 0 ? (actualSafeToSpendSpending / initialSafeToSpend) * 100 : 0;
+    const needToSpendProgress = weeklyPlannedDiscretionary > 0 ? (weeklyActualDiscretionarySpending / weeklyPlannedDiscretionary) * 100 : 0;
 
     return {
-      safeToSpend,
+      initialSafeToSpend,
+      remainingSafeToSpend,
+      safeToSpendProgress,
       weeklyPlannedDiscretionary,
-      weeklyActualSpending: weeklyActualDiscretionarySpending,
-      remainingBudget,
-      weeklyIncome,
-      spendingProgress,
-      totalRemaining,
-      totalBudget
+      remainingNeedToSpend,
+      needToSpendProgress,
     };
   }, [incomeSources, requiredExpenses, discretionaryExpenses, transactions, userProfile]);
 
 
-  const { safeToSpend, weeklyPlannedDiscretionary, remainingBudget, spendingProgress, totalRemaining, totalBudget } = weeklyCalculations;
+  const { 
+      initialSafeToSpend, 
+      remainingSafeToSpend, 
+      safeToSpendProgress, 
+      weeklyPlannedDiscretionary,
+      remainingNeedToSpend,
+      needToSpendProgress 
+  } = weeklyCalculations;
 
   return (
     <>
@@ -171,27 +187,21 @@ export default function DashboardScreen() {
         </Button>
       </header>
       <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-24 space-y-4 pt-2">
-        <div className="bg-card rounded-2xl p-6 shadow-soft flex flex-col items-center justify-center relative">
-            <div className="progress-circle" style={{background: `conic-gradient(hsl(var(--primary)) ${spendingProgress}%, hsl(var(--muted)) 0deg)`}}>
-                <div className="relative z-10 text-center">
-                    <p className="text-sm font-medium text-muted-foreground">Remaining</p>
-                    <p className={cn("text-3xl font-bold tracking-tight font-headline", totalRemaining >= 0 ? 'text-primary' : 'text-red-500')}>
-                        ${totalRemaining.toFixed(2)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">of ${totalBudget.toFixed(2)}</p>
-                </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 text-center mt-6 w-full">
-                <div>
-                    <p className="text-sm font-semibold text-muted-foreground">Safe to Spend</p>
-                    <p className="text-xl font-bold text-foreground">${safeToSpend.toFixed(2)}</p>
-                </div>
-                <div>
-                    <p className="text-sm font-semibold text-muted-foreground">Need to Spend</p>
-                    <p className="text-xl font-bold text-foreground">${remainingBudget.toFixed(2)}</p>
-                </div>
-            </div>
+        <div className="bg-card rounded-2xl p-6 shadow-soft flex items-center justify-around relative">
+            <ProgressCircle 
+                title="Safe to Spend"
+                remaining={remainingSafeToSpend}
+                total={initialSafeToSpend}
+                progress={safeToSpendProgress}
+                colorClass="hsl(var(--primary))"
+            />
+            <ProgressCircle 
+                title="Need to Spend"
+                remaining={remainingNeedToSpend}
+                total={weeklyPlannedDiscretionary}
+                progress={needToSpendProgress}
+                colorClass="hsl(var(--secondary))"
+            />
         </div>
         
         <div className="bg-card rounded-2xl p-5 shadow-soft">
@@ -244,9 +254,3 @@ export default function DashboardScreen() {
     </>
   );
 }
-
-    
-
-    
-
-    

@@ -107,6 +107,13 @@ body {
     @apply absolute rounded-full w-[85%] h-[85%] bg-card;
     content: '';
   }
-}
 
-    
+  .progress-circle-sm {
+    @apply relative rounded-full w-40 h-40 flex items-center justify-center;
+  }
+
+  .progress-circle-sm::before {
+    @apply absolute rounded-full w-[85%] h-[85%] bg-card;
+    content: '';
+  }
+}
