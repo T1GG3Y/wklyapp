@@ -135,7 +135,12 @@ export default function DashboardScreen() {
     
     const safeToSpend = initialSafeToSpend - actualSafeToSpendSpending;
     const remainingBudget = weeklyPlannedDiscretionary - weeklyActualDiscretionarySpending;
-    const spendingProgress = weeklyPlannedDiscretionary > 0 ? (weeklyActualDiscretionarySpending / weeklyPlannedDiscretionary) * 100 : 0;
+    
+    const totalBudget = initialSafeToSpend + weeklyPlannedDiscretionary;
+    const totalSpent = actualSafeToSpendSpending + weeklyActualDiscretionarySpending;
+    const spendingProgress = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
+    const totalRemaining = safeToSpend + remainingBudget;
+
 
     return {
       safeToSpend,
@@ -144,11 +149,13 @@ export default function DashboardScreen() {
       remainingBudget,
       weeklyIncome,
       spendingProgress,
+      totalRemaining,
+      totalBudget
     };
   }, [incomeSources, requiredExpenses, discretionaryExpenses, transactions, userProfile]);
 
 
-  const { safeToSpend, weeklyPlannedDiscretionary, remainingBudget, spendingProgress } = weeklyCalculations;
+  const { safeToSpend, weeklyPlannedDiscretionary, remainingBudget, spendingProgress, totalRemaining, totalBudget } = weeklyCalculations;
 
   return (
     <>
@@ -168,10 +175,10 @@ export default function DashboardScreen() {
             <div className="progress-circle" style={{background: `conic-gradient(hsl(var(--primary)) ${spendingProgress}%, hsl(var(--muted)) 0deg)`}}>
                 <div className="relative z-10 text-center">
                     <p className="text-sm font-medium text-muted-foreground">Remaining</p>
-                    <p className={cn("text-3xl font-bold tracking-tight font-headline", remainingBudget >= 0 ? 'text-primary' : 'text-red-500')}>
-                        ${remainingBudget.toFixed(2)}
+                    <p className={cn("text-3xl font-bold tracking-tight font-headline", totalRemaining >= 0 ? 'text-primary' : 'text-red-500')}>
+                        ${totalRemaining.toFixed(2)}
                     </p>
-                    <p className="text-xs text-muted-foreground">of ${weeklyPlannedDiscretionary.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">of ${totalBudget.toFixed(2)}</p>
                 </div>
             </div>
             
@@ -182,7 +189,7 @@ export default function DashboardScreen() {
                 </div>
                 <div>
                     <p className="text-sm font-semibold text-muted-foreground">Need to Spend</p>
-                    <p className="text-xl font-bold text-foreground">${weeklyPlannedDiscretionary.toFixed(2)}</p>
+                    <p className="text-xl font-bold text-foreground">${remainingBudget.toFixed(2)}</p>
                 </div>
             </div>
         </div>
@@ -237,6 +244,8 @@ export default function DashboardScreen() {
     </>
   );
 }
+
+    
 
     
 
