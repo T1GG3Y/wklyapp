@@ -10,7 +10,7 @@ import {
 
 import { useFirestore } from '..';
 
-export const useDoc = <T extends DocumentData>(path: string) => {
+export const useDoc = <T extends DocumentData>(path: string | null | undefined) => {
   const firestore = useFirestore();
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
@@ -19,11 +19,13 @@ export const useDoc = <T extends DocumentData>(path: string) => {
   const memoizedPath = useMemo(() => path, [path]);
 
   useEffect(() => {
-    if (!firestore) {
+    if (!firestore || !memoizedPath) {
+      setLoading(false);
       return;
     }
     // The path must have an even number of segments.
     if (memoizedPath.split('/').length % 2 !== 0) {
+      setLoading(false);
       return;
     }
     const docRef = doc(firestore, memoizedPath);
