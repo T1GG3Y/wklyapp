@@ -127,6 +127,7 @@ export default function DashboardScreen() {
     
     const remainingBudget = weeklyPlannedDiscretionary - weeklyActualSpending;
     const weeklyNet = weeklyIncome - weeklyRequiredExpenses - weeklyActualSpending;
+    const spendingProgress = weeklyPlannedDiscretionary > 0 ? (weeklyActualSpending / weeklyPlannedDiscretionary) * 100 : 0;
 
     return {
       safeToSpend,
@@ -134,12 +135,13 @@ export default function DashboardScreen() {
       weeklyActualSpending,
       remainingBudget,
       weeklyNet,
-      weeklyIncome
+      weeklyIncome,
+      spendingProgress,
     };
   }, [incomeSources, requiredExpenses, discretionaryExpenses, transactions, userProfile]);
 
 
-  const { safeToSpend, weeklyPlannedDiscretionary, remainingBudget, weeklyNet, weeklyIncome } = weeklyCalculations;
+  const { safeToSpend, weeklyPlannedDiscretionary, remainingBudget, weeklyNet, weeklyIncome, spendingProgress } = weeklyCalculations;
 
   return (
     <>
@@ -155,23 +157,25 @@ export default function DashboardScreen() {
         </Button>
       </header>
       <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-24 space-y-4 pt-2">
-        <div className="bg-card rounded-2xl p-6 shadow-soft flex flex-col relative">
-           <div className="text-center mb-6">
-                <p className="text-sm font-medium text-muted-foreground">Safe to Spend</p>
-                <p className="text-4xl font-bold text-primary tracking-tight font-headline">${safeToSpend.toFixed(2)}</p>
-                <p className="text-xs text-muted-foreground">per week after required bills</p>
+        <div className="bg-card rounded-2xl p-6 shadow-soft flex flex-col items-center justify-center relative">
+            <div className="progress-circle" style={{background: `conic-gradient(hsl(var(--primary)) ${spendingProgress}%, hsl(var(--muted)) 0deg)`}}>
+                <div className="relative z-10 text-center">
+                    <p className="text-sm font-medium text-muted-foreground">Remaining</p>
+                    <p className={cn("text-3xl font-bold tracking-tight font-headline", remainingBudget >= 0 ? 'text-primary' : 'text-red-500')}>
+                        ${remainingBudget.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">of ${weeklyPlannedDiscretionary.toFixed(2)}</p>
+                </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4 text-center">
+            <div className="grid grid-cols-2 gap-4 text-center mt-6 w-full">
                 <div>
-                    <p className="text-sm font-semibold text-muted-foreground">Weekly Budget</p>
-                    <p className="text-2xl font-bold text-foreground">${weeklyPlannedDiscretionary.toFixed(2)}</p>
+                    <p className="text-sm font-semibold text-muted-foreground">Safe to Spend</p>
+                    <p className="text-xl font-bold text-foreground">${safeToSpend.toFixed(2)}</p>
                 </div>
                 <div>
-                    <p className="text-sm font-semibold text-muted-foreground">Remaining</p>
-                    <p className={cn("text-2xl font-bold", remainingBudget >= 0 ? 'text-green-500' : 'text-red-500')}>
-                      ${remainingBudget.toFixed(2)}
-                    </p>
+                    <p className="text-sm font-semibold text-muted-foreground">Need to Spend</p>
+                    <p className="text-xl font-bold text-foreground">${weeklyPlannedDiscretionary.toFixed(2)}</p>
                 </div>
             </div>
         </div>

@@ -101,7 +101,6 @@ body {
 @layer utilities {
   .progress-circle {
     @apply relative rounded-full w-56 h-56 flex items-center justify-center;
-    background: conic-gradient(hsl(var(--primary)) 270deg, hsl(var(--muted)) 0deg);
   }
 
   .progress-circle::before {
@@ -109,3 +108,5 @@ body {
     content: '';
   }
 }
+
+    
