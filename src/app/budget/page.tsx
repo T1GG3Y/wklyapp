@@ -183,11 +183,12 @@ export default function BudgetScreen() {
   }, [loans]);
 
   const renderListItem = (
+    key: string,
     Icon: LucideIcon,
     primaryText: string,
     secondaryText: string | React.ReactNode
   ) => (
-    <div className="flex items-center gap-4 py-3">
+    <div key={key} className="flex items-center gap-4 py-3">
       <div className="flex items-center justify-center rounded-lg bg-muted text-foreground shrink-0 size-10 border">
         <Icon className="size-5" />
       </div>
@@ -223,6 +224,7 @@ export default function BudgetScreen() {
             </AccordionTrigger>
             <AccordionContent className='divide-y border-t'>
               {incomeSources?.map(item => renderListItem(
+                item.id,
                 Briefcase,
                 item.name,
                 `$${item.amount.toFixed(2)} ${item.frequency}`
@@ -243,6 +245,7 @@ export default function BudgetScreen() {
             </AccordionTrigger>
             <AccordionContent className='divide-y border-t'>
               {requiredExpenses?.map(item => renderListItem(
+                item.id,
                 requiredExpenseIcons[item.category] || Wallet,
                 item.category,
                 `$${item.amount.toFixed(2)} ${item.frequency}`
@@ -263,6 +266,7 @@ export default function BudgetScreen() {
             </AccordionTrigger>
             <AccordionContent className='divide-y border-t'>
               {discretionaryExpenses?.map(item => renderListItem(
+                item.id,
                 discretionaryExpenseIcons[item.category] || Wallet,
                 item.category,
                 `$${item.plannedAmount.toFixed(2)} / week`
@@ -283,6 +287,7 @@ export default function BudgetScreen() {
             </AccordionTrigger>
             <AccordionContent className='divide-y border-t'>
               {loans?.map(item => renderListItem(
+                item.id,
                 loanIcons[item.category] || CreditCard,
                 item.name,
                 `$${item.totalBalance.toFixed(2)} balance`
@@ -303,6 +308,7 @@ export default function BudgetScreen() {
             </AccordionTrigger>
             <AccordionContent className='divide-y border-t'>
               {savingsGoals?.map(item => renderListItem(
+                item.id,
                 savingsGoalIcons[item.category] || PiggyBank,
                 item.name,
                  <div className='flex flex-col'>
