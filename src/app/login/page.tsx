@@ -104,7 +104,7 @@ export default function LoginPage() {
         });
         toast({
           title: "Account Created",
-          description: "Welcome to FinanceFlow!",
+          description: "Welcome to WKLY!",
         });
         router.push('/setup/start-day');
       } else {
@@ -134,7 +134,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
             <Link href="/" className="inline-flex items-center gap-2 mb-4">
                 <LineChart className="text-primary h-8 w-8" />
-                <h1 className="text-2xl font-bold font-headline text-foreground">FinanceFlow</h1>
+                <h1 className="text-2xl font-bold font-headline text-foreground">WKLY</h1>
             </Link>
           <h2 className="text-3xl font-bold font-headline text-foreground">
             Welcome Back

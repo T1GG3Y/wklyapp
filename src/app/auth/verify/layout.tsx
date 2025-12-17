@@ -12,7 +12,7 @@ export default function VerifyLayout({
         <div className="absolute top-8 text-center">
             <Link href="/" className="inline-flex items-center gap-2 mb-4">
                 <LineChart className="text-primary h-8 w-8" />
-                <h1 className="text-2xl font-bold font-headline text-foreground">FinanceFlow</h1>
+                <h1 className="text-2xl font-bold font-headline text-foreground">WKLY</h1>
             </Link>
         </div>
         {children}

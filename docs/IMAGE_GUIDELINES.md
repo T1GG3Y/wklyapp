@@ -1,6 +1,6 @@
-# Image Guidelines for FinanceFlow
+# Image Guidelines for WKLY
 
-This document outlines the key images and icons used in the FinanceFlow application. You can use this as a checklist to create or source your own assets to replace the current placeholders.
+This document outlines the key images and icons used in the WKLY application. You can use this as a checklist to create or source your own assets to replace the current placeholders.
 
 ## 1. Favicon
 

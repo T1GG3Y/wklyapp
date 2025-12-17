@@ -15,8 +15,8 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: 'FinanceFlow',
-  description: 'Take control of your finances with FinanceFlow.',
+  title: 'WKLY',
+  description: 'Take control of your finances with WKLY.',
 };
 
 export default function RootLayout({
