@@ -1,12 +1,14 @@
+
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useAuth, useUser } from "@/firebase";
 import { getAuth, signOut } from "firebase/auth";
-import { LogOut } from "lucide-react";
+import { LogOut, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import Link from "next/link";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -58,7 +60,12 @@ export default function ProfilePage() {
           <p className="text-muted-foreground">{user.email}</p>
         </div>
 
-        <div className="p-4">
+        <div className="p-4 space-y-3">
+           <Button asChild variant="outline" className="w-full justify-start">
+              <Link href="/privacy">
+                <Shield className="mr-2 h-4 w-4" /> Privacy Policy
+              </Link>
+          </Button>
           <Button onClick={handleSignOut} variant="destructive" className="w-full">
             <LogOut className="mr-2 h-4 w-4" /> Sign Out
           </Button>

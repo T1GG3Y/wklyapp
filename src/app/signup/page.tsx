@@ -130,7 +130,7 @@ export default function SignupPage() {
           title: 'Login Successful',
           description: 'Welcome back!',
         });
-        if (userDoc.data().startDayOfWeek !== 'Sunday') {
+        if (userDoc.data()?.startDayOfWeek && userDoc.data()?.startDayOfWeek !== 'Sunday') {
             router.push("/dashboard");
         } else {
             router.push('/setup/start-day');
@@ -221,6 +221,14 @@ export default function SignupPage() {
             Create Account
           </Button>
         </form>
+
+        <p className="mt-4 text-center text-xs text-muted-foreground px-4">
+            By creating an account, you agree to our{" "}
+            <Link href="/privacy" className="text-primary hover:underline font-semibold">
+                Privacy Policy
+            </Link>.
+        </p>
+
         <p className="mt-8 text-center text-muted-foreground">
           Already have an account?{" "}
           <Link href="/login" className="text-primary hover:underline font-semibold">
