@@ -104,14 +104,6 @@ export default function WeeklySummaryScreen() {
 
   return (
     <div className="bg-background font-sans antialiased h-screen flex flex-col overflow-hidden">
-        <div className="absolute top-0 w-full flex justify-between items-center px-6 pt-5 pb-2 z-20 text-foreground">
-          <span className="text-sm font-semibold">9:41</span>
-          <div className="flex items-center space-x-2">
-            <Signal size={16} />
-            <Wifi size={16} />
-            <BatteryFull size={16} />
-          </div>
-        </div>
         <div className="bg-surface-dark pt-20 pb-16 px-6 flex flex-col items-center justify-center relative transition-colors duration-300">
           {summaryImage && (
             <div className="relative w-full max-w-xs aspect-[4/3] flex items-end justify-center">
