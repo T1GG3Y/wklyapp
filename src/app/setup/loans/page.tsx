@@ -97,7 +97,7 @@ export default function LoansScreen() {
 
 
   return (
-    <div className="bg-background font-headline antialiased min-h-screen flex flex-col overflow-x-hidden max-w-md mx-auto">
+    <div className="bg-background font-headline antialiased min-h-screen flex flex-col overflow-x-hidden">
       <div className="sticky top-0 z-50 flex items-center bg-background p-4 pb-2 justify-between border-b">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/setup/required-expenses">

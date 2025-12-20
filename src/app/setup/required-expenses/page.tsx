@@ -206,7 +206,7 @@ export default function RequiredExpensesScreen() {
   }, [expenses]);
 
   return (
-    <div className="bg-background font-headline flex flex-col min-h-screen overflow-hidden max-w-md mx-auto shadow-2xl">
+    <div className="bg-background font-headline flex flex-col min-h-screen overflow-hidden">
       <header className="shrink-0 z-10">
         <div className="flex items-center p-4 pb-2 justify-between">
           <Button variant="ghost" size="icon" asChild>
@@ -423,7 +423,7 @@ export default function RequiredExpensesScreen() {
         </DialogContent>
       </Dialog>
 
-      <div className="p-4 bg-background/95 backdrop-blur-md border-t fixed bottom-0 w-full z-30 max-w-md mx-auto left-0 right-0">
+      <div className="p-4 bg-background/95 backdrop-blur-md border-t fixed bottom-0 w-full z-30 left-0 right-0">
         <Button
           asChild
           className="w-full h-14 rounded-xl text-lg font-bold shadow-lg shadow-primary/20"

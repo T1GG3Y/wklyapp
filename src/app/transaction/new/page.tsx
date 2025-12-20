@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -127,7 +126,7 @@ export default function NewTransactionScreen() {
 
   return (
     <div className="bg-background text-foreground transition-colors duration-200 min-h-screen flex justify-center">
-      <div className="w-full max-w-md bg-card shadow-xl min-h-screen flex flex-col relative overflow-hidden">
+      <div className="w-full bg-card min-h-screen flex flex-col relative overflow-hidden">
         <header className="px-4 py-3 flex items-center justify-between border-b sticky top-0 bg-card/90 backdrop-blur-sm z-10">
           <Button variant="ghost" size="icon" className="-ml-2" asChild>
             <Link href="/dashboard">

@@ -159,7 +159,7 @@ export default function IncomeScreen() {
   }, [incomeSources]);
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col max-w-md mx-auto shadow-2xl overflow-hidden bg-background">
+    <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-background">
       <header className="sticky top-0 z-50 flex items-center bg-background/95 backdrop-blur-md p-4 pb-2 justify-between border-b">
         <h2 className="text-foreground text-xl font-bold font-headline leading-tight flex-1">
           Income Setup
@@ -302,7 +302,7 @@ export default function IncomeScreen() {
         </DialogContent>
       </Dialog>
       
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none max-w-md mx-auto flex flex-col gap-4">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none w-full flex flex-col gap-4">
         <Button
             className="pointer-events-auto w-full h-12 text-base font-bold tracking-wide shadow-lg shadow-primary/20"
             size="lg"

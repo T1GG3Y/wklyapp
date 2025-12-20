@@ -46,7 +46,7 @@ export default function StartDayScreen() {
   };
 
   return (
-    <div className="bg-background min-h-screen flex flex-col justify-between font-headline max-w-md mx-auto shadow-2xl">
+    <div className="bg-background min-h-screen flex flex-col justify-between font-headline">
         <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
             {startDayImage && (
                 <div className="relative w-full max-w-[280px] aspect-square mb-8">
