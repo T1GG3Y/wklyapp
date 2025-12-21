@@ -11,7 +11,7 @@ import {
   sendEmailVerification,
   updateProfile,
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect,
 } from 'firebase/auth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -101,42 +101,12 @@ export default function SignupPage() {
   
   const handleGoogleSignup = async () => {
     const auth = getAuth();
-    const firestore = getFirestore();
     const provider = new GoogleAuthProvider();
     try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-
-      const userDocRef = doc(firestore, "users", user.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (!userDoc.exists()) {
-        // New user, create profile
-        await setDoc(userDocRef, {
-          id: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-          startDayOfWeek: 'Sunday', // Default value
-        });
-        toast({
-          title: 'Account Created',
-          description: 'Welcome to WKLY!',
-        });
-        router.push('/setup/start-day');
-      } else {
-        // Existing user
-        toast({
-          title: 'Login Successful',
-          description: 'Welcome back!',
-        });
-        if (userDoc.data()?.startDayOfWeek && userDoc.data()?.startDayOfWeek !== 'Sunday') {
-            router.push("/dashboard");
-        } else {
-            router.push('/setup/start-day');
-        }
-      }
-    } catch (error: any) {
+      // Use signInWithRedirect instead of signInWithPopup
+      await signInWithRedirect(auth, provider);
+    } catch (error: any)
+     {
       console.error("Google sign-up error:", error);
       toast({
         variant: "destructive",
@@ -164,7 +134,7 @@ export default function SignupPage() {
         </div>
         <div className="space-y-4">
            <Button onClick={handleGoogleSignup} variant="outline" className="w-full h-12 text-base">
-            <svg className="mr-2 -ml-1 w-4 h-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 61.9l-76.3 64.5c-24.5-23.4-58.3-38.2-96.6-38.2-73.3 0-133.5 60.5-133.5 134.5s60.2 134.5 133.5 134.5c82.8 0 120.9-61.9 124.8-92.4H248v-83.8h236.1c2.3 12.7 3.9 26.9 3.9 41.4z"></path></svg>
+            <svg className="mr-2 -ml-1 w-4 h-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512"><path fill="currentColor" d="M488 261.8C488 403.3 391.1 504 248 504 110.8 504 0 393.2 0 256S110.8 8 248 8c66.8 0 126 23.4 172.9 61.9l-76.3 64.5c-24.5-23.4-58.3-38.2-96.6-38.2-73.3 0-133.5 60.5-133.5 134.5s60.2 134.5 133.5 134_5c82.8 0 120.9-61.9 124.8-92.4H248v-83.8h236.1c2.3 12.7 3.9 26.9 3.9 41.4z"></path></svg>
             Continue with Google
           </Button>
 
