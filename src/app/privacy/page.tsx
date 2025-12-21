@@ -54,6 +54,13 @@ export default function PrivacyPolicyPage() {
                     We use administrative, technical, and physical security measures to help protect your personal information. We use Firebase, a platform by Google, which provides industry-leading security for your data. While we have taken reasonable steps to secure the personal information you provide to us, please be aware that despite our efforts, no security measures are perfect or impenetrable.
                 </p>
             </div>
+            
+            <div className="space-y-2">
+                <h2 className="text-lg font-bold text-foreground">Account Deletion</h2>
+                <p>
+                    You may request to delete your account at any time by navigating to the "Profile" section of the application and selecting the "Delete Account" option. Upon your request, we will permanently delete your account and all associated data from our systems. This action is irreversible.
+                </p>
+            </div>
 
             <div className="space-y-2">
                 <h2 className="text-lg font-bold text-foreground">Contact Us</h2>
