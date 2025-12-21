@@ -208,16 +208,10 @@ export default function DashboardScreen() {
 
   return (
     <>
-      <header className="px-5 py-3 flex items-center justify-between sticky top-0 bg-background/90 backdrop-blur-sm z-20 border-b">
-        <Button variant="ghost" size="icon">
-          <Menu className="text-muted-foreground" />
-        </Button>
+      <header className="px-5 py-3 flex items-center justify-center sticky top-0 bg-background/90 backdrop-blur-sm z-20 border-b">
         <h1 className="text-lg font-bold font-headline tracking-tight text-foreground">
           Dashboard
         </h1>
-        <Button variant="ghost" size="icon">
-          <Calendar className="text-muted-foreground" />
-        </Button>
       </header>
       <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-24 space-y-4 pt-2">
         <div className="bg-card rounded-2xl p-6 shadow-soft flex items-start justify-around relative">
