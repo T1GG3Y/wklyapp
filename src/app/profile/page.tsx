@@ -3,9 +3,11 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth, useUser, useFirestore } from "@/firebase";
-import { getAuth, signOut, deleteUser } from "firebase/auth";
-import { LogOut, Shield, Trash2 } from "lucide-react";
+import { getAuth, signOut, deleteUser, updateProfile } from "firebase/auth";
+import { LogOut, Shield, Trash2, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -26,6 +28,7 @@ import {
   collection,
   getDocs,
   doc,
+  updateDoc,
 } from "firebase/firestore";
 
 export default function ProfilePage() {
@@ -34,6 +37,55 @@ export default function ProfilePage() {
   const firestore = useFirestore();
   const { user, loading, error } = useUser();
   const { toast } = useToast();
+  const [displayName, setDisplayName] = useState('');
+
+  useEffect(() => {
+    if (user?.displayName) {
+      setDisplayName(user.displayName);
+    }
+  }, [user]);
+  
+  const handleSaveName = async () => {
+    if (!user || !auth?.currentUser || !firestore) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not update name. Please try again.",
+      });
+      return;
+    }
+    
+    if (displayName === user.displayName) {
+      toast({
+        title: "No Changes",
+        description: "Your name has not been changed.",
+      });
+      return;
+    }
+
+    try {
+      // Update Firebase Auth profile
+      await updateProfile(auth.currentUser, { displayName });
+
+      // Update Firestore document
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await updateDoc(userDocRef, { displayName });
+      
+      toast({
+        title: "Success",
+        description: "Your name has been updated.",
+      });
+
+    } catch (e: any) {
+       console.error("Error updating name:", e);
+       toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: "Could not update your name. Please try again.",
+      });
+    }
+  };
+
 
   const handleSignOut = async () => {
     if (auth) {
@@ -129,21 +181,31 @@ export default function ProfilePage() {
 
   return (
     user && (
-      <div className="flex-1 overflow-y-auto no-scrollbar px-4 pb-24 space-y-4 pt-2">
-        <div className="flex flex-col items-center pt-8">
-          <Avatar className="w-24 h-24 mb-4">
-            <AvatarImage src={user.photoURL || undefined} />
-            <AvatarFallback>
-              {user.email?.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <h1 className="text-2xl font-bold font-headline">
-            {user.displayName || user.email}
-          </h1>
-          <p className="text-muted-foreground">{user.email}</p>
+      <div className="flex-1 overflow-y-auto no-scrollbar px-4 pb-24 space-y-8 pt-8">
+        <div className="text-center">
+            <h1 className="text-2xl font-bold font-headline">
+                Your Profile
+            </h1>
+            <p className="text-muted-foreground">{user.email}</p>
         </div>
 
-        <div className="p-4 space-y-3">
+        <div className="space-y-4">
+            <div className="space-y-2">
+                <Label htmlFor="displayName">Your Name</Label>
+                <Input 
+                    id="displayName" 
+                    value={displayName} 
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className="h-12 text-base"
+                />
+            </div>
+            <Button onClick={handleSaveName} className="w-full">
+                <Save className="mr-2 h-4 w-4" /> Save Changes
+            </Button>
+        </div>
+
+
+        <div className="p-4 space-y-3 border-t">
            <Button asChild variant="outline" className="w-full justify-start">
               <Link href="/privacy">
                 <Shield className="mr-2 h-4 w-4" /> Privacy Policy
