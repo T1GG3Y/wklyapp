@@ -17,7 +17,7 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { getFirestore, doc, setDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import { LineChart } from 'lucide-react';
 
 export default function SignupPage() {
@@ -55,7 +55,7 @@ export default function SignupPage() {
       await updateProfile(user, { displayName: name });
 
       // Create a user profile document in Firestore
-      await handleSuccessfulSignup(user, { displayName: name });
+      await createUserProfileDocument(user, { displayName: name });
 
 
       // Send email verification
@@ -100,8 +100,25 @@ export default function SignupPage() {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      await handleSuccessfulSignup(user);
-      router.push('/setup/start-day');
+      
+      const firestore = getFirestore();
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists() && userDoc.data().onboardingComplete) {
+        toast({
+            title: "Welcome Back!",
+            description: "You've been logged in successfully.",
+        });
+        router.push('/dashboard');
+      } else {
+        await createUserProfileDocument(user);
+        toast({
+            title: 'Account Created',
+            description: 'Welcome to WKLY!',
+        });
+        router.push('/setup/start-day');
+      }
     } catch (error: any) {
       console.error("Google sign-up error:", error);
       toast({
@@ -112,22 +129,23 @@ export default function SignupPage() {
     }
   };
 
-  const handleSuccessfulSignup = async (user: User, additionalData = {}) => {
+  const createUserProfileDocument = async (user: User, additionalData = {}) => {
       const firestore = getFirestore();
       const userDocRef = doc(firestore, 'users', user.uid);
-      await setDoc(userDocRef, {
-        id: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
-        startDayOfWeek: 'Sunday', // Default value
-        onboardingComplete: false,
-        ...additionalData,
-      }, { merge: true });
-       toast({
-        title: 'Account Created',
-        description: 'Welcome to WKLY!',
-      });
+      
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        await setDoc(userDocRef, {
+            id: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+            startDayOfWeek: 'Sunday', // Default value
+            onboardingComplete: false,
+            ...additionalData,
+        }, { merge: true });
+      }
   };
 
 

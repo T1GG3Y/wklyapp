@@ -40,7 +40,7 @@ export default function LoginPage() {
         return;
       }
       
-      handleSuccessfulLogin(user);
+      await handleSuccessfulLogin(user);
     } catch (error: any) {
       console.error("Error signing in:", error);
       let errorMessage = "An unexpected error occurred.";
@@ -74,8 +74,7 @@ export default function LoginPage() {
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      handleSuccessfulLogin(user);
+      await handleSuccessfulLogin(result.user);
     } catch (error: any) {
       console.error("Google sign-in error:", error);
       toast({
@@ -95,14 +94,14 @@ export default function LoginPage() {
         router.push("/dashboard");
     } else {
         if (!userDoc.exists()) {
-            await setDoc(userDocRef, {
+             await setDoc(userDocRef, {
                 id: user.uid,
                 email: user.email,
                 displayName: user.displayName,
                 photoURL: user.photoURL,
                 startDayOfWeek: 'Sunday',
                 onboardingComplete: false,
-            });
+            }, { merge: true });
         }
         router.push('/setup/start-day');
     }
