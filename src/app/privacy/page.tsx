@@ -65,7 +65,7 @@ export default function PrivacyPolicyPage() {
             <div className="space-y-2">
                 <h2 className="text-lg font-bold text-foreground">Contact Us</h2>
                 <p>
-                    If you have questions or comments about this Privacy Policy, please contact us.
+                    If you have questions or comments about this Privacy Policy, please contact us at thetiger@alumni.stanford.edu.
                 </p>
             </div>
         </div>
