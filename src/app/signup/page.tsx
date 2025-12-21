@@ -65,6 +65,10 @@ export default function SignupPage() {
         title: 'Account Created & Verification Sent',
         description: 'Please check your email to verify your account before logging in.',
       });
+
+      // Sign the user out until they are verified
+      await auth.signOut();
+      
       router.push('/login'); // Redirect to login page to wait for verification
     } catch (error: any) {
       console.error('Error signing up:', error);
@@ -105,6 +109,7 @@ export default function SignupPage() {
       const userDocRef = doc(firestore, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
 
+      // If user exists and has completed onboarding, go to dashboard
       if (userDoc.exists() && userDoc.data().onboardingComplete) {
         toast({
             title: "Welcome Back!",
@@ -112,14 +117,15 @@ export default function SignupPage() {
         });
         router.push('/dashboard');
       } else {
+        // If user is new or hasn't finished onboarding, create their doc and send to setup
         await createUserProfileDocument(user);
         toast({
             title: 'Account Created',
-            description: 'Welcome to WKLY!',
+            description: 'Welcome to WKLY! Let\'s get you set up.',
         });
         router.push('/setup/start-day');
       }
-    } catch (error: any) {
+    } catch (error: any)      {
       console.error("Google sign-up error:", error);
       toast({
         variant: "destructive",
@@ -135,6 +141,7 @@ export default function SignupPage() {
       
       const userDoc = await getDoc(userDocRef);
 
+      // Only create the document if it doesn't already exist.
       if (!userDoc.exists()) {
         await setDoc(userDocRef, {
             id: user.uid,
@@ -144,7 +151,7 @@ export default function SignupPage() {
             startDayOfWeek: 'Sunday', // Default value
             onboardingComplete: false,
             ...additionalData,
-        }, { merge: true });
+        }, { merge: true }); // Merge true is a safeguard
       }
   };
 

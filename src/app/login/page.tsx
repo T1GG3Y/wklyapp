@@ -27,8 +27,9 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
+      // We need to reload the user to get the latest emailVerified status
       await user.reload();
-      const freshUser = auth.currentUser;
+      const freshUser = auth.currentUser; // Get the reloaded user object
 
       if (!freshUser?.emailVerified) {
         toast({
@@ -36,7 +37,7 @@ export default function LoginPage() {
           title: "Email Not Verified",
           description: "Please verify your email before logging in. Check your inbox for a verification link.",
         });
-        await auth.signOut();
+        await auth.signOut(); // Sign out the user until they verify
         return;
       }
       
@@ -93,6 +94,8 @@ export default function LoginPage() {
     if (userDoc.exists() && userDoc.data().onboardingComplete) {
         router.push("/dashboard");
     } else {
+        // This case handles both new Google sign-in users and email users who haven't completed onboarding.
+        // If the doc doesn't exist, create it.
         if (!userDoc.exists()) {
              await setDoc(userDocRef, {
                 id: user.uid,
