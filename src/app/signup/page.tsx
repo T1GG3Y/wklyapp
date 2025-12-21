@@ -121,6 +121,7 @@ export default function SignupPage() {
         displayName: user.displayName,
         photoURL: user.photoURL,
         startDayOfWeek: 'Sunday', // Default value
+        onboardingComplete: false,
         ...additionalData,
       }, { merge: true });
        toast({

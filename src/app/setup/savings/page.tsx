@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ import {
   addDoc,
   deleteDoc,
   doc,
+  setDoc,
   type DocumentData,
 } from 'firebase/firestore';
 import { useMemo, useState } from 'react';
@@ -34,6 +36,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 interface SavingsGoal extends DocumentData {
   id: string;
@@ -56,6 +59,7 @@ const categoryIconMap = new Map(goalCategories.map(c => [c.name, c.icon]));
 export default function PlannedSavingsScreen() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
   const [isAdding, setIsAdding] = useState(false);
   const [newGoal, setNewGoal] = useState({
     name: '',
@@ -115,6 +119,17 @@ export default function PlannedSavingsScreen() {
       await deleteDoc(doc(firestore, `users/${user.uid}/savingsGoals`, goalId));
     } catch (error) {
       console.error('Error deleting goal:', error);
+    }
+  };
+
+  const handleFinishSetup = async () => {
+    if (!user || !firestore) return;
+    try {
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await setDoc(userDocRef, { onboardingComplete: true }, { merge: true });
+      router.push('/weekly-summary');
+    } catch (error) {
+      console.error('Error finalizing setup:', error);
     }
   };
 
@@ -294,13 +309,11 @@ export default function PlannedSavingsScreen() {
           </div>
         </div>
         <Button
-          asChild
+          onClick={handleFinishSetup}
           className="w-full text-lg py-4 h-auto shadow-[0_4px_20px_rgba(19,236,91,0.3)]"
           size="lg"
         >
-          <Link href="/weekly-summary">
-            Finish Setup <ArrowRight className="ml-2 h-5 w-5" />
-          </Link>
+          Finish Setup <ArrowRight className="ml-2 h-5 w-5" />
         </Button>
       </div>
     </div>

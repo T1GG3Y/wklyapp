@@ -91,7 +91,7 @@ export default function LoginPage() {
     const userDocRef = doc(firestore, "users", user.uid);
     const userDoc = await getDoc(userDocRef);
 
-    if (userDoc.exists() && userDoc.data().startDayOfWeek !== 'Sunday') {
+    if (userDoc.exists() && userDoc.data().onboardingComplete) {
         router.push("/dashboard");
     } else {
         if (!userDoc.exists()) {
@@ -101,6 +101,7 @@ export default function LoginPage() {
                 displayName: user.displayName,
                 photoURL: user.photoURL,
                 startDayOfWeek: 'Sunday',
+                onboardingComplete: false,
             });
         }
         router.push('/setup/start-day');
