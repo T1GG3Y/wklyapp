@@ -178,6 +178,14 @@ export default function LoginPage() {
             Log In
           </Button>
         </form>
+
+        <p className="mt-4 text-center text-xs text-muted-foreground px-4">
+            By logging in, you agree to our{" "}
+            <Link href="/privacy" className="text-primary hover:underline font-semibold">
+                Privacy Policy
+            </Link>.
+        </p>
+        
         <p className="mt-8 text-center text-muted-foreground">
           Don&apos;t have an account?{" "}
           <Link href="/signup" className="text-primary hover:underline font-semibold">
