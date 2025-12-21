@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, type User } from "firebase/auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -23,7 +23,6 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     const auth = getAuth();
-    const firestore = getFirestore();
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
@@ -40,21 +39,8 @@ export default function LoginPage() {
         await auth.signOut();
         return;
       }
-
-      toast({
-        title: "Login Successful",
-        description: "Welcome back!",
-      });
-
-      const userDocRef = doc(firestore, "users", user.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (userDoc.exists() && userDoc.data().startDayOfWeek !== 'Sunday') {
-         router.push("/dashboard");
-      } else {
-         router.push('/setup/start-day');
-      }
-
+      
+      handleSuccessfulLogin(user);
     } catch (error: any) {
       console.error("Error signing in:", error);
       let errorMessage = "An unexpected error occurred.";
@@ -87,16 +73,42 @@ export default function LoginPage() {
     const auth = getAuth();
     const provider = new GoogleAuthProvider();
     try {
-      // Use signInWithRedirect instead of signInWithPopup
-      await signInWithRedirect(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      handleSuccessfulLogin(user);
     } catch (error: any) {
       console.error("Google sign-in error:", error);
       toast({
         variant: "destructive",
         title: "Google Sign-In Failed",
-        description: error.message,
+        description: error.message || 'An error occurred during Google sign-in.',
       });
     }
+  };
+  
+  const handleSuccessfulLogin = async (user: User) => {
+    const firestore = getFirestore();
+    const userDocRef = doc(firestore, "users", user.uid);
+    const userDoc = await getDoc(userDocRef);
+
+    if (userDoc.exists() && userDoc.data().startDayOfWeek !== 'Sunday') {
+        router.push("/dashboard");
+    } else {
+        if (!userDoc.exists()) {
+            await setDoc(userDocRef, {
+                id: user.uid,
+                email: user.email,
+                displayName: user.displayName,
+                photoURL: user.photoURL,
+                startDayOfWeek: 'Sunday',
+            });
+        }
+        router.push('/setup/start-day');
+    }
+    toast({
+        title: "Login Successful",
+        description: "Welcome back!",
+    });
   };
 
   return (
