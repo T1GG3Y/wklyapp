@@ -234,7 +234,7 @@
     }
   },
   "auth": {
-    "providers": ["email-password", "google"]
+    "providers": ["email-password"]
   },
   "firestore": {
     "/users/{userProfileId}": {
