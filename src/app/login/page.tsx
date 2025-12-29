@@ -43,7 +43,7 @@ export default function LoginPage() {
             await sendEmailVerification(freshUser);
             toast({
               title: "Verification Email Sent",
-              description: "A new verification link has been sent to your email address.",
+              description: "A new verification link has been sent to your email address. Please check your spam folder.",
             });
           } catch (error) {
             console.error("Error resending verification email:", error);
@@ -58,7 +58,8 @@ export default function LoginPage() {
         toast({
           variant: "destructive",
           title: "Email Not Verified",
-          description: "Please verify your email before logging in.",
+          description: "Please verify your email before logging in. Check your spam folder.",
+          duration: 9000,
           action: (
             <ToastAction altText="Resend" onClick={handleResendVerification}>
               Resend
