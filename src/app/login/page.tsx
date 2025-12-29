@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { getAuth, signInWithEmailAndPassword, type User } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, type User, sendEmailVerification } from "firebase/auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { getDoc, doc, getFirestore, setDoc } from "firebase/firestore";
 import { LineChart } from "lucide-react";
+import { ToastAction } from "@/components/ui/toast";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,11 +32,38 @@ export default function LoginPage() {
       await user.reload();
       const freshUser = auth.currentUser; // Get the reloaded user object
 
-      if (!freshUser?.emailVerified) {
+      if (!freshUser) {
+        // Should not happen, but as a safeguard
+        throw new Error("Could not retrieve user after reload.");
+      }
+
+      if (!freshUser.emailVerified) {
+         const handleResendVerification = async () => {
+          try {
+            await sendEmailVerification(freshUser);
+            toast({
+              title: "Verification Email Sent",
+              description: "A new verification link has been sent to your email address.",
+            });
+          } catch (error) {
+            console.error("Error resending verification email:", error);
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "Failed to send a new verification email. Please try again later.",
+            });
+          }
+        };
+        
         toast({
           variant: "destructive",
           title: "Email Not Verified",
-          description: "Please verify your email before logging in. Check your inbox for a verification link.",
+          description: "Please verify your email before logging in.",
+          action: (
+            <ToastAction altText="Resend" onClick={handleResendVerification}>
+              Resend
+            </ToastAction>
+          ),
         });
         await auth.signOut(); // Sign out the user until they verify
         return;
