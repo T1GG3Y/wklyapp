@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { useCollection, useUser } from '@/firebase';
 import type { DocumentData } from 'firebase/firestore';
 import { format } from 'date-fns';
-import { ChevronRight, TrendingUp, TrendingDown, ArrowRightLeft } from 'lucide-react';
+import { ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -17,7 +17,6 @@ interface WeeklySummary extends DocumentData {
   weekEndDate: string;
   totalIncome: number;
   totalExpenses: number;
-  netChange: number;
 }
 
 export default function ReportsScreen() {
