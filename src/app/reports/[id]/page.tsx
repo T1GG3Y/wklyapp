@@ -1,12 +1,12 @@
 
 'use client';
 
-import { useDoc, useUser } from '@/firebase';
+import { useCollection, useDoc, useUser, useFirestore } from '@/firebase';
 import { useParams } from 'next/navigation';
-import { useMemo } from 'react';
-import type { DocumentData } from 'firebase/firestore';
+import { useEffect, useMemo, useState } from 'react';
+import type { DocumentData, Timestamp } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { format } from 'date-fns';
+import { format, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { ArrowDownLeft, ArrowUpRight, TrendingDown, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -27,14 +27,76 @@ interface WeeklySummary extends DocumentData {
   netChange: number;
 }
 
+interface Transaction extends DocumentData {
+  id: string;
+  type: 'Income' | 'Expense';
+  amount: number;
+  date: Timestamp;
+}
+
+interface UserProfile extends DocumentData {
+    startDayOfWeek?: 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
+}
+
+const dayIndexMap = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
+
 export default function ReportDetailPage() {
   const { user } = useUser();
   const params = useParams();
   const reportId = params.id as string;
+  const isThisWeekReport = reportId === 'this-week';
 
-  const summaryPath = useMemo(() => (user && reportId ? `users/${user.uid}/weeklySummaries/${reportId}` : null), [user, reportId]);
-  const { data: summary, loading } = useDoc<WeeklySummary>(summaryPath);
+  const [currentWeekSummary, setCurrentWeekSummary] = useState<WeeklySummary | null>(null);
+
+  const summaryPath = useMemo(() => (user && reportId && !isThisWeekReport ? `users/${user.uid}/weeklySummaries/${reportId}` : null), [user, reportId, isThisWeekReport]);
+  const { data: savedSummary, loading: savedSummaryLoading } = useDoc<WeeklySummary>(summaryPath);
   
+  const userProfilePath = useMemo(() => (user ? `users/${user.uid}` : null), [user]);
+  const { data: userProfile } = useDoc<UserProfile>(userProfilePath);
+
+  const transactionsPath = useMemo(() => (isThisWeekReport && user ? `users/${user.uid}/transactions` : null), [isThisWeekReport, user]);
+  const { data: transactions, loading: transactionsLoading } = useCollection<Transaction>(transactionsPath);
+
+  useEffect(() => {
+    if (isThisWeekReport && userProfile && transactions) {
+        const startDay = userProfile?.startDayOfWeek || 'Sunday';
+        const weekStartsOn = dayIndexMap[startDay as keyof typeof dayIndexMap];
+        const now = new Date();
+        const weekStart = startOfWeek(now, { weekStartsOn });
+        const weekEnd = endOfWeek(now, { weekStartsOn });
+
+        let totalIncome = 0;
+        let totalExpenses = 0;
+
+        transactions.forEach(t => {
+            if (!t.date) return;
+            const transactionDate = t.date.toDate();
+            if (isWithinInterval(transactionDate, { start: weekStart, end: weekEnd })) {
+                if (t.type === 'Income') {
+                    totalIncome += t.amount;
+                } else {
+                    totalExpenses += t.amount;
+                }
+            }
+        });
+
+        setCurrentWeekSummary({
+            id: 'this-week',
+            weekStartDate: format(weekStart, 'yyyy-MM-dd'),
+            weekEndDate: format(weekEnd, 'yyyy-MM-dd'),
+            totalIncome,
+            totalExpenses,
+            netChange: totalIncome - totalExpenses,
+        });
+    } else if (savedSummary) {
+        setCurrentWeekSummary(savedSummary);
+    }
+  }, [isThisWeekReport, userProfile, transactions, savedSummary]);
+
+
+  const summary = isThisWeekReport ? currentWeekSummary : savedSummary;
+  const loading = isThisWeekReport ? transactionsLoading : savedSummaryLoading;
+
   const chartData = useMemo(() => {
     if (!summary) return [];
     return [
@@ -52,13 +114,14 @@ export default function ReportDetailPage() {
   }
 
   const netChange = summary.totalIncome - summary.totalExpenses;
+  const title = isThisWeekReport ? "This Week's Report" : `Week of ${format(new Date(summary.weekStartDate), 'MMMM d, yyyy')}`;
 
   return (
     <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-24 space-y-4 pt-4">
       <Card>
         <CardHeader>
           <CardTitle className="text-xl">
-            Week of {format(new Date(summary.weekStartDate), 'MMMM d, yyyy')}
+            {title}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
