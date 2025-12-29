@@ -7,6 +7,18 @@
       "imageHint": "finance management"
     },
     {
+      "id": "budgeting-simple",
+      "description": "An image showing simple and clear budgeting tools.",
+      "imageUrl": "https://images.unsplash.com/photo-1656049471577-1c10b7359c7d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxidWRnZXRpbmclMjBzaW1wbGV8ZW58MHx8fHwxNzY3MDIxOTgzfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "budgeting simple"
+    },
+    {
+      "id": "achieve-goals",
+      "description": "An image representing the achievement of financial goals.",
+      "imageUrl": "https://images.unsplash.com/photo-1763729948735-df50fc3540df?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxmaW5hbmNpYWwlMjBnb2Fsc3xlbnwwfHx8fDE3NjcwMjE5ODN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "financial goals"
+    },
+    {
       "id": "start-day",
       "description": "An illustration of a calendar to signify starting the week.",
       "imageUrl": "https://images.unsplash.com/photo-1643446757604-c2b7c45c45dc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxjYWxlbmRhciUyMHNjaGVkdWxlfGVufDB8fHx8MTc2NTc3MTIyMXww&ixlib=rb-4.1.0&q=80&w=1080",
