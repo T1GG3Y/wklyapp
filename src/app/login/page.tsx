@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { getDoc, doc, getFirestore, setDoc } from "firebase/firestore";
-import { LineChart } from "lucide-react";
+import { LineChart, Eye, EyeOff } from "lucide-react";
 import { ToastAction } from "@/components/ui/toast";
 
 export default function LoginPage() {
@@ -18,6 +18,7 @@ export default function LoginPage() {
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -58,7 +59,7 @@ export default function LoginPage() {
         toast({
           variant: "destructive",
           title: "Email Not Verified",
-          description: "Please verify your email before logging in. Check your spam folder.",
+          description: "Please verify your email before logging in. Please check your spam folder.",
           duration: 9000,
           action: (
             <ToastAction altText="Resend" onClick={handleResendVerification}>
@@ -158,15 +159,24 @@ export default function LoginPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              required
-              className="h-12"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                required
+                className="h-12 pr-10"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
+            </div>
           </div>
           {error && <p className="text-destructive text-sm font-medium">{error}</p>}
           <Button type="submit" className="w-full h-12 text-lg font-bold">
