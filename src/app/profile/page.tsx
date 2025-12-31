@@ -1,13 +1,12 @@
 
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth, useUser, useFirestore } from "@/firebase";
-import { getAuth, signOut, deleteUser, updateProfile } from "firebase/auth";
-import { LogOut, Shield, Trash2, Save } from "lucide-react";
+import { signOut, deleteUser, updateProfile } from "firebase/auth";
+import { LogOut, Shield, Trash2, Save, MessageSquare } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -206,6 +205,11 @@ export default function ProfilePage() {
 
 
         <div className="p-4 space-y-3 border-t">
+           <Button asChild variant="outline" className="w-full justify-start">
+                <a href="mailto:thetiger@alumni.stanford.edu?subject=Feedback for WKLY App">
+                    <MessageSquare className="mr-2 h-4 w-4" /> Send Feedback
+                </a>
+            </Button>
            <Button asChild variant="outline" className="w-full justify-start">
               <Link href="/privacy">
                 <Shield className="mr-2 h-4 w-4" /> Privacy Policy
