@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth, useUser, useFirestore } from "@/firebase";
 import { signOut, deleteUser, updateProfile } from "firebase/auth";
-import { LogOut, Shield, Trash2, Save, MessageSquare } from "lucide-react";
+import { LogOut, Shield, Trash2, Save, MessageSquare, LifeBuoy } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -210,6 +210,11 @@ export default function ProfilePage() {
                     <MessageSquare className="mr-2 h-4 w-4" /> Send Feedback
                 </a>
             </Button>
+           <Button asChild variant="outline" className="w-full justify-start">
+              <Link href="/help">
+                <LifeBuoy className="mr-2 h-4 w-4" /> Help & FAQ
+              </Link>
+          </Button>
            <Button asChild variant="outline" className="w-full justify-start">
               <Link href="/privacy">
                 <Shield className="mr-2 h-4 w-4" /> Privacy Policy
