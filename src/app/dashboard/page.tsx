@@ -1,13 +1,14 @@
 
 'use client';
 
-import { useCollection, useDoc, useUser } from '@/firebase';
+import { useCollection, useDoc, useUser, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { Menu, Calendar, Receipt, ArrowDownLeft, ArrowUpRight, Edit, TrendingDown, TrendingUp, Wallet, Info } from 'lucide-react';
+import { Receipt, ArrowDownLeft, ArrowUpRight, Edit, Info } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef, useCallback } from 'react';
 import type { DocumentData, Timestamp } from 'firebase/firestore';
-import { startOfWeek, endOfWeek, isWithinInterval, format } from 'date-fns';
+import { collection, query, where, getDocs, setDoc, doc } from 'firebase/firestore';
+import { startOfWeek, endOfWeek, isWithinInterval, format, subWeeks, isBefore } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -101,7 +102,9 @@ const ProgressCircle = ({ title, remaining, total, progress, colorClass, rollove
 
 export default function DashboardScreen() {
   const { user } = useUser();
-  const dayIndexMap = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
+  const firestore = useFirestore();
+  const hasCheckedSummaries = useRef(false);
+  const dayIndexMap: Record<string, 0 | 1 | 2 | 3 | 4 | 5 | 6> = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
 
   const userProfilePath = useMemo(() => (user ? `users/${user.uid}` : null), [user]);
   const incomeSourcesPath = useMemo(() => (user ? `users/${user.uid}/incomeSources` : null), [user]);
@@ -200,9 +203,9 @@ export default function DashboardScreen() {
   }, [incomeSources, requiredExpenses, discretionaryExpenses, transactions, userProfile, lastWeekSummary]);
 
 
-  const { 
-      initialSafeToSpend, 
-      remainingSafeToSpend, 
+  const {
+      initialSafeToSpend,
+      remainingSafeToSpend,
       safeToSpendProgress,
       safeToSpendRollover,
       totalNeedToSpend,
@@ -210,6 +213,78 @@ export default function DashboardScreen() {
       needToSpendProgress,
       needToSpendRollover,
   } = weeklyCalculations;
+
+  // Auto-generate weekly summaries for past weeks
+  const generateMissingSummaries = useCallback(async () => {
+    if (!firestore || !user || !userProfile || hasCheckedSummaries.current) return;
+    hasCheckedSummaries.current = true;
+
+    const startDay = userProfile?.startDayOfWeek || 'Sunday';
+    const weekStartsOn = dayIndexMap[startDay];
+    const now = new Date();
+    const currentWeekStart = startOfWeek(now, { weekStartsOn });
+
+    // Get all existing summaries
+    const summariesRef = collection(firestore, `users/${user.uid}/weeklySummaries`);
+    const summariesSnapshot = await getDocs(summariesRef);
+    const existingSummaryDates = new Set(
+      summariesSnapshot.docs.map(doc => doc.data().weekStartDate)
+    );
+
+    // Get all transactions for calculating summaries
+    const transactionsRef = collection(firestore, `users/${user.uid}/transactions`);
+    const transactionsSnapshot = await getDocs(transactionsRef);
+    const allTransactions = transactionsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Transaction[];
+
+    // Check the last 12 weeks for missing summaries
+    const weeksToCheck = 12;
+    for (let i = 1; i <= weeksToCheck; i++) {
+      const weekStart = subWeeks(currentWeekStart, i);
+      const weekEnd = endOfWeek(weekStart, { weekStartsOn });
+      const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+      const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
+
+      // Skip if summary already exists
+      if (existingSummaryDates.has(weekStartStr)) continue;
+
+      // Calculate totals for this week
+      let totalIncome = 0;
+      let totalExpenses = 0;
+
+      for (const t of allTransactions) {
+        if (!t.date) continue;
+        const transactionDate = t.date.toDate();
+        if (isWithinInterval(transactionDate, { start: weekStart, end: weekEnd })) {
+          if (t.type === 'Income') {
+            totalIncome += t.amount;
+          } else {
+            totalExpenses += t.amount;
+          }
+        }
+      }
+
+      // Only create summary if there were transactions that week
+      if (totalIncome > 0 || totalExpenses > 0) {
+        const summaryDoc = doc(firestore, `users/${user.uid}/weeklySummaries`, weekStartStr);
+        await setDoc(summaryDoc, {
+          weekStartDate: weekStartStr,
+          weekEndDate: weekEndStr,
+          totalIncome,
+          totalExpenses,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    }
+  }, [firestore, user, userProfile, dayIndexMap]);
+
+  useEffect(() => {
+    if (user && userProfile && firestore) {
+      generateMissingSummaries();
+    }
+  }, [user, userProfile, firestore, generateMissingSummaries]);
 
   return (
     <>

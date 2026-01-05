@@ -59,9 +59,9 @@ export default function Home() {
           {walkthroughSteps.map((step, index) => {
             const image = images.find((img) => img.id === step.imageId);
             return (
-              <CarouselItem key={index} className="px-6 flex flex-col justify-center items-center gap-8 h-full pb-20 pt-4">
+              <CarouselItem key={index} className="px-6 flex flex-col justify-center items-center gap-6 h-full pb-4 pt-4">
                 {image && (
-                  <div className="w-full aspect-[4/5] max-h-[50vh] rounded-3xl overflow-hidden shadow-2xl relative bg-white/5 border border-white/10 group">
+                  <div className="w-full aspect-[4/3] max-h-[40vh] rounded-3xl overflow-hidden shadow-2xl relative bg-white/5 border border-white/10 group">
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background/80 z-10"></div>
                     <Image
                       src={image.imageUrl}
