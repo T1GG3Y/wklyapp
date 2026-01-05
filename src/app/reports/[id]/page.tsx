@@ -117,7 +117,7 @@ export default function ReportDetailPage() {
   const title = isThisWeekReport ? "This Week's Report" : `Week of ${format(new Date(summary.weekStartDate), 'MMMM d, yyyy')}`;
 
   return (
-    <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-24 space-y-4 pt-4">
+    <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-28 space-y-4 pt-4">
       <Card>
         <CardHeader>
           <CardTitle className="text-xl">
