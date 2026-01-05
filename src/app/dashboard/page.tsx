@@ -67,7 +67,7 @@ interface WeeklySummary extends DocumentData {
 const SAFE_TO_SPEND_CATEGORY = "Safe to Spend";
 
 const ProgressCircle = ({ title, remaining, total, progress, colorClass, rollover }: { title: string, remaining: number, total: number, progress: number, colorClass: string, rollover?: number }) => (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-2">
         <div
           className="progress-circle-sm neon-glow"
           style={{
@@ -75,10 +75,10 @@ const ProgressCircle = ({ title, remaining, total, progress, colorClass, rollove
           }}
         >
             <div className="relative z-10 text-center">
-                <p className={cn("text-3xl font-black tracking-tight font-headline", remaining >= 0 ? 'text-foreground' : 'text-red-500')}>
+                <p className={cn("text-xl font-black tracking-tight font-headline", remaining >= 0 ? 'text-foreground' : 'text-red-500')}>
                     ${remaining.toFixed(0)}
                 </p>
-                <p className="text-xs text-muted-foreground">of ${total.toFixed(0)}</p>
+                <p className="text-[10px] text-muted-foreground">of ${total.toFixed(0)}</p>
             </div>
         </div>
         <div className="flex items-center gap-1">
@@ -294,7 +294,7 @@ export default function DashboardScreen() {
         </h1>
       </header>
       <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-28 space-y-5 pt-4">
-        <div className="glass rounded-3xl p-6 flex items-start justify-around relative">
+        <div className="glass rounded-3xl p-4 flex items-start justify-around relative">
             <ProgressCircle 
                 title="Safe to Spend"
                 remaining={remainingSafeToSpend}

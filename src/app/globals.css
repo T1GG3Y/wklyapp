@@ -170,7 +170,7 @@
   }
 
   .progress-circle-sm {
-    @apply relative rounded-full w-40 h-40 flex items-center justify-center;
+    @apply relative rounded-full w-28 h-28 flex items-center justify-center;
   }
 
   .progress-circle-sm::before {
