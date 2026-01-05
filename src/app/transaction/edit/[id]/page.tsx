@@ -188,13 +188,13 @@ export default function EditTransactionScreen() {
   return (
     <div className="bg-background text-foreground transition-colors duration-200 min-h-screen flex justify-center">
       <div className="w-full bg-card min-h-screen flex flex-col relative overflow-hidden">
-        <header className="px-4 py-3 flex items-center justify-between border-b sticky top-0 bg-card/90 backdrop-blur-sm z-10">
+        <header className="px-5 py-4 flex items-center justify-between sticky top-0 glass z-20">
           <Button variant="ghost" size="icon" className="-ml-2" asChild>
             <Link href="/dashboard">
               <ArrowLeft className="text-muted-foreground" />
             </Link>
           </Button>
-          <h1 className="text-lg font-bold font-headline text-foreground">
+          <h1 className="text-xl font-bold font-headline text-foreground">
             Edit Transaction
           </h1>
           <div className="w-10">
