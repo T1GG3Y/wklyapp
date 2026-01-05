@@ -205,19 +205,21 @@ export default function BudgetScreen() {
 
   return (
     <>
-      <header className="px-5 py-3 flex items-center justify-center sticky top-0 bg-background/90 backdrop-blur-sm z-20 border-b">
-        <h1 className="text-lg font-bold font-headline tracking-tight text-foreground">
+      <header className="px-5 py-4 flex items-center justify-center sticky top-0 glass z-20">
+        <h1 className="text-xl font-bold font-headline tracking-tight text-foreground">
           My Budget
         </h1>
       </header>
-      <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-24 space-y-4 pt-2">
+      <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-28 space-y-3 pt-4">
         <Accordion type="multiple" defaultValue={['item-1', 'item-2', 'item-3']} className="w-full space-y-2">
             
           {/* Income Sources */}
-          <AccordionItem value="item-1" className='bg-card rounded-lg border px-4 shadow-sm'>
+          <AccordionItem value="item-1" className='glass rounded-2xl px-4'>
             <AccordionTrigger className='py-4'>
                 <div className='flex items-center gap-3'>
-                    <Wallet className='text-primary size-5'/>
+                    <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center">
+                      <Wallet className='text-white size-4'/>
+                    </div>
                     <div className='text-left'>
                         <p className='font-semibold text-foreground'>Income</p>
                         <p className='text-xs text-muted-foreground'>${totalWeeklyIncome.toFixed(2)} / week</p>
@@ -242,10 +244,12 @@ export default function BudgetScreen() {
           </AccordionItem>
 
           {/* Required Expenses */}
-          <AccordionItem value="item-2" className='bg-card rounded-lg border px-4 shadow-sm'>
+          <AccordionItem value="item-2" className='glass rounded-2xl px-4'>
             <AccordionTrigger className='py-4'>
                  <div className='flex items-center gap-3'>
-                    <Home className='text-primary size-5'/>
+                    <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center">
+                      <Home className='text-white size-4'/>
+                    </div>
                     <div className='text-left'>
                         <p className='font-semibold text-foreground'>Required</p>
                         <p className='text-xs text-muted-foreground'>${totalWeeklyRequired.toFixed(2)} / week</p>
@@ -270,10 +274,12 @@ export default function BudgetScreen() {
           </AccordionItem>
           
           {/* Discretionary Spending */}
-          <AccordionItem value="item-3" className='bg-card rounded-lg border px-4 shadow-sm'>
+          <AccordionItem value="item-3" className='glass rounded-2xl px-4'>
             <AccordionTrigger className='py-4'>
                 <div className='flex items-center gap-3'>
-                    <ShoppingBasket className='text-primary size-5'/>
+                    <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center">
+                      <ShoppingBasket className='text-white size-4'/>
+                    </div>
                     <div className='text-left'>
                         <p className='font-semibold text-foreground'>Discretionary</p>
                         <p className='text-xs text-muted-foreground'>${totalWeeklyDiscretionary.toFixed(2)} / week</p>
@@ -298,10 +304,12 @@ export default function BudgetScreen() {
           </AccordionItem>
 
           {/* Loans */}
-          <AccordionItem value="item-4" className='bg-card rounded-lg border px-4 shadow-sm'>
+          <AccordionItem value="item-4" className='glass rounded-2xl px-4'>
             <AccordionTrigger className='py-4'>
                 <div className='flex items-center gap-3'>
-                    <Landmark className='text-primary size-5'/>
+                    <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center">
+                      <Landmark className='text-white size-4'/>
+                    </div>
                     <div className='text-left'>
                         <p className='font-semibold text-foreground'>Loans</p>
                         <p className='text-xs text-muted-foreground'>${totalDebt.toFixed(2)} total</p>
@@ -326,10 +334,12 @@ export default function BudgetScreen() {
           </AccordionItem>
           
           {/* Savings Goals */}
-          <AccordionItem value="item-5" className='bg-card rounded-lg border px-4 shadow-sm'>
+          <AccordionItem value="item-5" className='glass rounded-2xl px-4'>
             <AccordionTrigger className='py-4'>
                 <div className='flex items-center gap-3'>
-                    <PiggyBank className='text-primary size-5'/>
+                    <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center">
+                      <PiggyBank className='text-white size-4'/>
+                    </div>
                     <div className='text-left'>
                         <p className='font-semibold text-foreground'>Savings Goals</p>
                         <p className='text-xs text-muted-foreground'>${totalSavingsTarget.toFixed(2)} target</p>
