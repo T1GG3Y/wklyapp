@@ -180,11 +180,14 @@ export default function ProfilePage() {
 
   return (
     user && (
-      <div className="flex-1 overflow-y-auto no-scrollbar px-4 pb-24 space-y-8 pt-8">
+      <div className="flex-1 overflow-y-auto no-scrollbar">
+        <header className="px-5 py-4 flex items-center justify-center sticky top-0 glass z-20">
+          <h1 className="text-xl font-bold font-headline tracking-tight text-foreground">
+            Your Profile
+          </h1>
+        </header>
+        <main className="px-4 pb-28 space-y-8 pt-4">
         <div className="text-center">
-            <h1 className="text-2xl font-bold font-headline">
-                Your Profile
-            </h1>
             <p className="text-muted-foreground">{user.email}</p>
         </div>
 
@@ -246,6 +249,7 @@ export default function ProfilePage() {
             <LogOut className="mr-2 h-4 w-4" /> Sign Out
           </Button>
         </div>
+        </main>
       </div>
     )
   );

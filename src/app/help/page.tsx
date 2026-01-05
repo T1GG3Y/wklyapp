@@ -42,10 +42,16 @@ const faqs = [
 
 export default function HelpPage() {
   return (
-    <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-24 space-y-4 pt-4">
+    <div className="flex-1 overflow-y-auto no-scrollbar">
+      <header className="px-5 py-4 flex items-center justify-center sticky top-0 glass z-20">
+        <h1 className="text-xl font-bold font-headline tracking-tight text-foreground">
+          Help & FAQ
+        </h1>
+      </header>
+      <main className="px-4 pb-28 space-y-4 pt-4">
         <Accordion type="single" collapsible className="w-full">
             {faqs.map((faq, index) => (
-                <AccordionItem key={index} value={`item-${index}`} className="bg-card rounded-lg border px-4 mb-2 shadow-sm">
+                <AccordionItem key={index} value={`item-${index}`} className="glass rounded-lg border px-4 mb-2 shadow-sm">
                     <AccordionTrigger className="text-left font-semibold text-foreground">
                         {faq.question}
                     </AccordionTrigger>
@@ -55,6 +61,7 @@ export default function HelpPage() {
                 </AccordionItem>
             ))}
         </Accordion>
-    </main>
+      </main>
+    </div>
   );
 }
