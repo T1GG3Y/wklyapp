@@ -66,13 +66,18 @@ interface WeeklySummary extends DocumentData {
 const SAFE_TO_SPEND_CATEGORY = "Safe to Spend";
 
 const ProgressCircle = ({ title, remaining, total, progress, colorClass, rollover }: { title: string, remaining: number, total: number, progress: number, colorClass: string, rollover?: number }) => (
-    <div className="flex flex-col items-center gap-2">
-        <div className="progress-circle-sm" style={{ background: `conic-gradient(${colorClass} ${progress}%, hsl(var(--muted)) 0deg)` }}>
+    <div className="flex flex-col items-center gap-3">
+        <div
+          className="progress-circle-sm neon-glow"
+          style={{
+            background: `conic-gradient(${colorClass} ${progress}%, hsl(var(--muted) / 0.3) 0deg)`,
+          }}
+        >
             <div className="relative z-10 text-center">
-                <p className={cn("text-2xl font-bold tracking-tight font-headline", remaining >= 0 ? 'text-foreground' : 'text-red-500')}>
-                    ${remaining.toFixed(2)}
+                <p className={cn("text-3xl font-black tracking-tight font-headline", remaining >= 0 ? 'text-foreground' : 'text-red-500')}>
+                    ${remaining.toFixed(0)}
                 </p>
-                <p className="text-xs text-muted-foreground">of ${total.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground">of ${total.toFixed(0)}</p>
             </div>
         </div>
         <div className="flex items-center gap-1">
@@ -208,13 +213,13 @@ export default function DashboardScreen() {
 
   return (
     <>
-      <header className="px-5 py-3 flex items-center justify-center sticky top-0 bg-background/90 backdrop-blur-sm z-20 border-b">
-        <h1 className="text-lg font-bold font-headline tracking-tight text-foreground">
+      <header className="px-5 py-4 flex items-center justify-between sticky top-0 glass z-20">
+        <h1 className="text-xl font-bold font-headline tracking-tight text-foreground">
           Dashboard
         </h1>
       </header>
-      <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-24 space-y-4 pt-2">
-        <div className="bg-card rounded-2xl p-6 shadow-soft flex items-start justify-around relative">
+      <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-28 space-y-5 pt-4">
+        <div className="glass rounded-3xl p-6 flex items-start justify-around relative">
             <ProgressCircle 
                 title="Safe to Spend"
                 remaining={remainingSafeToSpend}
@@ -233,11 +238,11 @@ export default function DashboardScreen() {
             />
         </div>
         
-        <div className="bg-card rounded-2xl p-5 shadow-soft">
+        <div className="glass rounded-3xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Receipt className="text-primary h-5 w-5" />
+              <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center">
+                <Receipt className="text-white h-5 w-5" />
               </div>
               <h2 className="text-lg font-bold font-headline text-foreground">
                 Recent Activity
@@ -245,7 +250,7 @@ export default function DashboardScreen() {
             </div>
           </div>
           <div className="flex flex-col items-center text-center mb-6">
-            <Button asChild className="w-full h-12 shadow-lg shadow-primary/25" size="lg">
+            <Button asChild className="w-full" size="lg">
               <Link href="/transaction/new">Add a transaction</Link>
             </Button>
           </div>
