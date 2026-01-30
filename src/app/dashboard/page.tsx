@@ -1,16 +1,19 @@
-
 'use client';
 
 import { useCollection, useDoc, useUser, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { Receipt, ArrowDownLeft, ArrowUpRight, Edit, Info } from 'lucide-react';
+import { Receipt, ArrowDownLeft, ArrowUpRight, Edit } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useEffect, useRef, useCallback } from 'react';
 import type { DocumentData, Timestamp } from 'firebase/firestore';
 import { collection, query, where, getDocs, setDoc, doc } from 'firebase/firestore';
-import { startOfWeek, endOfWeek, isWithinInterval, format, subWeeks, isBefore } from 'date-fns';
+import { startOfWeek, endOfWeek, isWithinInterval, format, subWeeks } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { PageHeader } from '@/components/PageHeader';
+import { TopNav } from '@/components/TopNav';
+import { HealthScoreCircles, SimpleHealthCircle } from '@/components/HealthScoreCircles';
+import { formatCurrency } from '@/lib/format';
+import { CATEGORY_TYPE_NAMES } from '@/lib/constants';
 
 interface IncomeSource extends DocumentData {
   id: string;
@@ -34,16 +37,16 @@ interface Loan extends DocumentData {
 }
 
 interface DiscretionaryExpense extends DocumentData {
-  id:string;
+  id: string;
   category: string;
   plannedAmount: number;
 }
 
 interface SavingsGoal extends DocumentData {
-    id: string;
-    name: string;
-    targetAmount: number;
-    currentAmount: number;
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
 }
 
 interface Transaction extends DocumentData {
@@ -56,60 +59,108 @@ interface Transaction extends DocumentData {
 }
 
 interface UserProfile extends DocumentData {
-    startDayOfWeek?: 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
+  startDayOfWeek?: 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
 }
 
 interface WeeklySummary extends DocumentData {
-    safeToSpendRollover?: number;
-    needToSpendRollover?: number;
+  safeToSpendRollover?: number;
+  needToSpendRollover?: number;
 }
 
-const SAFE_TO_SPEND_CATEGORY = "Safe to Spend";
+// Budget Balance Circle Component
+const BudgetBalanceCircle = ({
+  onBudgetAmount,
+  overBudgetAmount,
+  label
+}: {
+  onBudgetAmount: number;
+  overBudgetAmount: number;
+  label: string;
+}) => {
+  const total = onBudgetAmount + overBudgetAmount;
+  const greenPercent = total > 0 ? (onBudgetAmount / total) * 100 : 100;
+  const isHealthy = overBudgetAmount <= 0;
 
-const ProgressCircle = ({ title, remaining, total, progress, colorClass, rollover }: { title: string, remaining: number, total: number, progress: number, colorClass: string, rollover?: number }) => (
-    <div className="flex flex-col items-center gap-2">
-        <div
-          className="progress-circle-sm neon-glow"
-          style={{
-            background: `conic-gradient(${colorClass} ${progress}%, hsl(var(--muted) / 0.3) 0deg)`,
-          }}
-        >
-            <div className="relative z-10 text-center">
-                <p className={cn("text-xl font-black tracking-tight font-headline", remaining >= 0 ? 'text-foreground' : 'text-red-500')}>
-                    ${remaining.toFixed(0)}
-                </p>
-                <p className="text-[10px] text-muted-foreground">of ${total.toFixed(0)}</p>
-            </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <p className="text-sm font-semibold text-muted-foreground">{title}</p>
-          {rollover !== undefined && rollover !== 0 && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Info className="size-3 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Includes ${rollover.toFixed(2)} from last week.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="relative">
+        <svg width={120} height={120} className="transform -rotate-90">
+          {/* Background circle */}
+          <circle
+            cx={60}
+            cy={60}
+            r={54}
+            fill="none"
+            stroke="hsl(var(--muted) / 0.3)"
+            strokeWidth={12}
+          />
+          {isHealthy ? (
+            /* All green when healthy */
+            <circle
+              cx={60}
+              cy={60}
+              r={54}
+              fill="none"
+              stroke="hsl(142, 76%, 45%)"
+              strokeWidth={12}
+              strokeDasharray={`${2 * Math.PI * 54}`}
+              strokeLinecap="round"
+            />
+          ) : (
+            <>
+              {/* Red portion (over budget) */}
+              <circle
+                cx={60}
+                cy={60}
+                r={54}
+                fill="none"
+                stroke="hsl(0, 62.8%, 50%)"
+                strokeWidth={12}
+                strokeDasharray={`${2 * Math.PI * 54}`}
+              />
+              {/* Green portion (on budget) */}
+              <circle
+                cx={60}
+                cy={60}
+                r={54}
+                fill="none"
+                stroke="hsl(142, 76%, 45%)"
+                strokeWidth={12}
+                strokeDasharray={`${(greenPercent / 100) * 2 * Math.PI * 54} ${2 * Math.PI * 54}`}
+                strokeLinecap="round"
+              />
+            </>
           )}
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <p className={cn(
+            "text-2xl font-black tracking-tight font-headline",
+            isHealthy ? "text-green-500" : "text-foreground"
+          )}>
+            {formatCurrency(onBudgetAmount - overBudgetAmount)}
+          </p>
+          <p className="text-xs text-muted-foreground">balance</p>
         </div>
+      </div>
+      <p className="text-sm font-semibold text-muted-foreground text-center">{label}</p>
     </div>
-);
-
+  );
+};
 
 export default function DashboardScreen() {
   const { user } = useUser();
   const firestore = useFirestore();
   const hasCheckedSummaries = useRef(false);
-  const dayIndexMap: Record<string, 0 | 1 | 2 | 3 | 4 | 5 | 6> = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
+  const dayIndexMap: Record<string, 0 | 1 | 2 | 3 | 4 | 5 | 6> = {
+    Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6
+  };
 
   const userProfilePath = useMemo(() => (user ? `users/${user.uid}` : null), [user]);
   const incomeSourcesPath = useMemo(() => (user ? `users/${user.uid}/incomeSources` : null), [user]);
   const requiredExpensesPath = useMemo(() => (user ? `users/${user.uid}/requiredExpenses` : null), [user]);
   const discretionaryExpensesPath = useMemo(() => (user ? `users/${user.uid}/discretionaryExpenses` : null), [user]);
+  const loansPath = useMemo(() => (user ? `users/${user.uid}/loans` : null), [user]);
+  const savingsGoalsPath = useMemo(() => (user ? `users/${user.uid}/savingsGoals` : null), [user]);
   const transactionsPath = useMemo(() => (user ? `users/${user.uid}/transactions` : null), [user]);
   const weeklySummariesPath = useMemo(() => (user ? `users/${user.uid}/weeklySummaries` : null), [user]);
 
@@ -117,102 +168,106 @@ export default function DashboardScreen() {
   const { data: incomeSources } = useCollection<IncomeSource>(incomeSourcesPath);
   const { data: requiredExpenses } = useCollection<RequiredExpense>(requiredExpensesPath);
   const { data: discretionaryExpenses } = useCollection<DiscretionaryExpense>(discretionaryExpensesPath);
+  const { data: loans } = useCollection<Loan>(loansPath);
+  const { data: savingsGoals } = useCollection<SavingsGoal>(savingsGoalsPath);
   const { data: transactions } = useCollection<Transaction>(transactionsPath, { orderBy: ['date', 'desc'], limit: 15 });
   const { data: weeklySummaries } = useCollection<WeeklySummary>(weeklySummariesPath, { orderBy: ['weekStartDate', 'desc'], limit: 1 });
-  
-  const lastWeekSummary = useMemo(() => (weeklySummaries && weeklySummaries.length > 0 ? weeklySummaries[0] : null), [weeklySummaries]);
 
+  const lastWeekSummary = useMemo(() => (weeklySummaries && weeklySummaries.length > 0 ? weeklySummaries[0] : null), [weeklySummaries]);
 
   const getWeeklyAmount = (amount: number, frequency: string) => {
     switch (frequency) {
-      case 'Weekly':
-        return amount;
-      case 'Bi-weekly':
-        return amount / 2;
-      case 'Monthly':
-        return amount / 4.33;
-      case 'Yearly':
-        return amount / 52;
-      default:
-        return 0;
+      case 'Weekly': return amount;
+      case 'Bi-weekly': return amount / 2;
+      case 'Monthly': return amount / 4.33;
+      case 'Yearly': return amount / 52;
+      default: return 0;
     }
   };
 
   const weeklyCalculations = useMemo(() => {
-    const safeToSpendRollover = lastWeekSummary?.safeToSpendRollover ?? 0;
-    const needToSpendRollover = lastWeekSummary?.needToSpendRollover ?? 0;
-
     const weeklyIncome = (incomeSources || []).reduce((total, source) => {
-        return total + getWeeklyAmount(source.amount, source.frequency);
+      return total + getWeeklyAmount(source.amount, source.frequency);
     }, 0);
 
     const weeklyRequiredExpenses = (requiredExpenses || []).reduce((total, expense) => {
-        return total + getWeeklyAmount(expense.amount, expense.frequency);
+      return total + getWeeklyAmount(expense.amount, expense.frequency);
     }, 0);
-    
+
     const weeklyPlannedDiscretionary = (discretionaryExpenses || []).reduce((total, expense) => {
-        return total + expense.plannedAmount;
+      return total + expense.plannedAmount;
     }, 0);
-    
-    const initialSafeToSpend = (weeklyIncome - weeklyRequiredExpenses) + safeToSpendRollover;
-    const totalNeedToSpend = weeklyPlannedDiscretionary + needToSpendRollover;
 
-    const startDay = userProfile?.startDayOfWeek || 'Sunday';
-    const weekStartsOn = dayIndexMap[startDay as keyof typeof dayIndexMap];
-    const now = new Date();
-    const weekStart = startOfWeek(now, { weekStartsOn });
-    const weekEnd = endOfWeek(now, { weekStartsOn });
+    const weeklyLoanPayments = (loans || []).reduce((total, loan) => {
+      // Assuming loans have a payment amount field - adjust as needed
+      return total;
+    }, 0);
 
-    const weeklyTransactions = (transactions || []).filter(t => {
-        if (!t.date) return false;
-        const transactionDate = t.date.toDate();
-        return isWithinInterval(transactionDate, { start: weekStart, end: weekEnd });
-    });
+    const totalSavingsTarget = (savingsGoals || []).reduce((total, goal) => {
+      return total + goal.targetAmount;
+    }, 0);
 
-    const discretionaryCategories = (discretionaryExpenses || []).map(e => e.category);
-    
-    let weeklyActualDiscretionarySpending = 0;
-    let actualSafeToSpendSpending = 0;
+    const totalSavedAmount = (savingsGoals || []).reduce((total, goal) => {
+      return total + goal.currentAmount;
+    }, 0);
 
-    for (const transaction of weeklyTransactions) {
-      if (transaction.type === 'Expense') {
-        if (discretionaryCategories.includes(transaction.category)) {
-            weeklyActualDiscretionarySpending += transaction.amount;
-        } else if (transaction.category === SAFE_TO_SPEND_CATEGORY) {
-            actualSafeToSpendSpending += transaction.amount;
-        }
-      }
-    }
-    
-    const remainingSafeToSpend = initialSafeToSpend - actualSafeToSpendSpending;
-    const remainingNeedToSpend = totalNeedToSpend - weeklyActualDiscretionarySpending;
-    
-    const safeToSpendProgress = initialSafeToSpend > 0 ? (actualSafeToSpendSpending / initialSafeToSpend) * 100 : 0;
-    const needToSpendProgress = totalNeedToSpend > 0 ? (weeklyActualDiscretionarySpending / totalNeedToSpend) * 100 : 0;
+    // Calculate total budget and spending
+    const totalWeeklyBudget = weeklyIncome;
+    const totalWeeklyExpenses = weeklyRequiredExpenses + weeklyPlannedDiscretionary;
+    const weeklyBalance = weeklyIncome - totalWeeklyExpenses;
+
+    // Calculate on-budget vs over-budget amounts
+    const onBudgetAmount = Math.max(0, weeklyBalance);
+    const overBudgetAmount = Math.max(0, -weeklyBalance);
 
     return {
-      initialSafeToSpend,
-      remainingSafeToSpend,
-      safeToSpendProgress,
-      safeToSpendRollover,
-      totalNeedToSpend,
-      remainingNeedToSpend,
-      needToSpendProgress,
-      needToSpendRollover,
+      weeklyIncome,
+      weeklyRequiredExpenses,
+      weeklyPlannedDiscretionary,
+      totalWeeklyBudget,
+      totalWeeklyExpenses,
+      weeklyBalance,
+      onBudgetAmount,
+      overBudgetAmount,
+      totalSavingsTarget,
+      totalSavedAmount,
     };
-  }, [incomeSources, requiredExpenses, discretionaryExpenses, transactions, userProfile, lastWeekSummary]);
+  }, [incomeSources, requiredExpenses, discretionaryExpenses, loans, savingsGoals]);
 
+  // Calculate health scores for each category
+  const healthScores = useMemo(() => {
+    const { weeklyRequiredExpenses, weeklyPlannedDiscretionary, weeklyIncome } = weeklyCalculations;
 
-  const {
-      initialSafeToSpend,
-      remainingSafeToSpend,
-      safeToSpendProgress,
-      safeToSpendRollover,
-      totalNeedToSpend,
-      remainingNeedToSpend,
-      needToSpendProgress,
-      needToSpendRollover,
-  } = weeklyCalculations;
+    // For now, simplified health calculation
+    // In a full implementation, this would compare actual spending vs budgeted
+    const essentialHealth = weeklyRequiredExpenses <= weeklyIncome * 0.5;
+    const discretionaryHealth = weeklyPlannedDiscretionary <= weeklyIncome * 0.3;
+    const savingsHealth = (savingsGoals || []).length > 0;
+    const loansHealth = (loans || []).length === 0 || true; // Simplified - would check payment status
+
+    return [
+      {
+        name: CATEGORY_TYPE_NAMES.essential,
+        onBudgetAmount: essentialHealth ? weeklyRequiredExpenses : 0,
+        overBudgetAmount: essentialHealth ? 0 : weeklyRequiredExpenses * 0.1
+      },
+      {
+        name: CATEGORY_TYPE_NAMES.discretionary,
+        onBudgetAmount: discretionaryHealth ? weeklyPlannedDiscretionary : 0,
+        overBudgetAmount: discretionaryHealth ? 0 : weeklyPlannedDiscretionary * 0.1
+      },
+      {
+        name: CATEGORY_TYPE_NAMES.savings,
+        onBudgetAmount: weeklyCalculations.totalSavedAmount,
+        overBudgetAmount: 0
+      },
+      {
+        name: CATEGORY_TYPE_NAMES.loans,
+        onBudgetAmount: loansHealth ? 100 : 0,
+        overBudgetAmount: loansHealth ? 0 : 50
+      },
+    ];
+  }, [weeklyCalculations, savingsGoals, loans]);
 
   // Auto-generate weekly summaries for past weeks
   const generateMissingSummaries = useCallback(async () => {
@@ -224,14 +279,12 @@ export default function DashboardScreen() {
     const now = new Date();
     const currentWeekStart = startOfWeek(now, { weekStartsOn });
 
-    // Get all existing summaries
     const summariesRef = collection(firestore, `users/${user.uid}/weeklySummaries`);
     const summariesSnapshot = await getDocs(summariesRef);
     const existingSummaryDates = new Set(
       summariesSnapshot.docs.map(doc => doc.data().weekStartDate)
     );
 
-    // Get all transactions for calculating summaries
     const transactionsRef = collection(firestore, `users/${user.uid}/transactions`);
     const transactionsSnapshot = await getDocs(transactionsRef);
     const allTransactions = transactionsSnapshot.docs.map(doc => ({
@@ -239,7 +292,6 @@ export default function DashboardScreen() {
       ...doc.data()
     })) as Transaction[];
 
-    // Check the last 12 weeks for missing summaries
     const weeksToCheck = 12;
     for (let i = 1; i <= weeksToCheck; i++) {
       const weekStart = subWeeks(currentWeekStart, i);
@@ -247,10 +299,8 @@ export default function DashboardScreen() {
       const weekStartStr = format(weekStart, 'yyyy-MM-dd');
       const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
 
-      // Skip if summary already exists
       if (existingSummaryDates.has(weekStartStr)) continue;
 
-      // Calculate totals for this week
       let totalIncome = 0;
       let totalExpenses = 0;
 
@@ -266,7 +316,6 @@ export default function DashboardScreen() {
         }
       }
 
-      // Only create summary if there were transactions that week
       if (totalIncome > 0 || totalExpenses > 0) {
         const summaryDoc = doc(firestore, `users/${user.uid}/weeklySummaries`, weekStartStr);
         await setDoc(summaryDoc, {
@@ -286,33 +335,28 @@ export default function DashboardScreen() {
     }
   }, [user, userProfile, firestore, generateMissingSummaries]);
 
+  const { onBudgetAmount, overBudgetAmount } = weeklyCalculations;
+
   return (
     <>
-      <header className="px-5 py-4 flex items-center justify-between sticky top-0 glass z-20">
-        <h1 className="text-xl font-bold font-headline tracking-tight text-foreground">
-          Dashboard
-        </h1>
-      </header>
-      <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-28 space-y-5 pt-4">
-        <div className="glass rounded-3xl p-4 flex items-start justify-around relative">
-            <ProgressCircle 
-                title="Safe to Spend"
-                remaining={remainingSafeToSpend}
-                total={initialSafeToSpend}
-                progress={safeToSpendProgress}
-                colorClass="hsl(var(--primary))"
-                rollover={safeToSpendRollover}
-            />
-            <ProgressCircle 
-                title="Need to Spend"
-                remaining={remainingNeedToSpend}
-                total={totalNeedToSpend}
-                progress={needToSpendProgress}
-                colorClass="hsl(var(--secondary))"
-                rollover={needToSpendRollover}
-            />
+      <PageHeader
+        title="HOME"
+        rightContent={<TopNav />}
+      />
+      <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-8 space-y-5 pt-4">
+        {/* Total Weekly Budget Balance */}
+        <div className="glass rounded-3xl p-6 flex flex-col items-center">
+          <BudgetBalanceCircle
+            onBudgetAmount={onBudgetAmount}
+            overBudgetAmount={overBudgetAmount}
+            label="Total Weekly Budget Balance"
+          />
         </div>
-        
+
+        {/* Health Score Section */}
+        <HealthScoreCircles categories={healthScores} />
+
+        {/* Recent Transactions */}
         <div className="glass rounded-3xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -320,7 +364,7 @@ export default function DashboardScreen() {
                 <Receipt className="text-white h-5 w-5" />
               </div>
               <h2 className="text-lg font-bold font-headline text-foreground">
-                Recent Activity
+                Recent Transactions
               </h2>
             </div>
           </div>
@@ -335,7 +379,10 @@ export default function DashboardScreen() {
               transactions.map((transaction) => (
                 <Link key={transaction.id} href={`/transaction/edit/${transaction.id}`} className="block group">
                   <div className="flex items-center gap-4 p-2 rounded-lg group-hover:bg-muted">
-                    <div className={cn("size-10 rounded-lg flex items-center justify-center", transaction.type === 'Income' ? 'bg-primary/10' : 'bg-secondary/10')}>
+                    <div className={cn(
+                      "size-10 rounded-lg flex items-center justify-center",
+                      transaction.type === 'Income' ? 'bg-primary/10' : 'bg-secondary/10'
+                    )}>
                       {transaction.type === 'Income' ? (
                         <ArrowUpRight className="text-primary" />
                       ) : (
@@ -343,13 +390,20 @@ export default function DashboardScreen() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-foreground truncate">{transaction.description || transaction.category}</p>
-                      <p className="text-xs text-muted-foreground">{transaction.date ? format(transaction.date.toDate(), 'MMM d, yyyy') : ''}</p>
+                      <p className="font-semibold text-foreground truncate">
+                        {transaction.description || transaction.category}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {transaction.date ? format(transaction.date.toDate(), 'MMM d, yyyy') : ''}
+                      </p>
                     </div>
-                    <p className={cn("font-bold text-lg", transaction.type === 'Income' ? 'text-primary' : 'text-secondary')}>
-                      {transaction.type === 'Income' ? '+' : '-'}${transaction.amount.toFixed(2)}
+                    <p className={cn(
+                      "font-bold text-lg",
+                      transaction.type === 'Income' ? 'text-primary' : 'text-secondary'
+                    )}>
+                      {transaction.type === 'Income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                     </p>
-                     <Edit className="size-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Edit className="size-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </Link>
               ))
@@ -357,7 +411,6 @@ export default function DashboardScreen() {
               <p className="text-center text-muted-foreground py-4">No recent transactions.</p>
             )}
           </div>
-
         </div>
       </main>
     </>
