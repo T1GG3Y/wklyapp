@@ -3,7 +3,6 @@
 import { Button } from '@/components/ui/button';
 import {
   CalendarDays,
-  Calendar,
   Briefcase,
   Plus,
   Trash2,
@@ -36,12 +35,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { PageHeader } from '@/components/PageHeader';
+import { TopNav } from '@/components/TopNav';
+import { FREQUENCY_OPTIONS, PAGE_HELP, PAGE_SUBHEADERS, type Frequency } from '@/lib/constants';
+import { formatCurrency, formatAmountInput, parseFormattedAmount, getWeeklyAmount } from '@/lib/format';
 
 interface IncomeSource extends DocumentData {
   id: string;
   name: string;
   amount: number;
-  frequency: 'Weekly' | 'Bi-weekly' | 'Monthly' | 'Yearly';
+  frequency: Frequency;
 }
 
 export default function IncomeScreen() {
@@ -53,7 +56,7 @@ export default function IncomeScreen() {
   const [formState, setFormState] = useState({
     name: '',
     amount: '',
-    frequency: 'Monthly' as IncomeSource['frequency'],
+    frequency: 'Monthly' as Frequency,
   });
 
   const incomeSourcesPath = useMemo(() => {
@@ -63,57 +66,61 @@ export default function IncomeScreen() {
   const { data: incomeSources, loading } = useCollection<IncomeSource>(
     incomeSourcesPath
   );
-  
+
   useEffect(() => {
     if (sourceToEdit) {
-        setFormState({
-            name: sourceToEdit.name,
-            amount: sourceToEdit.amount.toString(),
-            frequency: sourceToEdit.frequency,
-        });
+      setFormState({
+        name: sourceToEdit.name,
+        amount: formatAmountInput(sourceToEdit.amount.toString()),
+        frequency: sourceToEdit.frequency,
+      });
     } else {
-        setFormState({ name: '', amount: '', frequency: 'Monthly' });
+      setFormState({ name: '', amount: '', frequency: 'Monthly' });
     }
   }, [sourceToEdit]);
 
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatAmountInput(e.target.value);
+    setFormState({ ...formState, amount: formatted });
+  };
 
   const handleSaveSource = async () => {
     if (!firestore || !user) return;
-    
-    const amount = parseFloat(formState.amount);
-    if (!formState.name || isNaN(amount) || amount <= 0) {
+
+    const amount = parseFormattedAmount(formState.amount);
+    if (!formState.name || amount <= 0) {
       alert('Please enter a valid name and amount.');
       return;
     }
-    
+
     const sourceData = {
-        userProfileId: user.uid,
-        name: formState.name,
-        amount: amount,
-        frequency: formState.frequency,
+      userProfileId: user.uid,
+      name: formState.name,
+      amount: amount,
+      frequency: formState.frequency,
     };
 
     try {
-        if (sourceToEdit) {
-            const sourceDocRef = doc(firestore, `users/${user.uid}/incomeSources`, sourceToEdit.id);
-            await updateDoc(sourceDocRef, sourceData);
-        } else {
-            const incomeSourcesCollection = collection(firestore, `users/${user.uid}/incomeSources`);
-            await addDoc(incomeSourcesCollection, sourceData);
-        }
+      if (sourceToEdit) {
+        const sourceDocRef = doc(firestore, `users/${user.uid}/incomeSources`, sourceToEdit.id);
+        await updateDoc(sourceDocRef, sourceData);
+      } else {
+        const incomeSourcesCollection = collection(firestore, `users/${user.uid}/incomeSources`);
+        await addDoc(incomeSourcesCollection, sourceData);
+      }
       setIsDialogOpen(false);
       setSourceToEdit(null);
     } catch (error) {
       console.error('Error saving income source: ', error);
     }
   };
-  
+
   const handleOpenAddDialog = () => {
     setSourceToEdit(null);
     setFormState({ name: '', amount: '', frequency: 'Monthly' });
     setIsDialogOpen(true);
   };
-  
+
   const handleOpenEditDialog = (source: IncomeSource) => {
     setSourceToEdit(source);
     setIsDialogOpen(true);
@@ -123,84 +130,64 @@ export default function IncomeScreen() {
     if (!firestore || !user) return;
     try {
       await deleteDoc(doc(firestore, `users/${user.uid}/incomeSources`, sourceId));
+      if (sourceToEdit?.id === sourceId) {
+        setIsDialogOpen(false);
+        setSourceToEdit(null);
+      }
     } catch (error) {
       console.error('Error deleting income source:', error);
     }
   };
 
-  const { weeklyTotal, monthlyTotal } = useMemo(() => {
-    if (!incomeSources) return { weeklyTotal: 0, monthlyTotal: 0 };
+  const weeklyTotal = useMemo(() => {
+    if (!incomeSources) return 0;
 
-    let monthly = 0;
-    let weekly = 0;
-
-    incomeSources.forEach((source) => {
-      switch (source.frequency) {
-        case 'Weekly':
-          weekly += source.amount;
-          monthly += source.amount * 4.33;
-          break;
-        case 'Bi-weekly':
-          weekly += source.amount / 2;
-          monthly += source.amount * 2.165;
-          break;
-        case 'Monthly':
-          weekly += source.amount / 4.33;
-          monthly += source.amount;
-          break;
-        case 'Yearly':
-          weekly += source.amount / 52;
-          monthly += source.amount / 12;
-          break;
-      }
-    });
-
-    return { weeklyTotal: weekly, monthlyTotal: monthly };
+    return incomeSources.reduce((total, source) => {
+      return total + getWeeklyAmount(source.amount, source.frequency);
+    }, 0);
   }, [incomeSources]);
 
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-background">
-      <header className="sticky top-0 z-50 flex items-center bg-background/95 backdrop-blur-md p-4 pb-2 justify-between border-b">
-        <h2 className="text-foreground text-xl font-bold font-headline leading-tight flex-1">
-          Income Setup
-        </h2>
-      </header>
+      <PageHeader
+        title="MY INCOME"
+        helpTitle="My Income"
+        helpContent={PAGE_HELP.income}
+        subheader={PAGE_SUBHEADERS.income}
+        rightContent={<TopNav />}
+      />
+
       <main className="flex-1 flex flex-col gap-6 p-4 pb-48">
+        {/* My Weekly Income Total */}
         <section>
-          <div className="flex flex-col gap-2 mb-4">
-            <p className="text-muted-foreground text-sm font-medium uppercase tracking-wider">
-              Summary
+          <div className="flex flex-col gap-3 rounded-2xl p-5 bg-card shadow-sm border">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="text-primary h-5 w-5" />
+              <p className="text-muted-foreground text-sm font-medium">
+                My Weekly Income Total
+              </p>
+            </div>
+            <p className="text-foreground text-3xl font-extrabold tabular-nums">
+              {formatCurrency(weeklyTotal)}
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-3 rounded-2xl p-5 bg-card shadow-sm border relative overflow-hidden group">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="text-primary h-5 w-5" />
-                <p className="text-muted-foreground text-sm font-medium">
-                  Total Weekly
-                </p>
-              </div>
-              <p className="text-foreground text-2xl font-extrabold tabular-nums">
-                ${weeklyTotal.toFixed(2)}
-              </p>
-            </div>
-            <div className="flex flex-col gap-3 rounded-2xl p-5 bg-card shadow-sm border relative overflow-hidden group">
-              <div className="flex items-center gap-2">
-                <Calendar className="text-primary h-5 w-5" />
-                <p className="text-muted-foreground text-sm font-medium">
-                  Total Monthly
-                </p>
-              </div>
-              <p className="text-foreground text-2xl font-extrabold tabular-nums">
-                ${monthlyTotal.toFixed(2)}
-              </p>
-            </div>
-          </div>
         </section>
+
+        {/* Add New Income Button */}
+        <Button
+          className="w-full h-12 text-base font-bold tracking-wide"
+          size="lg"
+          onClick={handleOpenAddDialog}
+        >
+          <Plus className="mr-2 h-5 w-5" />
+          Add New Income
+        </Button>
+
+        {/* MY INCOME SOURCES */}
         <section className="flex flex-col gap-3">
           <div className="flex items-center justify-between px-1">
-            <p className="text-muted-foreground text-sm font-medium uppercase tracking-wider">
-              Active Sources
+            <p className="text-muted-foreground text-sm font-bold uppercase tracking-wider">
+              MY INCOME SOURCES
             </p>
           </div>
           {loading ? (
@@ -219,24 +206,30 @@ export default function IncomeScreen() {
                   <p className="text-foreground text-base font-bold truncate">
                     {source.name}
                   </p>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="text-muted-foreground font-medium">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-primary font-semibold tabular-nums">
+                      {formatCurrency(source.amount)}
+                    </span>
+                    <span className="text-muted-foreground">
                       {source.frequency}
                     </span>
                   </div>
                 </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-foreground text-base font-bold tabular-nums">
-                    ${source.amount.toFixed(2)}
-                  </p>
-                </div>
-                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive -mr-2" onClick={(e) => { e.stopPropagation(); handleDeleteSource(source.id);}}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-destructive -mr-2"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteSource(source.id);
+                  }}
+                >
                   <Trash2 className="size-4" />
                 </Button>
               </div>
             ))
           ) : (
-            <p className="text-muted-foreground text-center">
+            <p className="text-muted-foreground text-center py-4">
               No income sources added yet.
             </p>
           )}
@@ -251,7 +244,7 @@ export default function IncomeScreen() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Source Name</Label>
+              <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
                 placeholder="e.g. Salary"
@@ -263,63 +256,80 @@ export default function IncomeScreen() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="amount">Amount</Label>
-              <Input
-                id="amount"
-                type="number"
-                placeholder="0.00"
-                value={formState.amount}
-                onChange={(e) =>
-                  setFormState({ ...formState, amount: e.target.value })
-                }
-              />
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  $
+                </span>
+                <Input
+                  id="amount"
+                  placeholder="0.00"
+                  value={formState.amount}
+                  onChange={handleAmountChange}
+                  className="pl-8"
+                  inputMode="decimal"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="frequency">Frequency</Label>
               <Select
                 value={formState.frequency}
-                onValueChange={(
-                  value: 'Weekly' | 'Bi-weekly' | 'Monthly' | 'Yearly'
-                ) => setFormState({ ...formState, frequency: value })}
+                onValueChange={(value: Frequency) =>
+                  setFormState({ ...formState, frequency: value })
+                }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select frequency" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Weekly">Weekly</SelectItem>
-                  <SelectItem value="Bi-weekly">Bi-weekly</SelectItem>
-                  <SelectItem value="Monthly">Monthly</SelectItem>
-                  <SelectItem value="Yearly">Yearly</SelectItem>
+                  {FREQUENCY_OPTIONS.map((freq) => (
+                    <SelectItem key={freq} value={freq}>
+                      {freq}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>
-              Cancel
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button className="w-full sm:w-auto" onClick={handleSaveSource}>
+              {sourceToEdit ? 'Update Item' : 'Add'}
             </Button>
-            <Button onClick={handleSaveSource}>{sourceToEdit ? 'Update' : 'Add'} Source</Button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              {sourceToEdit && (
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => handleDeleteSource(sourceToEdit.id)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setIsDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none w-full flex flex-col gap-4">
+
+      {/* Continue Button */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none w-full">
         <Button
-            className="pointer-events-auto w-full h-12 text-base font-bold tracking-wide shadow-lg shadow-primary/20"
-            size="lg"
-            onClick={handleOpenAddDialog}
+          asChild
+          className="pointer-events-auto w-full h-12 text-lg font-bold shadow-lg"
+          size="lg"
         >
-            <Plus className="mr-2 h-5 w-5" />
-            Add New Income
-        </Button>
-        <Button
-            asChild
-            className="pointer-events-auto w-full h-12 text-lg font-bold shadow-[0_4px_20px_rgba(19,236,91,0.3)]"
-            size="lg"
-        >
-            <Link href="/setup/required-expenses">Continue <ArrowRight className="ml-2 h-5 w-5" /></Link>
+          <Link href="/setup/required-expenses">
+            Continue <ArrowRight className="ml-2 h-5 w-5" />
+          </Link>
         </Button>
       </div>
-
     </div>
   );
 }
