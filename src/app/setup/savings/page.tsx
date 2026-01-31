@@ -1,20 +1,35 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
   Plane,
   Car,
   ArrowRight,
   Home,
-  Plus,
   Trash2,
   GraduationCap,
   PiggyBank,
   type LucideIcon,
-  DollarSign,
+  ShieldAlert,
+  Bike,
+  Wallet,
+  MoreHorizontal,
   ArrowLeft,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -23,20 +38,29 @@ import {
   collection,
   addDoc,
   deleteDoc,
+  updateDoc,
   doc,
-  setDoc,
   type DocumentData,
 } from 'firebase/firestore';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { PageHeader } from '@/components/PageHeader';
+import { TopNav } from '@/components/TopNav';
+import { HelpDialog } from '@/components/HelpDialog';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
-import { useRouter } from 'next/navigation';
+  SAVINGS_CATEGORIES,
+  FREQUENCY_OPTIONS,
+  CATEGORY_HELP,
+  PAGE_HELP,
+  PAGE_SUBHEADERS,
+  type Frequency,
+} from '@/lib/constants';
+import {
+  formatCurrency,
+  formatAmountInput,
+  parseFormattedAmount,
+  getWeeklyAmount,
+  formatPercent,
+} from '@/lib/format';
 
 interface SavingsGoal extends DocumentData {
   id: string;
@@ -44,72 +68,221 @@ interface SavingsGoal extends DocumentData {
   category: string;
   targetAmount: number;
   currentAmount: number;
+  weeklyContribution?: number;
+  frequency?: Frequency;
+  description?: string;
 }
 
-const goalCategories: { name: string; icon: LucideIcon }[] = [
-  { name: 'Vacation', icon: Plane },
-  { name: 'Car', icon: Car },
-  { name: 'House down payment', icon: Home },
-  { name: 'Education', icon: GraduationCap },
-  { name: 'Emergency/back-up', icon: PiggyBank },
-];
+interface IncomeSource extends DocumentData {
+  id: string;
+  amount: number;
+  frequency: Frequency;
+}
 
-const categoryIconMap = new Map(goalCategories.map(c => [c.name, c.icon]));
+interface RequiredExpense extends DocumentData {
+  id: string;
+  amount: number;
+  frequency: Frequency;
+}
+
+interface DiscretionaryExpense extends DocumentData {
+  id: string;
+  plannedAmount: number;
+}
+
+// Icon mapping for savings categories
+const iconMap: Record<string, LucideIcon> = {
+  'Emergency Fund': ShieldAlert,
+  'House Purchase': Home,
+  'Automobile': Car,
+  'Vacation': Plane,
+  'Recreation Equipment': Bike,
+  'Education': GraduationCap,
+  'Miscellaneous': MoreHorizontal,
+  'Income Balance': Wallet,
+};
 
 export default function PlannedSavingsScreen() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const router = useRouter();
-  const [isAdding, setIsAdding] = useState(false);
-  const [newGoal, setNewGoal] = useState({
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [goalToEdit, setGoalToEdit] = useState<SavingsGoal | null>(null);
+
+  const [formState, setFormState] = useState<{
+    category: string;
+    name: string;
+    targetAmount: string;
+    currentAmount: string;
+    weeklyContribution: string;
+    frequency: Frequency;
+    description: string;
+  }>({
+    category: 'Emergency Fund',
     name: '',
-    category: 'Vacation',
     targetAmount: '',
+    currentAmount: '',
+    weeklyContribution: '',
+    frequency: 'Weekly',
+    description: '',
   });
 
-  const savingsGoalsPath = useMemo(() => {
-    return user ? `users/${user.uid}/savingsGoals` : null;
-  }, [user]);
+  // Data paths
+  const savingsGoalsPath = useMemo(() => (user ? `users/${user.uid}/savingsGoals` : null), [user]);
+  const incomeSourcesPath = useMemo(() => (user ? `users/${user.uid}/incomeSources` : null), [user]);
+  const requiredExpensesPath = useMemo(() => (user ? `users/${user.uid}/requiredExpenses` : null), [user]);
+  const discretionaryExpensesPath = useMemo(() => (user ? `users/${user.uid}/discretionaryExpenses` : null), [user]);
 
+  // Fetch data
   const { data: goals, loading } = useCollection<SavingsGoal>(savingsGoalsPath);
+  const { data: incomeSources } = useCollection<IncomeSource>(incomeSourcesPath);
+  const { data: requiredExpenses } = useCollection<RequiredExpense>(requiredExpensesPath);
+  const { data: discretionaryExpenses } = useCollection<DiscretionaryExpense>(discretionaryExpensesPath);
 
-  const totalTarget = useMemo(() => {
-    return goals?.reduce((sum, goal) => sum + goal.targetAmount, 0) || 0;
+  // Calculate weekly income
+  const weeklyIncome = useMemo(() => {
+    if (!incomeSources) return 0;
+    return incomeSources.reduce((total, source) => {
+      return total + getWeeklyAmount(source.amount, source.frequency);
+    }, 0);
+  }, [incomeSources]);
+
+  // Calculate weekly expenses (required + discretionary)
+  const weeklyExpenses = useMemo(() => {
+    const requiredTotal = (requiredExpenses || []).reduce((total, expense) => {
+      return total + getWeeklyAmount(expense.amount, expense.frequency);
+    }, 0);
+    const discretionaryTotal = (discretionaryExpenses || []).reduce((total, expense) => {
+      return total + expense.plannedAmount;
+    }, 0);
+    return requiredTotal + discretionaryTotal;
+  }, [requiredExpenses, discretionaryExpenses]);
+
+  // Calculate weekly savings contributions (excluding Income Balance)
+  const weeklyPlannedSavings = useMemo(() => {
+    if (!goals) return 0;
+    return goals
+      .filter(g => g.category !== 'Income Balance')
+      .reduce((total, goal) => {
+        const contribution = goal.weeklyContribution || 0;
+        return total + getWeeklyAmount(contribution, goal.frequency || 'Weekly');
+      }, 0);
   }, [goals]);
 
-  const handleOpenAddDialog = (category: string) => {
-    setNewGoal({
-      name: '',
-      category: category,
-      targetAmount: '',
-    });
-    setIsAdding(true);
+  // Calculate Income Balance (undesignated income)
+  const incomeBalance = useMemo(() => {
+    return Math.max(0, weeklyIncome - weeklyExpenses - weeklyPlannedSavings);
+  }, [weeklyIncome, weeklyExpenses, weeklyPlannedSavings]);
+
+  // Calculate totals
+  const totalSaved = useMemo(() => {
+    if (!goals) return 0;
+    return goals
+      .filter(g => g.category !== 'Income Balance')
+      .reduce((sum, goal) => sum + goal.currentAmount, 0);
+  }, [goals]);
+
+  const savingsToIncomePercent = useMemo(() => {
+    if (weeklyIncome <= 0) return 0;
+    return (weeklyPlannedSavings / weeklyIncome) * 100;
+  }, [weeklyPlannedSavings, weeklyIncome]);
+
+  useEffect(() => {
+    if (goalToEdit) {
+      setFormState({
+        category: goalToEdit.category,
+        name: goalToEdit.name,
+        targetAmount: formatAmountInput(goalToEdit.targetAmount.toString()),
+        currentAmount: formatAmountInput(goalToEdit.currentAmount.toString()),
+        weeklyContribution: formatAmountInput((goalToEdit.weeklyContribution || 0).toString()),
+        frequency: goalToEdit.frequency || 'Weekly',
+        description: goalToEdit.description || '',
+      });
+    } else {
+      setFormState({
+        category: 'Emergency Fund',
+        name: '',
+        targetAmount: '',
+        currentAmount: '',
+        weeklyContribution: '',
+        frequency: 'Weekly',
+        description: '',
+      });
+    }
+  }, [goalToEdit]);
+
+  const handleAmountChange = (field: 'targetAmount' | 'currentAmount' | 'weeklyContribution') => (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const formatted = formatAmountInput(e.target.value);
+    setFormState({ ...formState, [field]: formatted });
   };
 
-  const handleAddGoal = async () => {
+  const handleOpenAddDialog = (category: string) => {
+    // Don't allow adding/editing Income Balance
+    if (category === 'Income Balance') return;
+
+    setGoalToEdit(null);
+    setFormState({
+      category: category,
+      name: '',
+      targetAmount: '',
+      currentAmount: '',
+      weeklyContribution: '',
+      frequency: 'Weekly',
+      description: '',
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleOpenEditDialog = (goal: SavingsGoal) => {
+    // Don't allow editing Income Balance
+    if (goal.category === 'Income Balance') return;
+
+    setGoalToEdit(goal);
+    setIsDialogOpen(true);
+  };
+
+  const handleSaveGoal = async () => {
     if (!firestore || !user) return;
-    const savingsGoalsCollection = collection(
-      firestore,
-      `users/${user.uid}/savingsGoals`
-    );
-    const amount = parseFloat(newGoal.targetAmount);
-    if (!newGoal.name || isNaN(amount) || amount <= 0) {
-      alert('Please enter a valid goal name and target amount.');
+
+    const targetAmount = parseFormattedAmount(formState.targetAmount);
+    const currentAmount = parseFormattedAmount(formState.currentAmount);
+    const weeklyContribution = parseFormattedAmount(formState.weeklyContribution);
+
+    if (targetAmount <= 0 || !formState.name) {
+      alert('Please enter a valid goal name and amount required.');
       return;
     }
 
+    // Require description for Miscellaneous
+    if (formState.category === 'Miscellaneous' && !formState.description.trim()) {
+      alert('Please enter a description for Miscellaneous goals.');
+      return;
+    }
+
+    const goalData = {
+      userProfileId: user.uid,
+      name: formState.name,
+      category: formState.category,
+      targetAmount,
+      currentAmount,
+      weeklyContribution,
+      frequency: formState.frequency,
+      description: formState.description,
+    };
+
     try {
-      await addDoc(savingsGoalsCollection, {
-        userProfileId: user.uid,
-        name: newGoal.name,
-        category: newGoal.category,
-        targetAmount: amount,
-        currentAmount: 0,
-      });
-      setIsAdding(false);
-      setNewGoal({ name: '', category: 'Vacation', targetAmount: '' });
+      if (goalToEdit) {
+        const docRef = doc(firestore, `users/${user.uid}/savingsGoals`, goalToEdit.id);
+        await updateDoc(docRef, goalData);
+      } else {
+        const goalsCollection = collection(firestore, `users/${user.uid}/savingsGoals`);
+        await addDoc(goalsCollection, goalData);
+      }
+      setIsDialogOpen(false);
+      setGoalToEdit(null);
     } catch (error) {
-      console.error('Error adding savings goal: ', error);
+      console.error('Error saving goal:', error);
     }
   };
 
@@ -117,203 +290,336 @@ export default function PlannedSavingsScreen() {
     if (!firestore || !user) return;
     try {
       await deleteDoc(doc(firestore, `users/${user.uid}/savingsGoals`, goalId));
+      if (goalToEdit?.id === goalId) {
+        setIsDialogOpen(false);
+        setGoalToEdit(null);
+      }
     } catch (error) {
       console.error('Error deleting goal:', error);
     }
   };
 
-  const handleFinishSetup = async () => {
-    if (!user || !firestore) return;
-    try {
-      const userDocRef = doc(firestore, 'users', user.uid);
-      await setDoc(userDocRef, { onboardingComplete: true }, { merge: true });
-      router.push('/weekly-summary');
-    } catch (error) {
-      console.error('Error finalizing setup:', error);
-    }
+  // Get goals for a category
+  const getCategoryGoals = (categoryName: string) => {
+    return goals?.filter((g) => g.category === categoryName) || [];
   };
 
   return (
-    <div className="bg-background font-headline flex flex-col min-h-screen overflow-hidden">
-      <header className="shrink-0 z-10">
-        <div className="flex items-center p-4 pb-2 justify-between">
+    <div className="bg-background font-headline antialiased min-h-screen flex flex-col overflow-x-hidden">
+      <PageHeader
+        title="MY PLANNED SAVINGS GOALS"
+        helpTitle="My Planned Savings Goals"
+        helpContent={PAGE_HELP.savings}
+        subheader={PAGE_SUBHEADERS.savings}
+        rightContent={<TopNav />}
+        leftContent={
           <Button variant="ghost" size="icon" asChild>
-            <Link href="/setup/discretionary">
+            <Link href="/setup/loans">
               <ArrowLeft />
             </Link>
           </Button>
-          <h2 className="text-foreground text-lg font-bold leading-tight flex-1 text-center pr-12">
-            Savings Goals
-          </h2>
-        </div>
-        <div className="flex w-full flex-row items-center justify-center gap-3 py-3">
-          <div className="h-2 w-2 rounded-full bg-border"></div>
-          <div className="h-2 w-2 rounded-full bg-border"></div>
-          <div className="h-2 w-8 rounded-full bg-primary shadow-[0_0_10px_rgba(19,236,91,0.4)] transition-all duration-300"></div>
-        </div>
-      </header>
-      <main className="flex-1 overflow-y-auto pb-48 relative">
-        <div className="px-4 pt-2">
-          <h2 className="text-foreground tracking-tight text-[28px] font-bold leading-tight text-left mb-2">
-            What are you saving for?
-          </h2>
-          <p className="text-muted-foreground text-base font-normal leading-normal mb-6">
-            Set your financial goals. Tap a category to add a new goal.
-          </p>
+        }
+      />
+
+      <main className="flex-1 flex flex-col p-4 w-full pb-32">
+        {/* Savings Goals Summary Box */}
+        <div className="bg-card rounded-xl p-4 border shadow-sm mb-6">
+          <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">
+            Savings Goals Summary
+          </h3>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">Weekly Goal</p>
+              <p className="font-bold text-lg text-primary">
+                {formatCurrency(weeklyPlannedSavings)}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">Total Saved</p>
+              <p className="font-bold text-lg text-foreground">
+                {formatCurrency(totalSaved)}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">% of Income</p>
+              <p className="font-bold text-lg text-foreground">
+                {formatPercent(savingsToIncomePercent)}
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 px-4 mb-6">
-          {goalCategories.map(({ name, icon: Icon }) => {
-            const isAdded = goals?.some((g) => g.category === name);
+        {/* Category Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+          {SAVINGS_CATEGORIES.map(({ name }) => {
+            const Icon = iconMap[name] || PiggyBank;
+            const categoryGoals = getCategoryGoals(name);
+            const hasGoals = categoryGoals.length > 0;
+            const isIncomeBalance = name === 'Income Balance';
+
             return (
               <button
                 key={name}
                 onClick={() => handleOpenAddDialog(name)}
-                className={cn(
-                  'flex flex-col items-center justify-center gap-2 text-center p-4 rounded-xl border-2 transition-all duration-200',
-                  isAdded
+                disabled={isIncomeBalance}
+                className={`flex flex-col items-center justify-center gap-2 text-center p-4 rounded-xl border-2 transition-all duration-200 ${
+                  isIncomeBalance
+                    ? 'bg-muted/50 border-muted cursor-default'
+                    : hasGoals
                     ? 'bg-primary/10 border-primary text-primary'
                     : 'bg-card hover:bg-muted border-dashed'
-                )}
+                }`}
               >
-                <Icon className="size-6" />
+                <div className="flex items-center gap-1">
+                  <Icon className="size-5" />
+                  <HelpDialog
+                    title={name}
+                    content={CATEGORY_HELP[name] || CATEGORY_HELP['Miscellaneous']}
+                    iconClassName="size-3"
+                  />
+                </div>
                 <span className="text-sm font-semibold">{name}</span>
+                {isIncomeBalance ? (
+                  <span className="text-xs font-bold text-muted-foreground">
+                    {formatCurrency(incomeBalance)}/wk
+                  </span>
+                ) : hasGoals ? (
+                  <span className="text-xs font-bold">{categoryGoals.length} goal(s)</span>
+                ) : null}
               </button>
             );
           })}
         </div>
 
-        <div className="flex flex-col gap-4 px-4">
-          <h3 className="text-muted-foreground font-bold uppercase tracking-wider text-sm">
-            Your Goals
+        {/* MY GOALS List */}
+        <div className="space-y-3">
+          <h3 className="text-muted-foreground text-sm font-bold uppercase tracking-wider">
+            MY GOALS
           </h3>
           {loading ? (
             <p>Loading goals...</p>
-          ) : goals && goals.length > 0 ? (
-            goals.map((goal) => {
-              const Icon = categoryIconMap.get(goal.category) || PiggyBank;
-              const progress =
-                goal.targetAmount > 0
-                  ? (goal.currentAmount / goal.targetAmount) * 100
-                  : 0;
-              return (
-                <div
-                  key={goal.id}
-                  className="bg-card rounded-xl p-4 border shadow-sm relative group"
-                >
-                  <div className="flex items-start justify-between mb-2">
+          ) : goals && goals.filter(g => g.category !== 'Income Balance').length > 0 ? (
+            goals
+              .filter(g => g.category !== 'Income Balance')
+              .map((goal) => {
+                const Icon = iconMap[goal.category] || PiggyBank;
+                const progress =
+                  goal.targetAmount > 0
+                    ? (goal.currentAmount / goal.targetAmount) * 100
+                    : 0;
+                return (
+                  <div
+                    key={goal.id}
+                    className="bg-card p-4 rounded-xl border shadow-sm cursor-pointer"
+                    onClick={() => handleOpenEditDialog(goal)}
+                  >
                     <div className="flex items-center gap-3">
-                      <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                        <Icon className="size-5" />
+                      <div className="size-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                        <Icon className="size-6 text-primary" />
                       </div>
-                      <div>
-                        <span className="text-foreground font-bold text-lg">
-                          {goal.name}
-                        </span>
-                         <p className="text-sm text-muted-foreground">{goal.category}</p>
+                      <div className="flex-1">
+                        <p className="font-bold text-foreground text-lg">{goal.name}</p>
+                        {goal.description && (
+                          <p className="text-sm text-muted-foreground">{goal.description}</p>
+                        )}
+                        <div className="flex items-center gap-4 mt-1">
+                          <div>
+                            <span className="text-xs text-muted-foreground">Balance Saved</span>
+                            <p className="font-bold text-foreground">
+                              {formatCurrency(goal.currentAmount)}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">Goal Percent</span>
+                            <p className="font-bold text-foreground">{formatPercent(progress)}</p>
+                          </div>
+                        </div>
+                        {/* Progress bar */}
+                        <div className="mt-2 w-full bg-muted rounded-full h-2">
+                          <div
+                            className="bg-primary h-2 rounded-full transition-all"
+                            style={{ width: `${Math.min(100, progress)}%` }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-destructive -mt-1 -mr-2"
-                      onClick={() => handleDeleteGoal(goal.id)}
-                    >
-                      <Trash2 className="size-5" />
-                    </Button>
-                  </div>
-                  
-                  <div className="mt-4">
-                    <div className="flex justify-between items-baseline mb-1">
-                      <span className="text-sm font-medium text-primary">
-                        ${goal.currentAmount.toLocaleString()}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        Target: ${goal.targetAmount.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2.5">
-                      <div
-                        className="bg-primary h-2.5 rounded-full"
-                        style={{ width: `${progress}%` }}
-                      ></div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteGoal(goal.id);
+                        }}
+                      >
+                        <Trash2 className="size-4 text-muted-foreground hover:text-destructive" />
+                      </Button>
                     </div>
                   </div>
-                </div>
-              );
-            })
+                );
+              })
           ) : (
-            <p className="text-center text-muted-foreground py-6">
-              No savings goals added yet.
-            </p>
+            <p className="text-center text-muted-foreground py-4">No savings goals added yet.</p>
           )}
         </div>
       </main>
 
-      {/* Add Goal Dialog */}
-      <Dialog open={isAdding} onOpenChange={setIsAdding}>
+      {/* Add/Edit Goal Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New {newGoal.category} Goal</DialogTitle>
+            <DialogTitle>
+              {goalToEdit ? 'Edit' : 'Add'} {formState.category} Goal
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="name">Goal Name</Label>
+              <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
-                placeholder="e.g. Summer Trip to Italy"
-                value={newGoal.name}
-                onChange={(e) =>
-                  setNewGoal({ ...newGoal, name: e.target.value })
-                }
-                className="h-12 text-base"
+                placeholder="e.g. Summer Vacation Fund"
+                value={formState.name}
+                onChange={(e) => setFormState({ ...formState, name: e.target.value })}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="targetAmount">Target Amount</Label>
-               <div className="relative">
-                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
+
+            {formState.category === 'Miscellaneous' && (
+              <div className="space-y-2">
+                <Label htmlFor="description">
+                  Description <span className="text-destructive">*</span>
+                </Label>
                 <Input
-                    id="targetAmount"
-                    type="number"
-                    placeholder="0.00"
-                    value={newGoal.targetAmount}
-                    onChange={(e) =>
-                      setNewGoal({ ...newGoal, targetAmount: e.target.value })
-                    }
-                    className="pl-10 h-12 text-lg"
+                  id="description"
+                  placeholder="Describe this savings goal"
+                  value={formState.description}
+                  onChange={(e) =>
+                    setFormState({ ...formState, description: e.target.value })
+                  }
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="targetAmount">Amount Required</Label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  $
+                </span>
+                <Input
+                  id="targetAmount"
+                  placeholder="0.00"
+                  value={formState.targetAmount}
+                  onChange={handleAmountChange('targetAmount')}
+                  className="pl-8 h-12 text-lg"
+                  inputMode="decimal"
                 />
               </div>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="currentAmount">Current Balance Saved</Label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  $
+                </span>
+                <Input
+                  id="currentAmount"
+                  placeholder="0.00"
+                  value={formState.currentAmount}
+                  onChange={handleAmountChange('currentAmount')}
+                  className="pl-8"
+                  inputMode="decimal"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="weeklyContribution">Contribution Amount</Label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    $
+                  </span>
+                  <Input
+                    id="weeklyContribution"
+                    placeholder="0.00"
+                    value={formState.weeklyContribution}
+                    onChange={handleAmountChange('weeklyContribution')}
+                    className="pl-8"
+                    inputMode="decimal"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="frequency">Frequency</Label>
+                <Select
+                  value={formState.frequency}
+                  onValueChange={(value: Frequency) =>
+                    setFormState({ ...formState, frequency: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select frequency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FREQUENCY_OPTIONS.map((freq) => (
+                      <SelectItem key={freq} value={freq}>
+                        {freq}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {formState.category !== 'Miscellaneous' && (
+              <div className="space-y-2">
+                <Label htmlFor="description">Description (Optional)</Label>
+                <Input
+                  id="description"
+                  placeholder="Add a note"
+                  value={formState.description}
+                  onChange={(e) =>
+                    setFormState({ ...formState, description: e.target.value })
+                  }
+                />
+              </div>
+            )}
           </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setIsAdding(false)}>
-              Cancel
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button className="w-full sm:w-auto" onClick={handleSaveGoal}>
+              {goalToEdit ? 'Update Item' : 'Add'}
             </Button>
-            <Button onClick={handleAddGoal}>Add Goal</Button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              {goalToEdit && (
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => handleDeleteGoal(goalToEdit.id)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setIsDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <div className="fixed bottom-0 left-0 w-full bg-card/85 backdrop-blur-xl border-t p-5 z-20 pb-8 shadow-up">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mb-1">
-              Total Savings Target
-            </p>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-extrabold text-primary tracking-tight">
-                ${totalTarget.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-              </span>
-            </div>
-          </div>
-        </div>
+      {/* Continue Button */}
+      <div className="p-4 bg-background/95 backdrop-blur-md border-t fixed bottom-0 w-full z-30 left-0 right-0">
         <Button
-          onClick={handleFinishSetup}
-          className="w-full text-lg py-4 h-auto shadow-[0_4px_20px_rgba(19,236,91,0.3)]"
-          size="lg"
+          asChild
+          className="w-full h-14 rounded-xl text-lg font-bold shadow-lg"
         >
-          Finish Setup <ArrowRight className="ml-2 h-5 w-5" />
+          <Link href="/budget">
+            Continue <ArrowRight className="ml-2 h-5 w-5" />
+          </Link>
         </Button>
       </div>
     </div>
