@@ -10,17 +10,51 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, CreditCard, Car, Check, Plus, Trash2, Home, School } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  ArrowLeft,
+  ArrowRight,
+  CreditCard,
+  Car,
+  Trash2,
+  Home,
+  GraduationCap,
+  MoreHorizontal,
+  type LucideIcon,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import {
   collection,
   addDoc,
   deleteDoc,
+  updateDoc,
   doc,
   type DocumentData,
 } from 'firebase/firestore';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+import { PageHeader } from '@/components/PageHeader';
+import { TopNav } from '@/components/TopNav';
+import { HelpDialog } from '@/components/HelpDialog';
+import {
+  LOAN_CATEGORIES,
+  FREQUENCY_OPTIONS,
+  CATEGORY_HELP,
+  PAGE_HELP,
+  PAGE_SUBHEADERS,
+  type Frequency,
+} from '@/lib/constants';
+import {
+  formatCurrency,
+  formatAmountInput,
+  parseFormattedAmount,
+} from '@/lib/format';
 
 interface Loan extends DocumentData {
   id: string;
@@ -28,25 +62,40 @@ interface Loan extends DocumentData {
   category: string;
   totalBalance: number;
   interestRate?: number;
-  paymentFrequency: 'Weekly' | 'Monthly';
+  paymentFrequency: Frequency;
+  description?: string;
 }
 
-const loanCategories = [
-  { name: 'Credit Card', icon: CreditCard },
-  { name: 'Auto', icon: Car },
-  { name: 'Mortgage', icon: Home },
-  { name: 'Student', icon: School },
-];
+// Icon mapping for loan categories
+const iconMap: Record<string, LucideIcon> = {
+  'Credit Cards': CreditCard,
+  'Auto Loan': Car,
+  'Home Mortgages': Home,
+  'Student Loan': GraduationCap,
+  'Miscellaneous': MoreHorizontal,
+};
 
 export default function LoansScreen() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [loanToEdit, setLoanToEdit] = useState<Loan | null>(null);
 
-  const [selectedCategory, setSelectedCategory] = useState('Credit Card');
-  const [balance, setBalance] = useState('');
-  const [loanName, setLoanName] = useState('');
-  const [interestRate, setInterestRate] = useState('');
-  const [frequency, setFrequency] = useState<'Weekly' | 'Monthly'>('Monthly');
+  const [formState, setFormState] = useState<{
+    category: string;
+    name: string;
+    balance: string;
+    interestRate: string;
+    frequency: Frequency;
+    description: string;
+  }>({
+    category: 'Credit Cards',
+    name: '',
+    balance: '',
+    interestRate: '',
+    frequency: 'Monthly',
+    description: '',
+  });
 
   const loansPath = useMemo(() => {
     return user ? `users/${user.uid}/loans` : '';
@@ -54,209 +103,417 @@ export default function LoansScreen() {
 
   const { data: loans, loading } = useCollection<Loan>(loansPath);
 
+  useEffect(() => {
+    if (loanToEdit) {
+      setFormState({
+        category: loanToEdit.category,
+        name: loanToEdit.name,
+        balance: formatAmountInput(loanToEdit.totalBalance.toString()),
+        interestRate: loanToEdit.interestRate?.toString() || '',
+        frequency: loanToEdit.paymentFrequency as Frequency,
+        description: loanToEdit.description || '',
+      });
+    } else {
+      setFormState({
+        category: 'Credit Cards',
+        name: '',
+        balance: '',
+        interestRate: '',
+        frequency: 'Monthly',
+        description: '',
+      });
+    }
+  }, [loanToEdit]);
+
+  const handleBalanceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatAmountInput(e.target.value);
+    setFormState({ ...formState, balance: formatted });
+  };
+
+  const handleOpenAddDialog = (category: string) => {
+    setLoanToEdit(null);
+    setFormState({
+      category: category,
+      name: '',
+      balance: '',
+      interestRate: '',
+      frequency: 'Monthly',
+      description: '',
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleOpenEditDialog = (loan: Loan) => {
+    setLoanToEdit(loan);
+    setIsDialogOpen(true);
+  };
 
   const handleSaveLoan = async () => {
     if (!firestore || !user) return;
-    const loansCollection = collection(firestore, `users/${user.uid}/loans`);
-    const totalBalance = parseFloat(balance);
-    if (isNaN(totalBalance) || totalBalance <= 0 || !loanName) {
+
+    const totalBalance = parseFormattedAmount(formState.balance);
+    if (totalBalance <= 0 || !formState.name) {
       alert('Please enter a valid loan name and balance.');
       return;
     }
 
-    const newLoan: Omit<Loan, 'id'> = {
+    // Require description for Miscellaneous
+    if (formState.category === 'Miscellaneous' && !formState.description.trim()) {
+      alert('Please enter a description for Miscellaneous loans.');
+      return;
+    }
+
+    const loanData = {
       userProfileId: user.uid,
-      name: loanName,
-      category: selectedCategory,
+      name: formState.name,
+      category: formState.category,
       totalBalance,
-      paymentFrequency: frequency,
-      ...(interestRate && { interestRate: parseFloat(interestRate) }),
+      paymentFrequency: formState.frequency,
+      description: formState.description,
+      ...(formState.interestRate && { interestRate: parseFloat(formState.interestRate) }),
     };
 
     try {
-      await addDoc(loansCollection, newLoan);
-      // Reset form
-      setLoanName('');
-      setBalance('');
-      setInterestRate('');
-      setFrequency('Monthly');
-      setSelectedCategory('Credit Card');
+      if (loanToEdit) {
+        const docRef = doc(firestore, `users/${user.uid}/loans`, loanToEdit.id);
+        await updateDoc(docRef, loanData);
+      } else {
+        const loansCollection = collection(firestore, `users/${user.uid}/loans`);
+        await addDoc(loansCollection, loanData);
+      }
+      setIsDialogOpen(false);
+      setLoanToEdit(null);
     } catch (error) {
-      console.error('Error adding loan:', error);
+      console.error('Error saving loan:', error);
     }
   };
-  
+
   const handleDeleteLoan = async (loanId: string) => {
     if (!firestore || !user) return;
     try {
       await deleteDoc(doc(firestore, `users/${user.uid}/loans`, loanId));
+      if (loanToEdit?.id === loanId) {
+        setIsDialogOpen(false);
+        setLoanToEdit(null);
+      }
     } catch (error) {
-      console.error("Error deleting loan:", error);
+      console.error('Error deleting loan:', error);
     }
   };
 
+  // Calculate loans health (simplified)
+  const loansHealth = useMemo(() => {
+    if (!loans || loans.length === 0) {
+      return { upToDate: 0, delinquent: 0, delinquentAmount: 0 };
+    }
+    // Simplified - in real implementation would check payment status
+    return {
+      upToDate: loans.length,
+      delinquent: 0,
+      delinquentAmount: 0,
+    };
+  }, [loans]);
+
+  // Get loans for a category
+  const getCategoryLoans = (categoryName: string) => {
+    return loans?.filter((l) => l.category === categoryName) || [];
+  };
 
   return (
     <div className="bg-background font-headline antialiased min-h-screen flex flex-col overflow-x-hidden">
-      <div className="sticky top-0 z-50 flex items-center bg-background p-4 pb-2 justify-between border-b">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/setup/required-expenses">
-            <ArrowLeft />
-          </Link>
-        </Button>
-        <h2 className="text-foreground text-lg font-bold leading-tight flex-1 text-center pr-12">
-          Add Your Loans
-        </h2>
-      </div>
+      <PageHeader
+        title="MY LOANS"
+        helpTitle="My Loans"
+        helpContent={PAGE_HELP.loans}
+        subheader={PAGE_SUBHEADERS.loans}
+        rightContent={<TopNav />}
+        leftContent={
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/setup/discretionary">
+              <ArrowLeft />
+            </Link>
+          </Button>
+        }
+      />
+
       <main className="flex-1 flex flex-col p-4 w-full pb-32">
-        <div className="mb-6 text-center">
-          <h1 className="text-foreground tracking-tight text-[28px] font-bold leading-tight pb-2 pt-2">
-            Let&apos;s track your debt
-          </h1>
-          <p className="text-muted-foreground text-base font-normal">
-            Add your loans one by one. Choose a category to get started.
-          </p>
-        </div>
-        
-        {/* Loan Items List */}
-        <div className="space-y-3 mb-6">
-          <h3 className="text-muted-foreground text-sm font-bold uppercase tracking-wider">Your Loans</h3>
-           {loading ? <p>Loading loans...</p> : loans && loans.length > 0 ? (
-            loans.map(loan => (
-              <div key={loan.id} className="bg-card p-3 rounded-lg border flex items-center gap-3">
-                <div className="size-10 bg-muted rounded-md flex items-center justify-center">
-                   {loan.category === 'Credit Card' && <CreditCard className="size-5 text-muted-foreground" />}
-                   {loan.category === 'Auto' && <Car className="size-5 text-muted-foreground" />}
-                   {loan.category === 'Mortgage' && <Home className="size-5 text-muted-foreground" />}
-                   {loan.category === 'Student' && <School className="size-5 text-muted-foreground" />}
-                </div>
-                <div className="flex-1">
-                  <p className="font-bold text-foreground">{loan.name}</p>
-                  <p className="text-sm text-muted-foreground">${loan.totalBalance.toFixed(2)}</p>
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => handleDeleteLoan(loan.id)}>
-                  <Trash2 className="size-4 text-muted-foreground" />
-                </Button>
-              </div>
-            ))
-           ) : (
-            <p className="text-center text-muted-foreground py-4">No loans added yet.</p>
-           )}
-        </div>
-
-
-        <div className="bg-card border rounded-xl p-4">
-          <div className="mb-4">
-            <Label className="text-muted-foreground text-sm font-medium mb-2 block">Category</Label>
-            <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
-              {loanCategories.map(({ name, icon: Icon }) => (
-                <Button
-                  key={name}
-                  onClick={() => setSelectedCategory(name)}
-                  variant={selectedCategory === name ? 'default' : 'outline'}
-                  className="pl-3 pr-4"
-                  size="lg"
-                >
-                  <Icon className="mr-2 h-5 w-5" />
-                  {name}
-                </Button>
-              ))}
+        {/* Loans Health Box */}
+        <div className="bg-card rounded-xl p-4 border shadow-sm mb-6">
+          <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">
+            Loans Health
+          </h3>
+          <div className="flex items-center gap-4">
+            {/* Health Bar */}
+            <div className="flex-1 h-6 bg-muted rounded-full overflow-hidden">
+              {loans && loans.length > 0 ? (
+                <>
+                  <div
+                    className="h-full bg-green-500 float-left"
+                    style={{
+                      width: `${(loansHealth.upToDate / (loansHealth.upToDate + loansHealth.delinquent)) * 100}%`,
+                    }}
+                  />
+                  {loansHealth.delinquent > 0 && (
+                    <div
+                      className="h-full bg-red-500 float-left"
+                      style={{
+                        width: `${(loansHealth.delinquent / (loansHealth.upToDate + loansHealth.delinquent)) * 100}%`,
+                      }}
+                    />
+                  )}
+                </>
+              ) : (
+                <div className="h-full bg-muted" />
+              )}
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-xs text-muted-foreground">Delinquent</p>
+              <p className="font-bold text-destructive">
+                {formatCurrency(loansHealth.delinquentAmount)}
+              </p>
             </div>
           </div>
-          <div className="space-y-4">
-            <div>
-              <Label
-                className="block text-muted-foreground text-sm font-medium mb-2"
-                htmlFor="loan-name"
+          <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+            <span>{loansHealth.upToDate} Up to Date</span>
+            <span>{loansHealth.delinquent} Delinquent</span>
+          </div>
+        </div>
+
+        {/* Category Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+          {LOAN_CATEGORIES.map(({ name }) => {
+            const Icon = iconMap[name] || MoreHorizontal;
+            const categoryLoans = getCategoryLoans(name);
+            const hasLoans = categoryLoans.length > 0;
+
+            return (
+              <button
+                key={name}
+                onClick={() => handleOpenAddDialog(name)}
+                className={`flex flex-col items-center justify-center gap-2 text-center p-4 rounded-xl border-2 transition-all duration-200 ${
+                  hasLoans
+                    ? 'bg-primary/10 border-primary text-primary'
+                    : 'bg-card hover:bg-muted border-dashed'
+                }`}
               >
-                Loan Name
-              </Label>
+                <div className="flex items-center gap-1">
+                  <Icon className="size-5" />
+                  <HelpDialog
+                    title={name}
+                    content={CATEGORY_HELP[name] || CATEGORY_HELP['Miscellaneous']}
+                    iconClassName="size-3"
+                  />
+                </div>
+                <span className="text-sm font-semibold">{name}</span>
+                {hasLoans && (
+                  <span className="text-xs font-bold">{categoryLoans.length} loan(s)</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* MY LOANS List */}
+        <div className="space-y-3">
+          <h3 className="text-muted-foreground text-sm font-bold uppercase tracking-wider">
+            MY LOANS
+          </h3>
+          {loading ? (
+            <p>Loading loans...</p>
+          ) : loans && loans.length > 0 ? (
+            loans.map((loan) => {
+              const Icon = iconMap[loan.category] || MoreHorizontal;
+              return (
+                <div
+                  key={loan.id}
+                  className="bg-card p-4 rounded-xl border shadow-sm cursor-pointer"
+                  onClick={() => handleOpenEditDialog(loan)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="size-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                      <Icon className="size-6 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-bold text-foreground text-lg">{loan.name}</p>
+                      {loan.description && (
+                        <p className="text-sm text-muted-foreground">{loan.description}</p>
+                      )}
+                      <div className="flex items-center gap-3 mt-1">
+                        <div>
+                          <span className="text-xs text-muted-foreground">Current Balance</span>
+                          <p className="font-bold text-foreground">
+                            {formatCurrency(loan.totalBalance)}
+                          </p>
+                        </div>
+                        {loan.interestRate && (
+                          <div>
+                            <span className="text-xs text-muted-foreground">Interest Rate</span>
+                            <p className="font-bold text-foreground">{loan.interestRate}%</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteLoan(loan.id);
+                      }}
+                    >
+                      <Trash2 className="size-4 text-muted-foreground hover:text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <p className="text-center text-muted-foreground py-4">No loans added yet.</p>
+          )}
+        </div>
+      </main>
+
+      {/* Add/Edit Loan Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {loanToEdit ? 'Edit' : 'Add'} {formState.category}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
               <Input
-                id="loan-name"
-                className="w-full bg-background text-foreground text-base py-3 px-4 rounded-lg border h-auto focus:border-primary"
+                id="name"
                 placeholder="e.g. Chase Sapphire"
-                type="text"
-                value={loanName}
-                onChange={(e) => setLoanName(e.target.value)}
+                value={formState.name}
+                onChange={(e) => setFormState({ ...formState, name: e.target.value })}
               />
             </div>
-            <div>
-              <Label
-                className="block text-muted-foreground text-sm font-medium mb-2"
-                htmlFor="balance"
-              >
-                Total Outstanding Balance
-              </Label>
-              <div className="relative group">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-xl font-light">
+
+            {formState.category === 'Miscellaneous' && (
+              <div className="space-y-2">
+                <Label htmlFor="description">
+                  Description <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="description"
+                  placeholder="Describe this loan"
+                  value={formState.description}
+                  onChange={(e) =>
+                    setFormState({ ...formState, description: e.target.value })
+                  }
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="balance">Amount</Label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
                   $
                 </span>
                 <Input
                   id="balance"
-                  className="w-full bg-background text-foreground text-2xl font-bold py-4 pl-10 pr-4 rounded-lg border focus:border-primary h-auto"
                   placeholder="0.00"
-                  type="number"
-                  value={balance}
-                  onChange={(e) => setBalance(e.target.value)}
+                  value={formState.balance}
+                  onChange={handleBalanceChange}
+                  className="pl-8 h-12 text-lg"
+                  inputMode="decimal"
                 />
               </div>
             </div>
+
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="block text-muted-foreground text-sm font-medium mb-2">
-                  Interest Rate (APR)
-                </Label>
+              <div className="space-y-2">
+                <Label htmlFor="interestRate">Interest Rate</Label>
                 <div className="relative">
                   <Input
-                    className="w-full bg-background text-foreground text-base py-3 px-4 rounded-lg border h-auto focus:border-primary"
-                    placeholder="e.g. 21.5"
-                    type="number"
-                    value={interestRate}
-                    onChange={(e) => setInterestRate(e.target.value)}
+                    id="interestRate"
+                    placeholder="0.00"
+                    value={formState.interestRate}
+                    onChange={(e) =>
+                      setFormState({ ...formState, interestRate: e.target.value })
+                    }
+                    inputMode="decimal"
                   />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">
                     %
                   </span>
                 </div>
               </div>
-              <div>
-                <Label className="block text-muted-foreground text-sm font-medium mb-2">
-                  Payment Frequency
-                </Label>
+              <div className="space-y-2">
+                <Label htmlFor="frequency">Frequency</Label>
                 <Select
-                  value={frequency}
-                  onValueChange={(value: 'Weekly' | 'Monthly') =>
-                    setFrequency(value)
+                  value={formState.frequency}
+                  onValueChange={(value: Frequency) =>
+                    setFormState({ ...formState, frequency: value })
                   }
                 >
-                  <SelectTrigger className="w-full bg-background text-foreground text-base py-3 px-4 rounded-lg border h-auto focus:border-primary">
-                    <SelectValue placeholder="Select..." />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select frequency" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Monthly">Monthly</SelectItem>
-                    <SelectItem value="Weekly">Weekly</SelectItem>
+                    {FREQUENCY_OPTIONS.map((freq) => (
+                      <SelectItem key={freq} value={freq}>
+                        {freq}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            <Button
-              className="w-full font-bold text-lg py-3 h-auto rounded-lg"
-              size="lg"
-              onClick={handleSaveLoan}
-            >
-              <Plus className="mr-2 h-5 w-5" /> Add This Loan
-            </Button>
+
+            {formState.category !== 'Miscellaneous' && (
+              <div className="space-y-2">
+                <Label htmlFor="description">Description (Optional)</Label>
+                <Input
+                  id="description"
+                  placeholder="Add a note"
+                  value={formState.description}
+                  onChange={(e) =>
+                    setFormState({ ...formState, description: e.target.value })
+                  }
+                />
+              </div>
+            )}
           </div>
-        </div>
-      </main>
-      <div className="sticky bottom-4 w-full mt-auto px-4">
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button className="w-full sm:w-auto" onClick={handleSaveLoan}>
+              {loanToEdit ? 'Update Item' : 'Add'}
+            </Button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              {loanToEdit && (
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => handleDeleteLoan(loanToEdit.id)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setIsDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Continue Button */}
+      <div className="p-4 bg-background/95 backdrop-blur-md border-t fixed bottom-0 w-full z-30 left-0 right-0">
         <Button
           asChild
-          className="w-full font-bold text-lg py-4 h-auto rounded-xl shadow-lg shadow-primary/20"
-          size="lg"
+          className="w-full h-14 rounded-xl text-lg font-bold shadow-lg"
         >
-          <Link href="/setup/discretionary">
-            Finished Adding Loans <Check className="ml-2 h-6 w-6" />
+          <Link href="/setup/savings">
+            Continue <ArrowRight className="ml-2 h-5 w-5" />
           </Link>
         </Button>
       </div>
