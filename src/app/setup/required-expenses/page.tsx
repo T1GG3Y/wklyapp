@@ -438,8 +438,13 @@ export default function RequiredExpensesScreen() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
               {expenseToEdit ? 'Edit' : 'Add'} {formState.category}
+              <HelpDialog
+                title={formState.category}
+                content={CATEGORY_HELP[formState.category] || CATEGORY_HELP['Miscellaneous']}
+                iconClassName="size-4"
+              />
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
