@@ -292,47 +292,52 @@ export default function RequiredExpensesScreen() {
               title="My Essential Budget Totals"
             />
 
-            {/* Planned Expenses - shows ALL categories */}
+            {/* Planned Expenses - only shows categories with values */}
             <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
               <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider p-4 border-b text-center">
                 Planned Expenses
               </h3>
               <div className="divide-y">
-                {ESSENTIAL_CATEGORIES.map(({ name }) => {
-                  const expense = getCategoryExpense(name);
-                  const weeklyAmount = expense ? getWeeklyAmount(expense.amount, expense.frequency) : 0;
-                  // Amount available would come from actual spending data
-                  const amountAvailable = weeklyAmount; // Placeholder
+                {expenses && expenses.length > 0 ? (
+                  expenses.map((expense) => {
+                    const weeklyAmount = getWeeklyAmount(expense.amount, expense.frequency);
+                    // Amount available would come from actual spending data
+                    const amountAvailable = weeklyAmount; // Placeholder
 
-                  return (
-                    <div
-                      key={name}
-                      className="flex items-center px-4 py-3 hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-foreground truncate">{name}</p>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm">
-                        <div className="text-right">
-                          <p className="text-xs text-muted-foreground">WK Budget</p>
-                          <p className="font-semibold">{expense ? formatCurrency(weeklyAmount) : '—'}</p>
+                    return (
+                      <div
+                        key={expense.id}
+                        className="flex items-center px-4 py-3 hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-foreground truncate">{expense.category}</p>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs text-muted-foreground">Amount Available</p>
-                          <p className="font-semibold">{expense ? formatCurrency(amountAvailable) : '—'}</p>
+                        <div className="flex items-center gap-4 text-sm">
+                          <div className="text-right">
+                            <p className="text-xs text-muted-foreground">WK Budget</p>
+                            <p className="font-semibold">{formatCurrency(weeklyAmount)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-muted-foreground">Amount Available</p>
+                            <p className="font-semibold">{formatCurrency(amountAvailable)}</p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            onClick={() => handleOpenEditDialog(expense)}
+                          >
+                            <Edit className="size-4" />
+                          </Button>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          onClick={() => expense ? handleOpenEditDialog(expense) : handleOpenAddDialog(name)}
-                        >
-                          <Edit className="size-4" />
-                        </Button>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                ) : (
+                  <p className="text-center text-muted-foreground py-6">
+                    No expenses added yet.
+                  </p>
+                )}
               </div>
             </div>
           </div>
