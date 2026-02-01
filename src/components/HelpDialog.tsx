@@ -34,6 +34,7 @@ export function HelpDialog({
             className
           )}
           aria-label={`Help: ${title}`}
+          onClick={(e) => e.stopPropagation()}
         >
           <Info
             className={cn("h-4 w-4 text-muted-foreground", iconClassName)}
