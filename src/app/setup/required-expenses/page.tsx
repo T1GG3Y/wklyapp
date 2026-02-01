@@ -64,6 +64,7 @@ import { TopNav } from '@/components/TopNav';
 import { HelpDialog } from '@/components/HelpDialog';
 import { BudgetTotalsBox } from '@/components/BudgetTotalsBox';
 import { OverBudgetBox } from '@/components/OverBudgetBox';
+import { Edit } from 'lucide-react';
 import {
   ESSENTIAL_CATEGORIES,
   FREQUENCY_OPTIONS,
@@ -271,143 +272,200 @@ export default function RequiredExpensesScreen() {
       />
 
       <main className={cn("flex-1 overflow-y-auto relative", isEditMode ? "pb-8" : "pb-32")}>
-        {/* Budget Totals and Over Budget */}
-        <div className="px-4 py-4 space-y-3">
-          <BudgetTotalsBox weeklyTotal={weeklyTotal} title="Budget Totals" />
-          <OverBudgetBox overBudgetAmount={overBudgetTotal} />
-        </div>
-
-        {/* Category Selection - Button in edit mode, Grid in onboarding */}
         {isEditMode ? (
-          <div className="px-4 mb-6">
+          /* Edit Mode Layout - matches PowerPoint mockup */
+          <div className="px-4 py-4 space-y-4">
+            {/* Add New Expense Button */}
             <Button
               onClick={() => handleOpenAddDialog('Groceries')}
               className="w-full h-12"
             >
               <Plus className="size-5 mr-2" />
-              Add Expense
+              Add New Expense
             </Button>
+
+            {/* My Essential Budget Totals */}
+            <BudgetTotalsBox
+              weeklyTotal={weeklyTotal}
+              overbudgetTotal={overBudgetTotal}
+              showOverbudget={true}
+              title="My Essential Budget Totals"
+            />
+
+            {/* Planned Expenses - shows ALL categories */}
+            <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
+              <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider p-4 border-b text-center">
+                Planned Expenses
+              </h3>
+              <div className="divide-y">
+                {ESSENTIAL_CATEGORIES.map(({ name }) => {
+                  const expense = getCategoryExpense(name);
+                  const weeklyAmount = expense ? getWeeklyAmount(expense.amount, expense.frequency) : 0;
+                  // Amount available would come from actual spending data
+                  const amountAvailable = weeklyAmount; // Placeholder
+
+                  return (
+                    <div
+                      key={name}
+                      className="flex items-center px-4 py-3 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-foreground truncate">{name}</p>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="text-right">
+                          <p className="text-xs text-muted-foreground">WK Budget</p>
+                          <p className="font-semibold">{expense ? formatCurrency(weeklyAmount) : '—'}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-muted-foreground">Amount Available</p>
+                          <p className="font-semibold">{expense ? formatCurrency(amountAvailable) : '—'}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          onClick={() => expense ? handleOpenEditDialog(expense) : handleOpenAddDialog(name)}
+                        >
+                          <Edit className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 px-4 mb-6">
-            {ESSENTIAL_CATEGORIES.map(({ name, icon: iconName }) => {
-              const Icon = iconMap[name] || MoreHorizontal;
-              const expense = getCategoryExpense(name);
-              const isAdded = !!expense;
-              const weeklyAmount = expense ? getWeeklyAmount(expense.amount, expense.frequency) : 0;
+          /* Onboarding Layout - category grid */
+          <>
+            {/* Budget Totals and Over Budget */}
+            <div className="px-4 py-4 space-y-3">
+              <BudgetTotalsBox weeklyTotal={weeklyTotal} title="Budget Totals" />
+              <OverBudgetBox overBudgetAmount={overBudgetTotal} />
+            </div>
 
-              return (
-                <button
-                  key={name}
-                  onClick={() => isAdded && expense ? handleOpenEditDialog(expense) : handleOpenAddDialog(name)}
-                  className={cn(
-                    'flex flex-col items-center justify-center gap-2 text-center p-4 rounded-xl border-2 transition-all duration-200 relative',
-                    isAdded
-                      ? 'bg-primary/10 border-primary text-primary'
-                      : 'bg-card hover:bg-muted border-dashed'
-                  )}
-                >
-                  <div className="flex items-center gap-1">
-                    <Icon className="size-5" />
-                    <HelpDialog
-                      title={name}
-                      content={CATEGORY_HELP[name] || CATEGORY_HELP['Miscellaneous']}
-                      iconClassName="size-3"
-                    />
-                  </div>
-                  <span className="text-sm font-semibold">{name}</span>
-                  {isAdded && (
-                    <div className="text-xs space-y-0.5">
-                      <p className="font-bold">{formatCurrency(weeklyAmount)}/wk</p>
+            {/* Category Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 px-4 mb-6">
+              {ESSENTIAL_CATEGORIES.map(({ name, icon: iconName }) => {
+                const Icon = iconMap[name] || MoreHorizontal;
+                const expense = getCategoryExpense(name);
+                const isAdded = !!expense;
+                const weeklyAmount = expense ? getWeeklyAmount(expense.amount, expense.frequency) : 0;
+
+                return (
+                  <button
+                    key={name}
+                    onClick={() => isAdded && expense ? handleOpenEditDialog(expense) : handleOpenAddDialog(name)}
+                    className={cn(
+                      'flex flex-col items-center justify-center gap-2 text-center p-4 rounded-xl border-2 transition-all duration-200 relative',
+                      isAdded
+                        ? 'bg-primary/10 border-primary text-primary'
+                        : 'bg-card hover:bg-muted border-dashed'
+                    )}
+                  >
+                    <div className="flex items-center gap-1">
+                      <Icon className="size-5" />
+                      <HelpDialog
+                        title={name}
+                        content={CATEGORY_HELP[name] || CATEGORY_HELP['Miscellaneous']}
+                        iconClassName="size-3"
+                      />
                     </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Added Expenses List */}
-        <div className="flex flex-col gap-4 px-4">
-          <h3 className="text-muted-foreground font-bold uppercase tracking-wider text-sm">
-            Added Expenses
-          </h3>
-          {loading ? (
-            <p>Loading expenses...</p>
-          ) : expenses && expenses.length > 0 ? (
-            expenses.map((expense) => {
-              const Icon = iconMap[expense.category] || MoreHorizontal;
-              const weeklyAmount = getWeeklyAmount(expense.amount, expense.frequency);
-
-              return (
-                <div
-                  key={expense.id}
-                  className="bg-card rounded-xl p-4 border shadow-sm relative group cursor-pointer"
-                  onClick={() => handleOpenEditDialog(expense)}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                        <Icon className="size-5" />
+                    <span className="text-sm font-semibold">{name}</span>
+                    {isAdded && (
+                      <div className="text-xs space-y-0.5">
+                        <p className="font-bold">{formatCurrency(weeklyAmount)}/wk</p>
                       </div>
-                      <div>
-                        <span className="text-foreground font-bold text-lg block">
-                          {expense.category}
-                        </span>
-                        {expense.description && (
-                          <span className="text-muted-foreground text-sm">
-                            {expense.description}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteExpense(expense.id);
-                      }}
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Added Expenses List */}
+            <div className="flex flex-col gap-4 px-4">
+              <h3 className="text-muted-foreground font-bold uppercase tracking-wider text-sm">
+                Added Expenses
+              </h3>
+              {loading ? (
+                <p>Loading expenses...</p>
+              ) : expenses && expenses.length > 0 ? (
+                expenses.map((expense) => {
+                  const Icon = iconMap[expense.category] || MoreHorizontal;
+                  const weeklyAmount = getWeeklyAmount(expense.amount, expense.frequency);
+
+                  return (
+                    <div
+                      key={expense.id}
+                      className="bg-card rounded-xl p-4 border shadow-sm relative group cursor-pointer"
+                      onClick={() => handleOpenEditDialog(expense)}
                     >
-                      <Trash2 className="size-5" />
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-background rounded-lg px-3 py-2 border">
-                      <label className="block text-xs text-muted-foreground mb-0.5 uppercase tracking-wider font-semibold">
-                        Weekly
-                      </label>
-                      <span className="font-bold text-foreground">
-                        {formatCurrency(weeklyAmount)}
-                      </span>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                            <Icon className="size-5" />
+                          </div>
+                          <div>
+                            <span className="text-foreground font-bold text-lg block">
+                              {expense.category}
+                            </span>
+                            {expense.description && (
+                              <span className="text-muted-foreground text-sm">
+                                {expense.description}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteExpense(expense.id);
+                          }}
+                        >
+                          <Trash2 className="size-5" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="bg-background rounded-lg px-3 py-2 border">
+                          <label className="block text-xs text-muted-foreground mb-0.5 uppercase tracking-wider font-semibold">
+                            Weekly
+                          </label>
+                          <span className="font-bold text-foreground">
+                            {formatCurrency(weeklyAmount)}
+                          </span>
+                        </div>
+                        <div className="bg-background rounded-lg px-3 py-2 border">
+                          <label className="block text-xs text-muted-foreground mb-0.5 uppercase tracking-wider font-semibold">
+                            Amount
+                          </label>
+                          <span className="font-bold text-foreground">
+                            {formatCurrency(expense.amount)}
+                          </span>
+                        </div>
+                        <div className="bg-background rounded-lg px-3 py-2 border">
+                          <label className="block text-xs text-muted-foreground mb-0.5 uppercase tracking-wider font-semibold">
+                            Frequency
+                          </label>
+                          <span className="font-bold text-foreground text-sm">
+                            {expense.frequency}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="bg-background rounded-lg px-3 py-2 border">
-                      <label className="block text-xs text-muted-foreground mb-0.5 uppercase tracking-wider font-semibold">
-                        Amount
-                      </label>
-                      <span className="font-bold text-foreground">
-                        {formatCurrency(expense.amount)}
-                      </span>
-                    </div>
-                    <div className="bg-background rounded-lg px-3 py-2 border">
-                      <label className="block text-xs text-muted-foreground mb-0.5 uppercase tracking-wider font-semibold">
-                        Frequency
-                      </label>
-                      <span className="font-bold text-foreground text-sm">
-                        {expense.frequency}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <p className="text-center text-muted-foreground py-6">
-              No essential expenses added yet.
-            </p>
-          )}
-        </div>
+                  );
+                })
+              ) : (
+                <p className="text-center text-muted-foreground py-6">
+                  No essential expenses added yet.
+                </p>
+              )}
+            </div>
+          </>
+        )}
       </main>
 
       {/* Add/Edit Expense Dialog */}

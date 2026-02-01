@@ -8,6 +8,8 @@ interface BudgetTotalsBoxProps {
   weeklyTotal: number;
   monthlyTotal?: number;
   yearlyTotal?: number;
+  overbudgetTotal?: number;
+  showOverbudget?: boolean;
   title?: string;
   className?: string;
 }
@@ -16,6 +18,8 @@ export function BudgetTotalsBox({
   weeklyTotal,
   monthlyTotal,
   yearlyTotal,
+  overbudgetTotal = 0,
+  showOverbudget = false,
   title = "Budget Totals",
   className,
 }: BudgetTotalsBoxProps) {
@@ -33,7 +37,7 @@ export function BudgetTotalsBox({
       <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">
         {title}
       </h3>
-      <div className="grid grid-cols-3 gap-3">
+      <div className={cn("grid gap-3", showOverbudget ? "grid-cols-4" : "grid-cols-3")}>
         <div className="text-center">
           <p className="text-xs text-muted-foreground mb-1">Weekly</p>
           <p className="text-lg font-bold text-foreground">
@@ -52,6 +56,14 @@ export function BudgetTotalsBox({
             {formatCurrency(yearly)}
           </p>
         </div>
+        {showOverbudget && (
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground mb-1">Overbudget</p>
+            <p className={cn("text-lg font-bold", overbudgetTotal > 0 ? "text-destructive" : "text-foreground")}>
+              {formatCurrency(overbudgetTotal)}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
