@@ -113,7 +113,6 @@ export default function RequiredExpensesScreen() {
   const isEditMode = searchParams.get('source') === 'budget';
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [expenseToEdit, setExpenseToEdit] = useState<RequiredExpense | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string>('Groceries');
 
   const [formState, setFormState] = useState<{
     category: string;
@@ -278,39 +277,16 @@ export default function RequiredExpensesScreen() {
           <OverBudgetBox overBudgetAmount={overBudgetTotal} />
         </div>
 
-        {/* Category Selection - Dropdown in edit mode, Grid in onboarding */}
+        {/* Category Selection - Button in edit mode, Grid in onboarding */}
         {isEditMode ? (
           <div className="px-4 mb-6">
-            <div className="flex gap-3">
-              <Select
-                value={selectedCategory}
-                onValueChange={setSelectedCategory}
-              >
-                <SelectTrigger className="flex-1 h-12">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ESSENTIAL_CATEGORIES.map(({ name }) => {
-                    const Icon = iconMap[name] || MoreHorizontal;
-                    return (
-                      <SelectItem key={name} value={name}>
-                        <div className="flex items-center gap-2">
-                          <Icon className="size-4" />
-                          <span>{name}</span>
-                        </div>
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-              <Button
-                onClick={() => handleOpenAddDialog(selectedCategory)}
-                className="h-12 px-6"
-              >
-                <Plus className="size-5 mr-2" />
-                Add Expense
-              </Button>
-            </div>
+            <Button
+              onClick={() => handleOpenAddDialog('Groceries')}
+              className="w-full h-12"
+            >
+              <Plus className="size-5 mr-2" />
+              Add Expense
+            </Button>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 px-4 mb-6">
@@ -438,16 +414,48 @@ export default function RequiredExpensesScreen() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {expenseToEdit ? 'Edit' : 'Add'} {formState.category}
-              <HelpDialog
-                title={formState.category}
-                content={CATEGORY_HELP[formState.category] || CATEGORY_HELP['Miscellaneous']}
-                iconClassName="size-4"
-              />
+            <DialogTitle>
+              {expenseToEdit ? `Edit ${formState.category}` : 'Add Expense'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            {/* Category dropdown - only show when adding new expense */}
+            {!expenseToEdit && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="category">Category</Label>
+                  <HelpDialog
+                    title={formState.category}
+                    content={CATEGORY_HELP[formState.category] || CATEGORY_HELP['Miscellaneous']}
+                    iconClassName="size-3"
+                  />
+                </div>
+                <Select
+                  value={formState.category}
+                  onValueChange={(value) =>
+                    setFormState({ ...formState, category: value })
+                  }
+                >
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ESSENTIAL_CATEGORIES.map(({ name }) => {
+                      const Icon = iconMap[name] || MoreHorizontal;
+                      return (
+                        <SelectItem key={name} value={name}>
+                          <div className="flex items-center gap-2">
+                            <Icon className="size-4" />
+                            <span>{name}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {formState.category === 'Miscellaneous' && (
               <div className="space-y-2">
                 <Label htmlFor="description">
