@@ -23,7 +23,9 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useState, useMemo, useEffect } from 'react';
+import { Plus } from 'lucide-react';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import {
   collection,
@@ -107,8 +109,11 @@ const iconMap: Record<string, LucideIcon> = {
 export default function RequiredExpensesScreen() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const searchParams = useSearchParams();
+  const isEditMode = searchParams.get('source') === 'budget';
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [expenseToEdit, setExpenseToEdit] = useState<RequiredExpense | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('Groceries');
 
   const [formState, setFormState] = useState<{
     category: string;
@@ -259,57 +264,92 @@ export default function RequiredExpensesScreen() {
         rightContent={<TopNav />}
         leftContent={
           <Button variant="ghost" size="icon" asChild>
-            <Link href="/setup/income">
+            <Link href={isEditMode ? "/budget" : "/setup/income"}>
               <ArrowLeft />
             </Link>
           </Button>
         }
       />
 
-      <main className="flex-1 overflow-y-auto pb-32 relative">
+      <main className={cn("flex-1 overflow-y-auto relative", isEditMode ? "pb-8" : "pb-32")}>
         {/* Budget Totals and Over Budget */}
         <div className="px-4 py-4 space-y-3">
           <BudgetTotalsBox weeklyTotal={weeklyTotal} title="Budget Totals" />
           <OverBudgetBox overBudgetAmount={overBudgetTotal} />
         </div>
 
-        {/* Category Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 px-4 mb-6">
-          {ESSENTIAL_CATEGORIES.map(({ name, icon: iconName }) => {
-            const Icon = iconMap[name] || MoreHorizontal;
-            const expense = getCategoryExpense(name);
-            const isAdded = !!expense;
-            const weeklyAmount = expense ? getWeeklyAmount(expense.amount, expense.frequency) : 0;
-
-            return (
-              <button
-                key={name}
-                onClick={() => isAdded && expense ? handleOpenEditDialog(expense) : handleOpenAddDialog(name)}
-                className={cn(
-                  'flex flex-col items-center justify-center gap-2 text-center p-4 rounded-xl border-2 transition-all duration-200 relative',
-                  isAdded
-                    ? 'bg-primary/10 border-primary text-primary'
-                    : 'bg-card hover:bg-muted border-dashed'
-                )}
+        {/* Category Selection - Dropdown in edit mode, Grid in onboarding */}
+        {isEditMode ? (
+          <div className="px-4 mb-6">
+            <div className="flex gap-3">
+              <Select
+                value={selectedCategory}
+                onValueChange={setSelectedCategory}
               >
-                <div className="flex items-center gap-1">
-                  <Icon className="size-5" />
-                  <HelpDialog
-                    title={name}
-                    content={CATEGORY_HELP[name] || CATEGORY_HELP['Miscellaneous']}
-                    iconClassName="size-3"
-                  />
-                </div>
-                <span className="text-sm font-semibold">{name}</span>
-                {isAdded && (
-                  <div className="text-xs space-y-0.5">
-                    <p className="font-bold">{formatCurrency(weeklyAmount)}/wk</p>
+                <SelectTrigger className="flex-1 h-12">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ESSENTIAL_CATEGORIES.map(({ name }) => {
+                    const Icon = iconMap[name] || MoreHorizontal;
+                    return (
+                      <SelectItem key={name} value={name}>
+                        <div className="flex items-center gap-2">
+                          <Icon className="size-4" />
+                          <span>{name}</span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={() => handleOpenAddDialog(selectedCategory)}
+                className="h-12 px-6"
+              >
+                <Plus className="size-5 mr-2" />
+                Add Expense
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 px-4 mb-6">
+            {ESSENTIAL_CATEGORIES.map(({ name, icon: iconName }) => {
+              const Icon = iconMap[name] || MoreHorizontal;
+              const expense = getCategoryExpense(name);
+              const isAdded = !!expense;
+              const weeklyAmount = expense ? getWeeklyAmount(expense.amount, expense.frequency) : 0;
+
+              return (
+                <button
+                  key={name}
+                  onClick={() => isAdded && expense ? handleOpenEditDialog(expense) : handleOpenAddDialog(name)}
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-2 text-center p-4 rounded-xl border-2 transition-all duration-200 relative',
+                    isAdded
+                      ? 'bg-primary/10 border-primary text-primary'
+                      : 'bg-card hover:bg-muted border-dashed'
+                  )}
+                >
+                  <div className="flex items-center gap-1">
+                    <Icon className="size-5" />
+                    <HelpDialog
+                      title={name}
+                      content={CATEGORY_HELP[name] || CATEGORY_HELP['Miscellaneous']}
+                      iconClassName="size-3"
+                    />
                   </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
+                  <span className="text-sm font-semibold">{name}</span>
+                  {isAdded && (
+                    <div className="text-xs space-y-0.5">
+                      <p className="font-bold">{formatCurrency(weeklyAmount)}/wk</p>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Added Expenses List */}
         <div className="flex flex-col gap-4 px-4">
@@ -530,17 +570,19 @@ export default function RequiredExpensesScreen() {
         </DialogContent>
       </Dialog>
 
-      {/* Continue Button */}
-      <div className="p-4 bg-background/95 backdrop-blur-md border-t fixed bottom-0 w-full z-30 left-0 right-0">
-        <Button
-          asChild
-          className="w-full h-14 rounded-xl text-lg font-bold shadow-lg"
-        >
-          <Link href="/setup/discretionary">
-            Continue <ArrowRight className="ml-2 h-5 w-5" />
-          </Link>
-        </Button>
-      </div>
+      {/* Continue Button - only show during onboarding */}
+      {!isEditMode && (
+        <div className="p-4 bg-background/95 backdrop-blur-md border-t fixed bottom-0 w-full z-30 left-0 right-0">
+          <Button
+            asChild
+            className="w-full h-14 rounded-xl text-lg font-bold shadow-lg"
+          >
+            <Link href="/setup/discretionary">
+              Continue <ArrowRight className="ml-2 h-5 w-5" />
+            </Link>
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

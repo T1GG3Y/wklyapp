@@ -322,7 +322,7 @@ export default function BudgetScreen() {
             <AccordionContent className="divide-y border-t">
               <div className="pt-2 pb-3">
                 <Button variant="outline" className="w-full" asChild>
-                  <Link href="/setup/required-expenses">
+                  <Link href="/setup/required-expenses?source=budget">
                     <Edit className="mr-2 size-4" /> Edit My Essential Expenses
                   </Link>
                 </Button>
