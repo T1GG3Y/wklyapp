@@ -272,60 +272,67 @@ export default function DashboardScreen() {
   // Auto-generate weekly summaries for past weeks
   const generateMissingSummaries = useCallback(async () => {
     if (!firestore || !user || !userProfile || hasCheckedSummaries.current) return;
-    hasCheckedSummaries.current = true;
 
-    const startDay = userProfile?.startDayOfWeek || 'Sunday';
-    const weekStartsOn = dayIndexMap[startDay];
-    const now = new Date();
-    const currentWeekStart = startOfWeek(now, { weekStartsOn });
+    try {
+      const startDay = userProfile?.startDayOfWeek || 'Sunday';
+      const weekStartsOn = dayIndexMap[startDay];
+      const now = new Date();
+      const currentWeekStart = startOfWeek(now, { weekStartsOn });
 
-    const summariesRef = collection(firestore, `users/${user.uid}/weeklySummaries`);
-    const summariesSnapshot = await getDocs(summariesRef);
-    const existingSummaryDates = new Set(
-      summariesSnapshot.docs.map(doc => doc.data().weekStartDate)
-    );
+      const summariesRef = collection(firestore, `users/${user.uid}/weeklySummaries`);
+      const summariesSnapshot = await getDocs(summariesRef);
+      const existingSummaryDates = new Set(
+        summariesSnapshot.docs.map(doc => doc.data().weekStartDate)
+      );
 
-    const transactionsRef = collection(firestore, `users/${user.uid}/transactions`);
-    const transactionsSnapshot = await getDocs(transactionsRef);
-    const allTransactions = transactionsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Transaction[];
+      const transactionsRef = collection(firestore, `users/${user.uid}/transactions`);
+      const transactionsSnapshot = await getDocs(transactionsRef);
+      const allTransactions = transactionsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Transaction[];
 
-    const weeksToCheck = 12;
-    for (let i = 1; i <= weeksToCheck; i++) {
-      const weekStart = subWeeks(currentWeekStart, i);
-      const weekEnd = endOfWeek(weekStart, { weekStartsOn });
-      const weekStartStr = format(weekStart, 'yyyy-MM-dd');
-      const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
+      const weeksToCheck = 12;
+      for (let i = 1; i <= weeksToCheck; i++) {
+        const weekStart = subWeeks(currentWeekStart, i);
+        const weekEnd = endOfWeek(weekStart, { weekStartsOn });
+        const weekStartStr = format(weekStart, 'yyyy-MM-dd');
+        const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
 
-      if (existingSummaryDates.has(weekStartStr)) continue;
+        if (existingSummaryDates.has(weekStartStr)) continue;
 
-      let totalIncome = 0;
-      let totalExpenses = 0;
+        let totalIncome = 0;
+        let totalExpenses = 0;
 
-      for (const t of allTransactions) {
-        if (!t.date) continue;
-        const transactionDate = t.date.toDate();
-        if (isWithinInterval(transactionDate, { start: weekStart, end: weekEnd })) {
-          if (t.type === 'Income') {
-            totalIncome += t.amount;
-          } else {
-            totalExpenses += t.amount;
+        for (const t of allTransactions) {
+          if (!t.date) continue;
+          const transactionDate = t.date.toDate();
+          if (isWithinInterval(transactionDate, { start: weekStart, end: weekEnd })) {
+            if (t.type === 'Income') {
+              totalIncome += t.amount;
+            } else {
+              totalExpenses += t.amount;
+            }
           }
+        }
+
+        if (totalIncome > 0 || totalExpenses > 0) {
+          const summaryDoc = doc(firestore, `users/${user.uid}/weeklySummaries`, weekStartStr);
+          await setDoc(summaryDoc, {
+            weekStartDate: weekStartStr,
+            weekEndDate: weekEndStr,
+            totalIncome,
+            totalExpenses,
+            createdAt: new Date().toISOString(),
+          });
         }
       }
 
-      if (totalIncome > 0 || totalExpenses > 0) {
-        const summaryDoc = doc(firestore, `users/${user.uid}/weeklySummaries`, weekStartStr);
-        await setDoc(summaryDoc, {
-          weekStartDate: weekStartStr,
-          weekEndDate: weekEndStr,
-          totalIncome,
-          totalExpenses,
-          createdAt: new Date().toISOString(),
-        });
-      }
+      // Only mark as checked after successful completion
+      hasCheckedSummaries.current = true;
+    } catch (error) {
+      console.error('Error generating weekly summaries:', error);
+      // Don't set hasCheckedSummaries so it will retry on next visit
     }
   }, [firestore, user, userProfile, dayIndexMap]);
 
