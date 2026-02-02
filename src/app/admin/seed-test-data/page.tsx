@@ -40,6 +40,7 @@ export default function SeedTestDataPage() {
           category: 'Paycheck',
           date: Timestamp.fromDate(subDays(weekDate, 2)),
           createdAt: Timestamp.now(),
+          userProfileId: user.uid,
         });
         transactionsCreated++;
 
@@ -58,6 +59,7 @@ export default function SeedTestDataPage() {
             category: expense.category,
             date: Timestamp.fromDate(subDays(weekDate, Math.floor(Math.random() * 5))),
             createdAt: Timestamp.now(),
+            userProfileId: user.uid,
           });
           transactionsCreated++;
         }
