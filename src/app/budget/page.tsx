@@ -356,7 +356,7 @@ export default function BudgetScreen() {
             <AccordionContent className="divide-y border-t">
               <div className="pt-2 pb-3">
                 <Button variant="outline" className="w-full" asChild>
-                  <Link href="/setup/discretionary">
+                  <Link href="/setup/discretionary?source=budget">
                     <Edit className="mr-2 size-4" /> Edit My Discretionary Expenses
                   </Link>
                 </Button>
