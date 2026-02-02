@@ -31,8 +31,12 @@ import {
   Wallet,
   MoreHorizontal,
   ArrowLeft,
+  Plus,
+  Edit,
+  BarChart3,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import {
   collection,
@@ -42,7 +46,9 @@ import {
   doc,
   type DocumentData,
 } from 'firebase/firestore';
-import { useMemo, useState, useEffect } from 'react';
+import { Suspense, useMemo, useState, useEffect } from 'react';
+import { addWeeks, format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/PageHeader';
 import { TopNav } from '@/components/TopNav';
 import { HelpDialog } from '@/components/HelpDialog';
@@ -102,9 +108,11 @@ const iconMap: Record<string, LucideIcon> = {
   'Income Balance': Wallet,
 };
 
-export default function PlannedSavingsScreen() {
+function PlannedSavingsContent() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const searchParams = useSearchParams();
+  const isEditMode = searchParams.get('source') === 'budget';
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [goalToEdit, setGoalToEdit] = useState<SavingsGoal | null>(null);
 
@@ -185,6 +193,38 @@ export default function PlannedSavingsScreen() {
     if (weeklyIncome <= 0) return 0;
     return (weeklyPlannedSavings / weeklyIncome) * 100;
   }, [weeklyPlannedSavings, weeklyIncome]);
+
+  // Calculate savings totals for edit mode
+  const savingsTotals = useMemo(() => {
+    if (!goals || goals.length === 0) {
+      return { totalTarget: 0, totalSaved: 0, totalRemaining: 0, percentSaved: 0 };
+    }
+
+    const filteredGoals = goals.filter(g => g.category !== 'Income Balance');
+    const totalTarget = filteredGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
+    const totalSaved = filteredGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
+    const totalRemaining = totalTarget - totalSaved;
+    const percentSaved = totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
+
+    return {
+      totalTarget,
+      totalSaved,
+      totalRemaining,
+      percentSaved,
+    };
+  }, [goals]);
+
+  // Calculate estimated target date based on weekly contribution
+  const getEstimatedTargetDate = (goal: SavingsGoal) => {
+    const remaining = goal.targetAmount - goal.currentAmount;
+    if (remaining <= 0) return null; // Goal already reached
+
+    const weeklyContribution = goal.weeklyContribution || 0;
+    if (weeklyContribution <= 0) return null; // No contribution set
+
+    const weeksToGoal = Math.ceil(remaining / getWeeklyAmount(weeklyContribution, goal.frequency || 'Weekly'));
+    return addWeeks(new Date(), weeksToGoal);
+  };
 
   useEffect(() => {
     if (goalToEdit) {
@@ -314,152 +354,276 @@ export default function PlannedSavingsScreen() {
         rightContent={<TopNav />}
         leftContent={
           <Button variant="ghost" size="icon" asChild>
-            <Link href="/setup/loans">
+            <Link href={isEditMode ? "/budget" : "/setup/loans"}>
               <ArrowLeft />
             </Link>
           </Button>
         }
       />
 
-      <main className="flex-1 flex flex-col p-4 w-full pb-32">
-        {/* Savings Goals Summary Box */}
-        <div className="bg-card rounded-xl p-4 border shadow-sm mb-6">
-          <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">
-            Savings Goals Summary
-          </h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">Weekly Goal</p>
-              <p className="font-bold text-lg text-primary">
-                {formatCurrency(weeklyPlannedSavings)}
-              </p>
+      <main className={cn("flex-1 flex flex-col p-4 w-full", isEditMode ? "pb-8" : "pb-32")}>
+        {isEditMode ? (
+          /* Edit Mode Layout */
+          <div className="space-y-4">
+            {/* Add New Saving Goal Button */}
+            <Button
+              onClick={() => handleOpenAddDialog('Emergency Fund')}
+              className="w-full h-12"
+            >
+              <Plus className="size-5 mr-2" />
+              Add New Saving Goal
+            </Button>
+
+            {/* My Total Savings Box */}
+            <div className="bg-card rounded-xl p-4 border shadow-sm">
+              <div className="flex items-center gap-4 mb-3">
+                <h3 className="text-sm font-bold text-foreground">My Total Savings</h3>
+                <div className="flex-1 flex items-center gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Weekly Goal: </span>
+                    <span className="font-semibold">{formatCurrency(weeklyPlannedSavings)}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Total Saved: </span>
+                    <span className="font-semibold">{formatCurrency(savingsTotals.totalSaved)}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">% Saved: </span>
+                    <span className="font-semibold">{formatPercent(savingsTotals.percentSaved)}</span>
+                  </div>
+                </div>
+              </div>
+              {/* Progress Bar */}
+              <div className="relative h-6 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all duration-300"
+                  style={{ width: `${savingsTotals.percentSaved}%` }}
+                />
+                <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold">
+                  {savingsTotals.percentSaved.toFixed(0)}%
+                </span>
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">Total Saved</p>
-              <p className="font-bold text-lg text-foreground">
-                {formatCurrency(totalSaved)}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">% of Income</p>
-              <p className="font-bold text-lg text-foreground">
-                {formatPercent(savingsToIncomePercent)}
-              </p>
+
+            {/* My Savings Goals Table */}
+            <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
+              <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider p-4 border-b text-center">
+                My Savings Goals
+              </h3>
+              <div className="divide-y">
+                {goals && goals.filter(g => g.category !== 'Income Balance').length > 0 ? (
+                  goals
+                    .filter(g => g.category !== 'Income Balance')
+                    .map((goal) => {
+                      const progress = goal.targetAmount > 0
+                        ? (goal.currentAmount / goal.targetAmount) * 100
+                        : 0;
+                      const remaining = goal.targetAmount - goal.currentAmount;
+                      const estimatedDate = getEstimatedTargetDate(goal);
+
+                      return (
+                        <div key={goal.id} className="p-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-foreground">{goal.name}</span>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8"
+                                onClick={() => handleOpenEditDialog(goal)}
+                              >
+                                <Edit className="size-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8"
+                              >
+                                <BarChart3 className="size-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          {/* Progress Bar */}
+                          <div className="relative h-5 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary transition-all duration-300"
+                              style={{ width: `${Math.min(100, progress)}%` }}
+                            />
+                            <span className="absolute inset-0 flex items-center pl-2 text-xs font-semibold">
+                              {progress.toFixed(0)}%
+                            </span>
+                          </div>
+                          {/* Savings Details */}
+                          <div className="flex items-center gap-6 text-sm">
+                            <div>
+                              <span className="text-muted-foreground">Saved: </span>
+                              <span className="font-semibold">{formatCurrency(goal.currentAmount)}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Remaining: </span>
+                              <span className="font-semibold">{formatCurrency(Math.max(0, remaining))}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Target Date: </span>
+                              <span className="font-semibold">
+                                {estimatedDate ? format(estimatedDate, 'MMM yyyy') : '—'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                ) : (
+                  <p className="text-center text-muted-foreground py-6">
+                    No savings goals added yet.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-
-        {/* Category Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
-          {SAVINGS_CATEGORIES.map(({ name }) => {
-            const Icon = iconMap[name] || PiggyBank;
-            const categoryGoals = getCategoryGoals(name);
-            const hasGoals = categoryGoals.length > 0;
-            const isIncomeBalance = name === 'Income Balance';
-
-            return (
-              <button
-                key={name}
-                onClick={() => handleOpenAddDialog(name)}
-                disabled={isIncomeBalance}
-                className={`flex flex-col items-center justify-center gap-2 text-center p-4 rounded-xl border-2 transition-all duration-200 ${
-                  isIncomeBalance
-                    ? 'bg-muted/50 border-muted cursor-default'
-                    : hasGoals
-                    ? 'bg-primary/10 border-primary text-primary'
-                    : 'bg-card hover:bg-muted border-dashed'
-                }`}
-              >
-                <div className="flex items-center gap-1">
-                  <Icon className="size-5" />
-                  <HelpDialog
-                    title={name}
-                    content={CATEGORY_HELP[name] || CATEGORY_HELP['Miscellaneous']}
-                    iconClassName="size-3"
-                  />
+        ) : (
+          /* Onboarding Layout */
+          <>
+            {/* Savings Goals Summary Box */}
+            <div className="bg-card rounded-xl p-4 border shadow-sm mb-6">
+              <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">
+                Savings Goals Summary
+              </h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Weekly Goal</p>
+                  <p className="font-bold text-lg text-primary">
+                    {formatCurrency(weeklyPlannedSavings)}
+                  </p>
                 </div>
-                <span className="text-sm font-semibold">{name}</span>
-                {isIncomeBalance ? (
-                  <span className="text-xs font-bold text-muted-foreground">
-                    {formatCurrency(incomeBalance)}/wk
-                  </span>
-                ) : hasGoals ? (
-                  <span className="text-xs font-bold">{categoryGoals.length} goal(s)</span>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Total Saved</p>
+                  <p className="font-bold text-lg text-foreground">
+                    {formatCurrency(totalSaved)}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">% of Income</p>
+                  <p className="font-bold text-lg text-foreground">
+                    {formatPercent(savingsToIncomePercent)}
+                  </p>
+                </div>
+              </div>
+            </div>
 
-        {/* MY GOALS List */}
-        <div className="space-y-3">
-          <h3 className="text-muted-foreground text-sm font-bold uppercase tracking-wider">
-            MY GOALS
-          </h3>
-          {loading ? (
-            <p>Loading goals...</p>
-          ) : goals && goals.filter(g => g.category !== 'Income Balance').length > 0 ? (
-            goals
-              .filter(g => g.category !== 'Income Balance')
-              .map((goal) => {
-                const Icon = iconMap[goal.category] || PiggyBank;
-                const progress =
-                  goal.targetAmount > 0
-                    ? (goal.currentAmount / goal.targetAmount) * 100
-                    : 0;
+            {/* Category Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+              {SAVINGS_CATEGORIES.map(({ name }) => {
+                const Icon = iconMap[name] || PiggyBank;
+                const categoryGoals = getCategoryGoals(name);
+                const hasGoals = categoryGoals.length > 0;
+                const isIncomeBalance = name === 'Income Balance';
+
                 return (
-                  <div
-                    key={goal.id}
-                    className="bg-card p-4 rounded-xl border shadow-sm cursor-pointer"
-                    onClick={() => handleOpenEditDialog(goal)}
+                  <button
+                    key={name}
+                    onClick={() => handleOpenAddDialog(name)}
+                    disabled={isIncomeBalance}
+                    className={`flex flex-col items-center justify-center gap-2 text-center p-4 rounded-xl border-2 transition-all duration-200 ${
+                      isIncomeBalance
+                        ? 'bg-muted/50 border-muted cursor-default'
+                        : hasGoals
+                        ? 'bg-primary/10 border-primary text-primary'
+                        : 'bg-card hover:bg-muted border-dashed'
+                    }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="size-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                        <Icon className="size-6 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-bold text-foreground text-lg">{goal.name}</p>
-                        {goal.description && (
-                          <p className="text-sm text-muted-foreground">{goal.description}</p>
-                        )}
-                        <div className="flex items-center gap-4 mt-1">
-                          <div>
-                            <span className="text-xs text-muted-foreground">Balance Saved</span>
-                            <p className="font-bold text-foreground">
-                              {formatCurrency(goal.currentAmount)}
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-xs text-muted-foreground">Goal Percent</span>
-                            <p className="font-bold text-foreground">{formatPercent(progress)}</p>
-                          </div>
-                        </div>
-                        {/* Progress bar */}
-                        <div className="mt-2 w-full bg-muted rounded-full h-2">
-                          <div
-                            className="bg-primary h-2 rounded-full transition-all"
-                            style={{ width: `${Math.min(100, progress)}%` }}
-                          />
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteGoal(goal.id);
-                        }}
-                      >
-                        <Trash2 className="size-4 text-muted-foreground hover:text-destructive" />
-                      </Button>
+                    <div className="flex items-center gap-1">
+                      <Icon className="size-5" />
+                      <HelpDialog
+                        title={name}
+                        content={CATEGORY_HELP[name] || CATEGORY_HELP['Miscellaneous']}
+                        iconClassName="size-3"
+                      />
                     </div>
-                  </div>
+                    <span className="text-sm font-semibold">{name}</span>
+                    {isIncomeBalance ? (
+                      <span className="text-xs font-bold text-muted-foreground">
+                        {formatCurrency(incomeBalance)}/wk
+                      </span>
+                    ) : hasGoals ? (
+                      <span className="text-xs font-bold">{categoryGoals.length} goal(s)</span>
+                    ) : null}
+                  </button>
                 );
-              })
-          ) : (
-            <p className="text-center text-muted-foreground py-4">No savings goals added yet.</p>
-          )}
-        </div>
+              })}
+            </div>
+
+            {/* MY GOALS List */}
+            <div className="space-y-3">
+              <h3 className="text-muted-foreground text-sm font-bold uppercase tracking-wider">
+                MY GOALS
+              </h3>
+              {loading ? (
+                <p>Loading goals...</p>
+              ) : goals && goals.filter(g => g.category !== 'Income Balance').length > 0 ? (
+                goals
+                  .filter(g => g.category !== 'Income Balance')
+                  .map((goal) => {
+                    const Icon = iconMap[goal.category] || PiggyBank;
+                    const progress =
+                      goal.targetAmount > 0
+                        ? (goal.currentAmount / goal.targetAmount) * 100
+                        : 0;
+                    return (
+                      <div
+                        key={goal.id}
+                        className="bg-card p-4 rounded-xl border shadow-sm cursor-pointer"
+                        onClick={() => handleOpenEditDialog(goal)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="size-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                            <Icon className="size-6 text-primary" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-bold text-foreground text-lg">{goal.name}</p>
+                            {goal.description && (
+                              <p className="text-sm text-muted-foreground">{goal.description}</p>
+                            )}
+                            <div className="flex items-center gap-4 mt-1">
+                              <div>
+                                <span className="text-xs text-muted-foreground">Balance Saved</span>
+                                <p className="font-bold text-foreground">
+                                  {formatCurrency(goal.currentAmount)}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-xs text-muted-foreground">Goal Percent</span>
+                                <p className="font-bold text-foreground">{formatPercent(progress)}</p>
+                              </div>
+                            </div>
+                            {/* Progress bar */}
+                            <div className="mt-2 w-full bg-muted rounded-full h-2">
+                              <div
+                                className="bg-primary h-2 rounded-full transition-all"
+                                style={{ width: `${Math.min(100, progress)}%` }}
+                              />
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteGoal(goal.id);
+                            }}
+                          >
+                            <Trash2 className="size-4 text-muted-foreground hover:text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+              ) : (
+                <p className="text-center text-muted-foreground py-4">No savings goals added yet.</p>
+              )}
+            </div>
+          </>
+        )}
       </main>
 
       {/* Add/Edit Goal Dialog */}
@@ -467,10 +631,47 @@ export default function PlannedSavingsScreen() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {goalToEdit ? 'Edit' : 'Add'} {formState.category} Goal
+              {goalToEdit ? `Edit ${formState.name || formState.category}` : 'Add Saving Goal'}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            {/* Category dropdown - only show when adding new goal */}
+            {!goalToEdit && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="category">Category</Label>
+                  <HelpDialog
+                    title={formState.category}
+                    content={CATEGORY_HELP[formState.category] || CATEGORY_HELP['Miscellaneous']}
+                    iconClassName="size-3"
+                  />
+                </div>
+                <Select
+                  value={formState.category}
+                  onValueChange={(value) =>
+                    setFormState({ ...formState, category: value })
+                  }
+                >
+                  <SelectTrigger className="h-12">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SAVINGS_CATEGORIES.filter(({ name }) => name !== 'Income Balance').map(({ name }) => {
+                      const Icon = iconMap[name] || PiggyBank;
+                      return (
+                        <SelectItem key={name} value={name}>
+                          <div className="flex items-center gap-2">
+                            <Icon className="size-4" />
+                            <span>{name}</span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
               <Input
@@ -478,6 +679,7 @@ export default function PlannedSavingsScreen() {
                 placeholder="e.g. Summer Vacation Fund"
                 value={formState.name}
                 onChange={(e) => setFormState({ ...formState, name: e.target.value })}
+                className="h-12"
               />
             </div>
 
@@ -611,17 +813,27 @@ export default function PlannedSavingsScreen() {
         </DialogContent>
       </Dialog>
 
-      {/* Continue Button */}
-      <div className="p-4 bg-background/95 backdrop-blur-md border-t fixed bottom-0 w-full z-30 left-0 right-0">
-        <Button
-          asChild
-          className="w-full h-14 rounded-xl text-lg font-bold shadow-lg"
-        >
-          <Link href="/budget">
-            Continue <ArrowRight className="ml-2 h-5 w-5" />
-          </Link>
-        </Button>
-      </div>
+      {/* Continue Button - only show during onboarding */}
+      {!isEditMode && (
+        <div className="p-4 bg-background/95 backdrop-blur-md border-t fixed bottom-0 w-full z-30 left-0 right-0">
+          <Button
+            asChild
+            className="w-full h-14 rounded-xl text-lg font-bold shadow-lg"
+          >
+            <Link href="/budget">
+              Continue <ArrowRight className="ml-2 h-5 w-5" />
+            </Link>
+          </Button>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function PlannedSavingsScreen() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+      <PlannedSavingsContent />
+    </Suspense>
   );
 }

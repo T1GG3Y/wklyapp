@@ -49,7 +49,7 @@ import {
   doc,
   type DocumentData,
 } from 'firebase/firestore';
-import { useMemo, useState, useEffect } from 'react';
+import { Suspense, useMemo, useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/PageHeader';
@@ -90,7 +90,7 @@ const iconMap: Record<string, LucideIcon> = {
   'Miscellaneous': MoreHorizontal,
 };
 
-export default function LoansScreen() {
+function LoansScreenContent() {
   const { user } = useUser();
   const firestore = useFirestore();
   const searchParams = useSearchParams();
@@ -762,5 +762,13 @@ export default function LoansScreen() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function LoansScreen() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+      <LoansScreenContent />
+    </Suspense>
   );
 }

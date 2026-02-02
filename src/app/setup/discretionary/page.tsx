@@ -36,7 +36,7 @@ import {
   updateDoc,
   type DocumentData,
 } from 'firebase/firestore';
-import { useMemo, useState, useEffect } from 'react';
+import { Suspense, useMemo, useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -109,7 +109,7 @@ const iconMap: Record<string, LucideIcon> = {
   'Miscellaneous': MoreHorizontal,
 };
 
-export default function DiscretionaryExpensesScreen() {
+function DiscretionaryExpensesContent() {
   const { user } = useUser();
   const firestore = useFirestore();
   const searchParams = useSearchParams();
@@ -667,5 +667,13 @@ export default function DiscretionaryExpensesScreen() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function DiscretionaryExpensesScreen() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+      <DiscretionaryExpensesContent />
+    </Suspense>
   );
 }
