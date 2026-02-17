@@ -2,49 +2,97 @@
 
 import { useCollection, useDoc, useUser, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { Receipt, ArrowDownLeft, ArrowUpRight, Edit } from 'lucide-react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import {
+  Briefcase,
+  Car,
+  ChevronRight,
+  CreditCard,
+  Dog,
+  Dumbbell,
+  Flame,
+  Gift,
+  GraduationCap,
+  Heart,
+  Home,
+  Landmark,
+  Lightbulb,
+  MoreHorizontal,
+  Phone,
+  PiggyBank,
+  Plane,
+  Shield,
+  ShieldAlert,
+  Shirt,
+  ShoppingBasket,
+  Smile,
+  Sparkles,
+  Tv,
+  Users,
+  Wallet,
+  Wifi,
+  Wrench,
+  Droplet,
+  Edit,
+  Baby,
+  Hammer,
+  Bike,
+  User,
+  FileText,
+  ArrowLeft,
+  type LucideIcon,
+} from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useEffect, useRef, useCallback } from 'react';
+import { useMemo, useEffect, useRef, useCallback, useState } from 'react';
 import type { DocumentData, Timestamp as FirestoreTimestamp } from 'firebase/firestore';
 import { collection, query, where, getDocs, setDoc, doc, addDoc, Timestamp } from 'firebase/firestore';
-import { startOfWeek, endOfWeek, isWithinInterval, format, subWeeks, subMonths, subYears, startOfMonth, startOfYear, isBefore, addWeeks, addMonths, addYears } from 'date-fns';
+import { startOfWeek, endOfWeek, isWithinInterval, format, subWeeks, isBefore, addWeeks, addMonths, addYears } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/PageHeader';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
-import { HealthScoreCircles, SimpleHealthCircle } from '@/components/HealthScoreCircles';
-import { formatCurrency } from '@/lib/format';
-import { CATEGORY_TYPE_NAMES } from '@/lib/constants';
+import { BottomNav } from '@/components/BottomNav';
+import { formatCurrency, getWeeklyAmount } from '@/lib/format';
+import type { Frequency } from '@/lib/constants';
 
+// Data Interfaces
 interface IncomeSource extends DocumentData {
   id: string;
   name: string;
   amount: number;
-  frequency: 'Weekly' | 'Bi-weekly' | 'Monthly' | 'Yearly';
+  frequency: Frequency;
 }
 
 interface RequiredExpense extends DocumentData {
   id: string;
   category: string;
+  name?: string;
   amount: number;
-  frequency: 'Weekly' | 'Monthly' | 'Yearly';
-}
-
-interface Loan extends DocumentData {
-  id: string;
-  name: string;
-  totalBalance: number;
-  paymentFrequency: 'Weekly' | 'Monthly';
+  frequency: Frequency;
 }
 
 interface DiscretionaryExpense extends DocumentData {
   id: string;
   category: string;
+  name?: string;
   plannedAmount: number;
+}
+
+interface Loan extends DocumentData {
+  id: string;
+  name: string;
+  category: string;
+  totalBalance: number;
 }
 
 interface SavingsGoal extends DocumentData {
   id: string;
   name: string;
+  category: string;
   targetAmount: number;
   currentAmount: number;
 }
@@ -64,90 +112,75 @@ interface UserProfile extends DocumentData {
   startDayOfWeek?: 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
 }
 
-interface WeeklySummary extends DocumentData {
-  safeToSpendRollover?: number;
-  needToSpendRollover?: number;
-}
+// Icon Mappings
+const essentialExpenseIcons: Record<string, LucideIcon> = {
+  'Groceries': ShoppingBasket, 'Rent/Mortgage': Home, 'Natural Gas': Flame,
+  'Electrical': Lightbulb, 'Water/Sewer': Droplet, 'Garbage': MoreHorizontal,
+  'Phone': Phone, 'Gas/Parking/Tolls': Car, 'Auto Insurance': Shield,
+  'Auto Maintenance': Wrench, 'Auto Registration': FileText, 'Medical': Heart,
+  'Dental': Smile, 'Miscellaneous': MoreHorizontal,
+};
 
-// Budget Balance Circle Component
+const discretionaryExpenseIcons: Record<string, LucideIcon> = {
+  'Personal Care': Sparkles, 'Apparel': Shirt, 'House Maintenance': Hammer,
+  'TV Service': Tv, 'Internet': Wifi, 'Children Activities': Baby,
+  'Date Activities': Heart, 'Family Activities': Users, 'Vacation': Plane,
+  'Fitness': Dumbbell, 'Gifts': Gift, 'Pets': Dog, 'Subscriptions': CreditCard,
+  'Personal Expenses': User, 'Miscellaneous': MoreHorizontal,
+};
+
+const loanIcons: Record<string, LucideIcon> = {
+  'Credit Cards': CreditCard, 'Auto Loan': Car, 'Home Mortgages': Home,
+  'Student Loan': GraduationCap, 'Miscellaneous': MoreHorizontal,
+};
+
+const savingsGoalIcons: Record<string, LucideIcon> = {
+  'Emergency Fund': ShieldAlert, 'House Purchase': Home, 'Automobile': Car,
+  'Vacation': Plane, 'Recreation Equipment': Bike, 'Education': GraduationCap,
+  'Miscellaneous': MoreHorizontal, 'Income Balance': Wallet,
+};
+
+// Budget Balance Circle
 const BudgetBalanceCircle = ({
-  onBudgetAmount,
-  overBudgetAmount,
-  label
+  amount,
+  label,
+  isHealthy,
 }: {
-  onBudgetAmount: number;
-  overBudgetAmount: number;
+  amount: number;
   label: string;
+  isHealthy: boolean;
 }) => {
-  const total = onBudgetAmount + overBudgetAmount;
-  const greenPercent = total > 0 ? (onBudgetAmount / total) * 100 : 100;
-  const isHealthy = overBudgetAmount <= 0;
+  const color = isHealthy ? 'hsl(142, 76%, 45%)' : 'hsl(0, 62.8%, 50%)';
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-1">
       <div className="relative">
-        <svg width={120} height={120} className="transform -rotate-90">
-          {/* Background circle */}
-          <circle
-            cx={60}
-            cy={60}
-            r={54}
-            fill="none"
-            stroke="hsl(var(--muted) / 0.3)"
-            strokeWidth={12}
-          />
-          {isHealthy ? (
-            /* All green when healthy */
-            <circle
-              cx={60}
-              cy={60}
-              r={54}
-              fill="none"
-              stroke="hsl(142, 76%, 45%)"
-              strokeWidth={12}
-              strokeDasharray={`${2 * Math.PI * 54}`}
-              strokeLinecap="round"
-            />
-          ) : (
-            <>
-              {/* Red portion (over budget) */}
-              <circle
-                cx={60}
-                cy={60}
-                r={54}
-                fill="none"
-                stroke="hsl(0, 62.8%, 50%)"
-                strokeWidth={12}
-                strokeDasharray={`${2 * Math.PI * 54}`}
-              />
-              {/* Green portion (on budget) */}
-              <circle
-                cx={60}
-                cy={60}
-                r={54}
-                fill="none"
-                stroke="hsl(142, 76%, 45%)"
-                strokeWidth={12}
-                strokeDasharray={`${(greenPercent / 100) * 2 * Math.PI * 54} ${2 * Math.PI * 54}`}
-                strokeLinecap="round"
-              />
-            </>
-          )}
+        <svg width={80} height={80} className="transform -rotate-90">
+          <circle cx={40} cy={40} r={36} fill="none" stroke="hsl(var(--muted) / 0.3)" strokeWidth={8} />
+          <circle cx={40} cy={40} r={36} fill="none" stroke={color} strokeWidth={8}
+            strokeDasharray={`${2 * Math.PI * 36}`} strokeLinecap="round" />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <p className={cn(
-            "text-2xl font-black tracking-tight font-headline",
-            isHealthy ? "text-green-500" : "text-foreground"
-          )}>
-            {formatCurrency(onBudgetAmount - overBudgetAmount)}
+          <p className={cn("text-xs font-black tracking-tight font-headline", isHealthy ? "text-green-500" : "text-red-500")}>
+            {formatCurrency(amount)}
           </p>
-          <p className="text-xs text-muted-foreground">balance</p>
         </div>
       </div>
-      <p className="text-sm font-semibold text-muted-foreground text-center">{label}</p>
+      <p className="text-[10px] text-muted-foreground text-center leading-tight max-w-20 font-medium">{label}</p>
     </div>
   );
 };
+
+// Health Indicator Dot
+const HealthDot = ({ isHealthy, label }: { isHealthy: boolean; label: string }) => (
+  <div className="flex flex-col items-center gap-1">
+    <div className={cn("rounded-full size-10", isHealthy ? "bg-green-500" : "bg-red-500")} />
+    <p className="text-[10px] text-muted-foreground text-center leading-tight max-w-16 font-medium">{label}</p>
+  </div>
+);
+
+// Accordion state localStorage key
+const ACCORDION_STATE_KEY = 'wkly_home_accordion_state';
 
 export default function DashboardScreen() {
   const { user } = useUser();
@@ -158,14 +191,33 @@ export default function DashboardScreen() {
     Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6
   };
 
+  // Accordion state
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(ACCORDION_STATE_KEY);
+      if (saved) {
+        try { setExpandedItems(JSON.parse(saved)); } catch { setExpandedItems([]); }
+      }
+      setIsInitialized(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isInitialized && typeof window !== 'undefined') {
+      localStorage.setItem(ACCORDION_STATE_KEY, JSON.stringify(expandedItems));
+    }
+  }, [expandedItems, isInitialized]);
+
+  // Firestore paths
   const userProfilePath = useMemo(() => (user ? `users/${user.uid}` : null), [user]);
   const incomeSourcesPath = useMemo(() => (user ? `users/${user.uid}/incomeSources` : null), [user]);
   const requiredExpensesPath = useMemo(() => (user ? `users/${user.uid}/requiredExpenses` : null), [user]);
   const discretionaryExpensesPath = useMemo(() => (user ? `users/${user.uid}/discretionaryExpenses` : null), [user]);
   const loansPath = useMemo(() => (user ? `users/${user.uid}/loans` : null), [user]);
   const savingsGoalsPath = useMemo(() => (user ? `users/${user.uid}/savingsGoals` : null), [user]);
-  const transactionsPath = useMemo(() => (user ? `users/${user.uid}/transactions` : null), [user]);
-  const weeklySummariesPath = useMemo(() => (user ? `users/${user.uid}/weeklySummaries` : null), [user]);
 
   const { data: userProfile } = useDoc<UserProfile>(userProfilePath);
   const { data: incomeSources } = useCollection<IncomeSource>(incomeSourcesPath);
@@ -173,339 +225,336 @@ export default function DashboardScreen() {
   const { data: discretionaryExpenses } = useCollection<DiscretionaryExpense>(discretionaryExpensesPath);
   const { data: loans } = useCollection<Loan>(loansPath);
   const { data: savingsGoals } = useCollection<SavingsGoal>(savingsGoalsPath);
-  const { data: transactions } = useCollection<Transaction>(transactionsPath, { orderBy: ['date', 'desc'], limit: 15 });
-  const { data: weeklySummaries } = useCollection<WeeklySummary>(weeklySummariesPath, { orderBy: ['weekStartDate', 'desc'], limit: 1 });
 
-  const lastWeekSummary = useMemo(() => (weeklySummaries && weeklySummaries.length > 0 ? weeklySummaries[0] : null), [weeklySummaries]);
+  // Calculations
+  const totalWeeklyIncome = useMemo(() => {
+    return (incomeSources || []).reduce((t, s) => t + getWeeklyAmount(s.amount, s.frequency), 0);
+  }, [incomeSources]);
 
-  const getWeeklyAmount = (amount: number, frequency: string) => {
-    switch (frequency) {
-      case 'Weekly': return amount;
-      case 'Bi-weekly': return amount / 2;
-      case 'Monthly': return amount / 4.33;
-      case 'Yearly': return amount / 52;
-      default: return 0;
-    }
-  };
+  const totalWeeklyRequired = useMemo(() => {
+    return (requiredExpenses || []).reduce((t, e) => t + getWeeklyAmount(e.amount, e.frequency), 0);
+  }, [requiredExpenses]);
 
-  const weeklyCalculations = useMemo(() => {
-    const weeklyIncome = (incomeSources || []).reduce((total, source) => {
-      return total + getWeeklyAmount(source.amount, source.frequency);
-    }, 0);
+  const totalWeeklyDiscretionary = useMemo(() => {
+    return (discretionaryExpenses || []).reduce((t, e) => t + e.plannedAmount, 0);
+  }, [discretionaryExpenses]);
 
-    const weeklyRequiredExpenses = (requiredExpenses || []).reduce((total, expense) => {
-      return total + getWeeklyAmount(expense.amount, expense.frequency);
-    }, 0);
+  const totalDebt = useMemo(() => {
+    return (loans || []).reduce((t, l) => t + l.totalBalance, 0);
+  }, [loans]);
 
-    const weeklyPlannedDiscretionary = (discretionaryExpenses || []).reduce((total, expense) => {
-      return total + expense.plannedAmount;
-    }, 0);
+  const totalSavingsTarget = useMemo(() => {
+    return (savingsGoals || []).filter(g => g.category !== 'Income Balance').reduce((t, g) => t + g.targetAmount, 0);
+  }, [savingsGoals]);
 
-    const weeklyLoanPayments = (loans || []).reduce((total, loan) => {
-      // Assuming loans have a payment amount field - adjust as needed
-      return total;
-    }, 0);
+  const totalSaved = useMemo(() => {
+    return (savingsGoals || []).filter(g => g.category !== 'Income Balance').reduce((t, g) => t + g.currentAmount, 0);
+  }, [savingsGoals]);
 
-    const totalSavingsTarget = (savingsGoals || []).reduce((total, goal) => {
-      return total + goal.targetAmount;
-    }, 0);
+  const weeklyBalance = totalWeeklyIncome - totalWeeklyRequired - totalWeeklyDiscretionary;
 
-    const totalSavedAmount = (savingsGoals || []).reduce((total, goal) => {
-      return total + goal.currentAmount;
-    }, 0);
+  // Health indicators
+  const essentialHealthy = totalWeeklyRequired <= totalWeeklyIncome * 0.5 || totalWeeklyRequired === 0;
+  const discretionaryHealthy = totalWeeklyDiscretionary <= totalWeeklyIncome * 0.3 || totalWeeklyDiscretionary === 0;
+  const loansHealthy = true; // Would check delinquency
+  const savingsHealthy = totalSavingsTarget === 0 || totalSaved >= totalSavingsTarget * 0.1;
 
-    // Calculate total budget and spending
-    const totalWeeklyBudget = weeklyIncome;
-    const totalWeeklyExpenses = weeklyRequiredExpenses + weeklyPlannedDiscretionary;
-    const weeklyBalance = weeklyIncome - totalWeeklyExpenses;
-
-    // Calculate on-budget vs over-budget amounts
-    const onBudgetAmount = Math.max(0, weeklyBalance);
-    const overBudgetAmount = Math.max(0, -weeklyBalance);
-
-    return {
-      weeklyIncome,
-      weeklyRequiredExpenses,
-      weeklyPlannedDiscretionary,
-      totalWeeklyBudget,
-      totalWeeklyExpenses,
-      weeklyBalance,
-      onBudgetAmount,
-      overBudgetAmount,
-      totalSavingsTarget,
-      totalSavedAmount,
-    };
-  }, [incomeSources, requiredExpenses, discretionaryExpenses, loans, savingsGoals]);
-
-  // Calculate health scores for each category
-  const healthScores = useMemo(() => {
-    const { weeklyRequiredExpenses, weeklyPlannedDiscretionary, weeklyIncome } = weeklyCalculations;
-
-    // For now, simplified health calculation
-    // In a full implementation, this would compare actual spending vs budgeted
-    const essentialHealth = weeklyRequiredExpenses <= weeklyIncome * 0.5;
-    const discretionaryHealth = weeklyPlannedDiscretionary <= weeklyIncome * 0.3;
-    const savingsHealth = (savingsGoals || []).length > 0;
-    const loansHealth = (loans || []).length === 0 || true; // Simplified - would check payment status
-
-    return [
-      {
-        name: CATEGORY_TYPE_NAMES.essential,
-        onBudgetAmount: essentialHealth ? weeklyRequiredExpenses : 0,
-        overBudgetAmount: essentialHealth ? 0 : weeklyRequiredExpenses * 0.1
-      },
-      {
-        name: CATEGORY_TYPE_NAMES.discretionary,
-        onBudgetAmount: discretionaryHealth ? weeklyPlannedDiscretionary : 0,
-        overBudgetAmount: discretionaryHealth ? 0 : weeklyPlannedDiscretionary * 0.1
-      },
-      {
-        name: CATEGORY_TYPE_NAMES.savings,
-        onBudgetAmount: weeklyCalculations.totalSavedAmount,
-        overBudgetAmount: 0
-      },
-      {
-        name: CATEGORY_TYPE_NAMES.loans,
-        onBudgetAmount: loansHealth ? 100 : 0,
-        overBudgetAmount: loansHealth ? 0 : 50
-      },
-    ];
-  }, [weeklyCalculations, savingsGoals, loans]);
-
-  // Auto-generate weekly summaries for past weeks
+  // Auto-generate weekly summaries
   const generateMissingSummaries = useCallback(async () => {
     if (!firestore || !user || !userProfile || hasCheckedSummaries.current) return;
-
     try {
       const startDay = userProfile?.startDayOfWeek || 'Sunday';
       const weekStartsOn = dayIndexMap[startDay];
       const now = new Date();
       const currentWeekStart = startOfWeek(now, { weekStartsOn });
-
       const summariesRef = collection(firestore, `users/${user.uid}/weeklySummaries`);
       const summariesSnapshot = await getDocs(summariesRef);
-      const existingSummaryDates = new Set(
-        summariesSnapshot.docs.map(doc => doc.data().weekStartDate)
-      );
-
+      const existingSummaryDates = new Set(summariesSnapshot.docs.map(d => d.data().weekStartDate));
       const transactionsRef = collection(firestore, `users/${user.uid}/transactions`);
       const transactionsSnapshot = await getDocs(transactionsRef);
-      const allTransactions = transactionsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Transaction[];
+      const allTransactions = transactionsSnapshot.docs.map(d => ({ id: d.id, ...d.data() })) as Transaction[];
 
-      const weeksToCheck = 12;
-      for (let i = 1; i <= weeksToCheck; i++) {
+      for (let i = 1; i <= 12; i++) {
         const weekStart = subWeeks(currentWeekStart, i);
         const weekEnd = endOfWeek(weekStart, { weekStartsOn });
         const weekStartStr = format(weekStart, 'yyyy-MM-dd');
         const weekEndStr = format(weekEnd, 'yyyy-MM-dd');
-
         if (existingSummaryDates.has(weekStartStr)) continue;
 
-        let totalIncome = 0;
-        let totalExpenses = 0;
-
+        let totalIncome = 0, totalExpenses = 0;
         for (const t of allTransactions) {
           if (!t.date) continue;
-          const transactionDate = t.date.toDate();
-          if (isWithinInterval(transactionDate, { start: weekStart, end: weekEnd })) {
-            if (t.type === 'Income') {
-              totalIncome += t.amount;
-            } else {
-              totalExpenses += t.amount;
-            }
+          const txDate = t.date.toDate();
+          if (isWithinInterval(txDate, { start: weekStart, end: weekEnd })) {
+            if (t.type === 'Income') totalIncome += t.amount;
+            else totalExpenses += t.amount;
           }
         }
-
         if (totalIncome > 0 || totalExpenses > 0) {
           const summaryDoc = doc(firestore, `users/${user.uid}/weeklySummaries`, weekStartStr);
-          await setDoc(summaryDoc, {
-            weekStartDate: weekStartStr,
-            weekEndDate: weekEndStr,
-            totalIncome,
-            totalExpenses,
-            createdAt: new Date().toISOString(),
-            userProfileId: user.uid,
-          });
+          await setDoc(summaryDoc, { weekStartDate: weekStartStr, weekEndDate: weekEndStr, totalIncome, totalExpenses, createdAt: new Date().toISOString(), userProfileId: user.uid });
         }
       }
-
-      // Only mark as checked after successful completion
       hasCheckedSummaries.current = true;
-    } catch (error) {
-      console.error('Error generating weekly summaries:', error);
-      // Don't set hasCheckedSummaries so it will retry on next visit
-    }
+    } catch (error) { console.error('Error generating weekly summaries:', error); }
   }, [firestore, user, userProfile, dayIndexMap]);
 
   useEffect(() => {
-    if (user && userProfile && firestore) {
-      generateMissingSummaries();
-    }
+    if (user && userProfile && firestore) generateMissingSummaries();
   }, [user, userProfile, firestore, generateMissingSummaries]);
 
-  // Auto-generate recurring transactions based on income sources
+  // Auto-generate recurring transactions
   const generateRecurringTransactions = useCallback(async () => {
     if (!firestore || !user || !incomeSources || hasGeneratedRecurring.current) return;
-
     try {
       const transactionsRef = collection(firestore, `users/${user.uid}/transactions`);
       const now = new Date();
-      let transactionsCreated = 0;
-
+      let created = 0;
       for (const source of incomeSources) {
-        // Check for existing auto-generated transactions for this source
-        const existingQuery = query(
-          transactionsRef,
-          where('autoGenerated', '==', true),
-          where('sourceId', '==', source.id)
-        );
+        const existingQuery = query(transactionsRef, where('autoGenerated', '==', true), where('sourceId', '==', source.id));
         const existingSnapshot = await getDocs(existingQuery);
-        const existingTransactions = existingSnapshot.docs.map(d => ({
-          ...d.data(),
-          date: d.data().date?.toDate()
-        }));
+        const existingTxs = existingSnapshot.docs.map(d => ({ ...d.data(), date: d.data().date?.toDate() }));
 
-        // Find the most recent auto-generated transaction for this source
-        let lastTransactionDate: Date | null = null;
-        for (const t of existingTransactions) {
-          if (t.date && (!lastTransactionDate || t.date > lastTransactionDate)) {
-            lastTransactionDate = t.date;
-          }
-        }
+        let lastDate: Date | null = null;
+        for (const t of existingTxs) { if (t.date && (!lastDate || t.date > lastDate)) lastDate = t.date; }
+        if (!lastDate) lastDate = subWeeks(now, 8);
 
-        // If no auto-generated transactions exist, start from when the source was likely created
-        // We'll generate for the past 8 weeks to catch up
-        if (!lastTransactionDate) {
-          lastTransactionDate = subWeeks(now, 8);
-        }
-
-        // Calculate periods to generate based on frequency
-        const getNextDate = (date: Date, frequency: string): Date => {
-          switch (frequency) {
+        const getNextDate = (date: Date, freq: string): Date => {
+          switch (freq) {
             case 'Weekly': return addWeeks(date, 1);
-            case 'Bi-weekly': return addWeeks(date, 2);
+            case 'Bi-Weekly': return addWeeks(date, 2);
             case 'Monthly': return addMonths(date, 1);
             case 'Yearly': return addYears(date, 1);
             default: return addMonths(date, 1);
           }
         };
 
-        // Generate missing transactions
-        let nextDate = getNextDate(lastTransactionDate, source.frequency);
+        let nextDate = getNextDate(lastDate, source.frequency);
         while (isBefore(nextDate, now)) {
-          await addDoc(transactionsRef, {
-            type: 'Income',
-            amount: source.amount,
-            description: `${source.name} (auto-generated)`,
-            category: 'Income',
-            date: Timestamp.fromDate(nextDate),
-            createdAt: Timestamp.now(),
-            autoGenerated: true,
-            sourceId: source.id,
-            userProfileId: user.uid,
-          });
-          transactionsCreated++;
+          await addDoc(transactionsRef, { type: 'Income', amount: source.amount, description: `${source.name} (auto-generated)`, category: 'Income', date: Timestamp.fromDate(nextDate), createdAt: Timestamp.now(), autoGenerated: true, sourceId: source.id, userProfileId: user.uid });
+          created++;
           nextDate = getNextDate(nextDate, source.frequency);
         }
       }
-
-      if (transactionsCreated > 0) {
-        console.log(`Auto-generated ${transactionsCreated} recurring income transactions`);
-      }
-
+      if (created > 0) console.log(`Auto-generated ${created} recurring income transactions`);
       hasGeneratedRecurring.current = true;
-    } catch (error) {
-      console.error('Error generating recurring transactions:', error);
-    }
+    } catch (error) { console.error('Error generating recurring transactions:', error); }
   }, [firestore, user, incomeSources]);
 
   useEffect(() => {
-    if (user && firestore && incomeSources && incomeSources.length > 0) {
-      generateRecurringTransactions();
-    }
+    if (user && firestore && incomeSources && incomeSources.length > 0) generateRecurringTransactions();
   }, [user, firestore, incomeSources, generateRecurringTransactions]);
 
-  const { onBudgetAmount, overBudgetAmount } = weeklyCalculations;
+  // Render list item for accordion
+  const renderListItem = (key: string, Icon: LucideIcon, primaryText: string, secondaryText: string | React.ReactNode) => (
+    <div key={key} className="flex items-center gap-4 py-3">
+      <div className="flex items-center justify-center rounded-lg bg-muted text-foreground shrink-0 size-10 border">
+        <Icon className="size-5" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-foreground font-semibold truncate">{primaryText}</p>
+        <div className="text-sm text-muted-foreground">{secondaryText}</div>
+      </div>
+      <ChevronRight className="size-5 text-muted-foreground" />
+    </div>
+  );
 
   return (
-    <>
+    <div className="bg-background font-headline antialiased min-h-screen flex flex-col">
       <PageHeader
         title="HOME"
         rightContent={<HamburgerMenu />}
       />
-      <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-8 space-y-5 pt-4">
-        {/* Total Weekly Budget Balance */}
-        <div className="glass rounded-3xl p-6 flex flex-col items-center">
-          <BudgetBalanceCircle
-            onBudgetAmount={onBudgetAmount}
-            overBudgetAmount={overBudgetAmount}
-            label="Total Weekly Budget Balance"
-          />
+
+      <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-48 space-y-4 pt-4">
+        {/* My Health Score */}
+        <div className="bg-card rounded-xl p-4 border shadow-sm">
+          <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider text-center mb-4">
+            My Health Score
+          </h3>
+          <div className="flex justify-around items-start">
+            <BudgetBalanceCircle
+              amount={weeklyBalance}
+              label="Total Weekly Budget Balance"
+              isHealthy={weeklyBalance >= 0}
+            />
+            <BudgetBalanceCircle
+              amount={totalWeeklyIncome}
+              label="Total Weekly Income"
+              isHealthy={true}
+            />
+            <HealthDot isHealthy={essentialHealthy} label="My Essential Expenses" />
+            <HealthDot isHealthy={discretionaryHealthy} label="My Discretionary Expenses" />
+            <HealthDot isHealthy={loansHealthy} label="My Loans" />
+            <HealthDot isHealthy={savingsHealthy} label="My Savings Goals" />
+          </div>
         </div>
 
-        {/* Health Score Section */}
-        <HealthScoreCircles categories={healthScores} />
+        {/* My Budget Plan */}
+        <div className="bg-card rounded-xl border shadow-sm p-4">
+          <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider text-center mb-3">
+            My Budget Plan
+          </h3>
 
-        {/* Recent Transactions */}
-        <div className="glass rounded-3xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center">
-                <Receipt className="text-white h-5 w-5" />
-              </div>
-              <h2 className="text-lg font-bold font-headline text-foreground">
-                Recent Transactions
-              </h2>
-            </div>
-          </div>
-          <div className="flex flex-col items-center text-center mb-6">
-            <Button asChild className="w-full" size="lg">
-              <Link href="/transaction/new">Add a transaction</Link>
-            </Button>
-          </div>
-
-          <div className="space-y-1">
-            {transactions && transactions.length > 0 ? (
-              transactions.map((transaction) => (
-                <Link key={transaction.id} href={`/transaction/edit/${transaction.id}`} className="block group">
-                  <div className="flex items-center gap-4 p-2 rounded-lg group-hover:bg-muted">
-                    <div className={cn(
-                      "size-10 rounded-lg flex items-center justify-center",
-                      transaction.type === 'Income' ? 'bg-primary/10' : 'bg-secondary/10'
-                    )}>
-                      {transaction.type === 'Income' ? (
-                        <ArrowUpRight className="text-primary" />
-                      ) : (
-                        <ArrowDownLeft className="text-secondary" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-foreground truncate">
-                        {transaction.description || transaction.category}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {transaction.date ? format(transaction.date.toDate(), 'MMM d, yyyy') : ''}
-                      </p>
-                    </div>
-                    <p className={cn(
-                      "font-bold text-lg",
-                      transaction.type === 'Income' ? 'text-primary' : 'text-secondary'
-                    )}>
-                      {transaction.type === 'Income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                    </p>
-                    <Edit className="size-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          <Accordion
+            type="multiple"
+            value={expandedItems}
+            onValueChange={setExpandedItems}
+            className="w-full space-y-2"
+          >
+            {/* My Income */}
+            <AccordionItem value="item-1" className="glass rounded-2xl px-4">
+              <AccordionTrigger className="py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center">
+                    <Wallet className="text-white size-4" />
                   </div>
-                </Link>
-              ))
-            ) : (
-              <p className="text-center text-muted-foreground py-4">No recent transactions.</p>
-            )}
-          </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-foreground">My Income</p>
+                    <p className="text-xs text-muted-foreground">{formatCurrency(totalWeeklyIncome)} / week</p>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="divide-y border-t">
+                <div className="pt-2 pb-3">
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link href="/income"><Edit className="mr-2 size-4" /> Edit My Income</Link>
+                  </Button>
+                </div>
+                {incomeSources?.map((item) =>
+                  renderListItem(item.id, Briefcase, item.name, `${formatCurrency(item.amount)} ${item.frequency}`)
+                )}
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* My Essential Expenses */}
+            <AccordionItem value="item-2" className="glass rounded-2xl px-4">
+              <AccordionTrigger className="py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center">
+                    <Home className="text-white size-4" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-foreground">My Essential Expenses</p>
+                    <p className="text-xs text-muted-foreground">{formatCurrency(totalWeeklyRequired)} / week</p>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="divide-y border-t">
+                <div className="pt-2 pb-3">
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link href="/essential-expenses"><Edit className="mr-2 size-4" /> Edit My Essential Expenses</Link>
+                  </Button>
+                </div>
+                {requiredExpenses?.map((item) =>
+                  renderListItem(item.id, essentialExpenseIcons[item.category] || Wallet, item.name || item.category, `${formatCurrency(item.amount)} ${item.frequency}`)
+                )}
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* My Discretionary Expenses */}
+            <AccordionItem value="item-3" className="glass rounded-2xl px-4">
+              <AccordionTrigger className="py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center">
+                    <ShoppingBasket className="text-white size-4" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-foreground">My Discretionary Expenses</p>
+                    <p className="text-xs text-muted-foreground">{formatCurrency(totalWeeklyDiscretionary)} / week</p>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="divide-y border-t">
+                <div className="pt-2 pb-3">
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link href="/discretionary-expenses"><Edit className="mr-2 size-4" /> Edit My Discretionary Expenses</Link>
+                  </Button>
+                </div>
+                {discretionaryExpenses?.map((item) =>
+                  renderListItem(item.id, discretionaryExpenseIcons[item.category] || Wallet, item.name || item.category, `${formatCurrency(item.plannedAmount)} / week`)
+                )}
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* My Loans */}
+            <AccordionItem value="item-4" className="glass rounded-2xl px-4">
+              <AccordionTrigger className="py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center">
+                    <Landmark className="text-white size-4" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-foreground">My Loans</p>
+                    <p className="text-xs text-muted-foreground">{formatCurrency(totalDebt)} total balance</p>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="divide-y border-t">
+                <div className="pt-2 pb-3">
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link href="/loans"><Edit className="mr-2 size-4" /> Edit My Loans</Link>
+                  </Button>
+                </div>
+                {loans?.map((item) =>
+                  renderListItem(item.id, loanIcons[item.category] || CreditCard, item.name, `${formatCurrency(item.totalBalance)} balance`)
+                )}
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* My Planned Savings Goals */}
+            <AccordionItem value="item-5" className="glass rounded-2xl px-4">
+              <AccordionTrigger className="py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center">
+                    <PiggyBank className="text-white size-4" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-foreground">My Planned Savings Goals</p>
+                    <p className="text-xs text-muted-foreground">{formatCurrency(totalSaved)} of {formatCurrency(totalSavingsTarget)} saved</p>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="divide-y border-t">
+                <div className="pt-2 pb-3">
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link href="/savings-goals"><Edit className="mr-2 size-4" /> Edit My Planned Savings Goals</Link>
+                  </Button>
+                </div>
+                {savingsGoals
+                  ?.filter((g) => g.category !== 'Income Balance')
+                  .map((item) =>
+                    renderListItem(item.id, savingsGoalIcons[item.category] || PiggyBank, item.name,
+                      <div className="flex flex-col">
+                        <span>{item.targetAmount > 0 ? `${((item.currentAmount / item.targetAmount) * 100).toFixed(0)}% saved` : '0% saved'}</span>
+                        <span className="text-xs text-muted-foreground">{formatCurrency(item.currentAmount)} of {formatCurrency(item.targetAmount)}</span>
+                      </div>
+                    )
+                  )}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </main>
-    </>
+
+      {/* Footer Buttons */}
+      <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none w-full z-10">
+        <div className="pointer-events-auto flex gap-3">
+          <Button asChild variant="outline" className="flex-1 h-12 text-base font-bold" size="lg">
+            <Link href="/savings-goals">
+              <ArrowLeft className="mr-2 h-5 w-5" />
+              Back to Savings Goals
+            </Link>
+          </Button>
+          <Button asChild className="flex-1 h-12 text-base font-bold shadow-lg" size="lg">
+            <Link href="/transaction/new">
+              Continue to Transactions
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      <BottomNav />
+    </div>
   );
 }

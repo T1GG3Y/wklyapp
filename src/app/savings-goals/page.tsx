@@ -146,7 +146,7 @@ export default function SavingsGoalsPage() {
 
   const weeklyExpenses = useMemo(() => {
     const requiredTotal = (requiredExpenses || []).reduce((total, expense) => total + getWeeklyAmount(expense.amount, expense.frequency), 0);
-    const discretionaryTotal = (discretionaryExpenses || []).reduce((total, expense) => total + expense.plannedAmount, 0);
+    const discretionaryTotal = (discretionaryExpenses || []).reduce((total, expense) => total + getWeeklyAmount(expense.plannedAmount, (expense as any).frequency || 'Weekly'), 0);
     return requiredTotal + discretionaryTotal;
   }, [requiredExpenses, discretionaryExpenses]);
 

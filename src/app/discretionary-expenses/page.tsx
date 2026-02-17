@@ -258,7 +258,7 @@ export default function DiscretionaryExpensesPage() {
       let count = 0;
       snapshot.forEach((doc) => {
         const data = doc.data();
-        if (data.amount && data.type === 'expense') {
+        if (data.amount && data.type === 'Expense') {
           total += Math.abs(data.amount);
           count++;
         }
