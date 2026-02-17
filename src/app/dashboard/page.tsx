@@ -10,7 +10,7 @@ import { collection, query, where, getDocs, setDoc, doc, addDoc, Timestamp } fro
 import { startOfWeek, endOfWeek, isWithinInterval, format, subWeeks, subMonths, subYears, startOfMonth, startOfYear, isBefore, addWeeks, addMonths, addYears } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/PageHeader';
-import { TopNav } from '@/components/TopNav';
+import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { HealthScoreCircles, SimpleHealthCircle } from '@/components/HealthScoreCircles';
 import { formatCurrency } from '@/lib/format';
 import { CATEGORY_TYPE_NAMES } from '@/lib/constants';
@@ -434,7 +434,7 @@ export default function DashboardScreen() {
     <>
       <PageHeader
         title="HOME"
-        rightContent={<TopNav />}
+        rightContent={<HamburgerMenu />}
       />
       <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-8 space-y-5 pt-4">
         {/* Total Weekly Budget Balance */}

@@ -53,7 +53,7 @@ import { Suspense, useMemo, useState, useEffect } from 'react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/PageHeader';
-import { TopNav } from '@/components/TopNav';
+import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { HelpDialog } from '@/components/HelpDialog';
 import {
   LOAN_CATEGORIES,
@@ -269,7 +269,7 @@ function LoansScreenContent() {
         helpTitle="My Loans"
         helpContent={PAGE_HELP.loans}
         subheader={PAGE_SUBHEADERS.loans}
-        rightContent={<TopNav />}
+        rightContent={<HamburgerMenu />}
         leftContent={
           <Button variant="ghost" size="icon" asChild>
             <Link href={isEditMode ? "/budget" : "/setup/discretionary"}>

@@ -50,7 +50,7 @@ import { Suspense, useMemo, useState, useEffect } from 'react';
 import { addWeeks, format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/PageHeader';
-import { TopNav } from '@/components/TopNav';
+import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { HelpDialog } from '@/components/HelpDialog';
 import {
   SAVINGS_CATEGORIES,
@@ -351,7 +351,7 @@ function PlannedSavingsContent() {
         helpTitle="My Planned Savings Goals"
         helpContent={PAGE_HELP.savings}
         subheader={PAGE_SUBHEADERS.savings}
-        rightContent={<TopNav />}
+        rightContent={<HamburgerMenu />}
         leftContent={
           <Button variant="ghost" size="icon" asChild>
             <Link href={isEditMode ? "/budget" : "/setup/loans"}>

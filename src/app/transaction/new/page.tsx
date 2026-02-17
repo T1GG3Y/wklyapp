@@ -35,7 +35,7 @@ import {
   SelectLabel,
 } from '@/components/ui/select';
 import { PageHeader } from '@/components/PageHeader';
-import { TopNav } from '@/components/TopNav';
+import { HamburgerMenu } from '@/components/HamburgerMenu';
 import {
   ESSENTIAL_CATEGORIES,
   DISCRETIONARY_CATEGORIES,
@@ -270,7 +270,7 @@ export default function NewTransactionScreen() {
       <PageHeader
         title="MY TRANSACTIONS"
         subheader={PAGE_SUBHEADERS.transactions}
-        rightContent={<TopNav />}
+        rightContent={<HamburgerMenu />}
       />
 
       <main className="flex-1 overflow-y-auto p-4 pb-32 space-y-6">

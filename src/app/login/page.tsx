@@ -120,7 +120,7 @@ export default function LoginPage() {
                 onboardingComplete: false,
             }, { merge: true });
         }
-        router.push('/setup/start-day');
+        router.push('/setup/welcome');
     }
     toast({
         title: "Login Successful",

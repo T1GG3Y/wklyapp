@@ -60,7 +60,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { PageHeader } from '@/components/PageHeader';
-import { TopNav } from '@/components/TopNav';
+import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { HelpDialog } from '@/components/HelpDialog';
 import { BudgetTotalsBox } from '@/components/BudgetTotalsBox';
 import { OverBudgetBox } from '@/components/OverBudgetBox';
@@ -261,7 +261,7 @@ function RequiredExpensesContent() {
         helpTitle="My Essential Expenses"
         helpContent={PAGE_HELP.essentialExpenses}
         subheader={PAGE_SUBHEADERS.essentialExpenses}
-        rightContent={<TopNav />}
+        rightContent={<HamburgerMenu />}
         leftContent={
           <Button variant="ghost" size="icon" asChild>
             <Link href={isEditMode ? "/budget" : "/setup/income"}>

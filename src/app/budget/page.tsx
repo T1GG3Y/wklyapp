@@ -51,7 +51,7 @@ import { useMemo, useState, useEffect } from 'react';
 import type { DocumentData } from 'firebase/firestore';
 import Link from 'next/link';
 import { PageHeader } from '@/components/PageHeader';
-import { TopNav } from '@/components/TopNav';
+import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { formatCurrency, getWeeklyAmount } from '@/lib/format';
 import { PAGE_SUBHEADERS, type Frequency } from '@/lib/constants';
 
@@ -260,7 +260,7 @@ export default function BudgetScreen() {
       <PageHeader
         title="MY BUDGET PLAN"
         subheader={PAGE_SUBHEADERS.budgetPlan}
-        rightContent={<TopNav />}
+        rightContent={<HamburgerMenu />}
       />
 
       <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-28 space-y-3 pt-4">

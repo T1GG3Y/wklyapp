@@ -6,7 +6,8 @@ import {
   Briefcase,
   Plus,
   Trash2,
-  ArrowRight,
+  Edit,
+  CalendarIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useUser, useFirestore, useCollection } from '@/firebase';
@@ -35,19 +36,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
+import { format, parseISO } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/PageHeader';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
-import { FREQUENCY_OPTIONS, PAGE_HELP, PAGE_SUBHEADERS, type Frequency } from '@/lib/constants';
+import { FREQUENCY_OPTIONS, PAGE_HELP, type Frequency } from '@/lib/constants';
 import { formatCurrency, formatAmountInput, parseFormattedAmount, getWeeklyAmount } from '@/lib/format';
+import { BottomNav } from '@/components/BottomNav';
 
 interface IncomeSource extends DocumentData {
   id: string;
   name: string;
+  description?: string;
   amount: number;
   frequency: Frequency;
+  dueDate?: string;
 }
 
-export default function IncomeScreen() {
+export default function IncomePage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -55,8 +67,10 @@ export default function IncomeScreen() {
 
   const [formState, setFormState] = useState({
     name: '',
+    description: '',
     amount: '',
     frequency: 'Monthly' as Frequency,
+    dueDate: '',
   });
 
   const incomeSourcesPath = useMemo(() => {
@@ -71,11 +85,13 @@ export default function IncomeScreen() {
     if (sourceToEdit) {
       setFormState({
         name: sourceToEdit.name,
+        description: sourceToEdit.description || '',
         amount: formatAmountInput(sourceToEdit.amount.toString()),
         frequency: sourceToEdit.frequency,
+        dueDate: sourceToEdit.dueDate || '',
       });
     } else {
-      setFormState({ name: '', amount: '', frequency: 'Monthly' });
+      setFormState({ name: '', description: '', amount: '', frequency: 'Monthly', dueDate: '' });
     }
   }, [sourceToEdit]);
 
@@ -93,12 +109,17 @@ export default function IncomeScreen() {
       return;
     }
 
-    const sourceData = {
+    const sourceData: Record<string, unknown> = {
       userProfileId: user.uid,
       name: formState.name,
+      description: formState.description || '',
       amount: amount,
       frequency: formState.frequency,
     };
+
+    if (formState.dueDate) {
+      sourceData.dueDate = formState.dueDate;
+    }
 
     try {
       if (sourceToEdit) {
@@ -117,7 +138,7 @@ export default function IncomeScreen() {
 
   const handleOpenAddDialog = () => {
     setSourceToEdit(null);
-    setFormState({ name: '', amount: '', frequency: 'Monthly' });
+    setFormState({ name: '', description: '', amount: '', frequency: 'Monthly', dueDate: '' });
     setIsDialogOpen(true);
   };
 
@@ -141,11 +162,12 @@ export default function IncomeScreen() {
 
   const weeklyTotal = useMemo(() => {
     if (!incomeSources) return 0;
-
     return incomeSources.reduce((total, source) => {
       return total + getWeeklyAmount(source.amount, source.frequency);
     }, 0);
   }, [incomeSources]);
+
+  const dueDateValue = formState.dueDate ? parseISO(formState.dueDate) : undefined;
 
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-background">
@@ -153,11 +175,21 @@ export default function IncomeScreen() {
         title="MY INCOME"
         helpTitle="My Income"
         helpContent={PAGE_HELP.income}
-        subheader={PAGE_SUBHEADERS.income}
+        subheader="For Setup select 'Add New Income' below and start adding each Income Source. To learn how to deal with inconsistent income go to FAQ under My Profile."
         rightContent={<HamburgerMenu />}
       />
 
       <main className="flex-1 flex flex-col gap-6 p-4 pb-48">
+        {/* Add New Income Button */}
+        <Button
+          className="w-full h-12 text-base font-bold tracking-wide"
+          size="lg"
+          onClick={handleOpenAddDialog}
+        >
+          <Plus className="mr-2 h-5 w-5" />
+          Add New Income
+        </Button>
+
         {/* My Weekly Income Total */}
         <section>
           <div className="flex flex-col gap-3 rounded-2xl p-5 bg-card shadow-sm border">
@@ -172,16 +204,6 @@ export default function IncomeScreen() {
             </p>
           </div>
         </section>
-
-        {/* Add New Income Button */}
-        <Button
-          className="w-full h-12 text-base font-bold tracking-wide"
-          size="lg"
-          onClick={handleOpenAddDialog}
-        >
-          <Plus className="mr-2 h-5 w-5" />
-          Add New Income
-        </Button>
 
         {/* MY INCOME SOURCES */}
         <section className="flex flex-col gap-3">
@@ -215,17 +237,15 @@ export default function IncomeScreen() {
                     </span>
                   </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-muted-foreground hover:text-destructive -mr-2"
+                <button
+                  className="text-muted-foreground hover:text-primary -mr-2 p-2"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDeleteSource(source.id);
+                    handleOpenEditDialog(source);
                   }}
                 >
-                  <Trash2 className="size-4" />
-                </Button>
+                  <Edit className="size-4" />
+                </button>
               </div>
             ))
           ) : (
@@ -236,11 +256,11 @@ export default function IncomeScreen() {
         </section>
       </main>
 
-      {/* Add/Edit Dialog */}
+      {/* Add/Edit Dialog - Edit Box My Income */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{sourceToEdit ? 'Edit' : 'Add New'} Income Source</DialogTitle>
+            <DialogTitle>Edit Box - My Income</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -251,6 +271,17 @@ export default function IncomeScreen() {
                 value={formState.name}
                 onChange={(e) =>
                   setFormState({ ...formState, name: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+              <Input
+                id="description"
+                placeholder="e.g. Full-time job"
+                value={formState.description}
+                onChange={(e) =>
+                  setFormState({ ...formState, description: e.target.value })
                 }
               />
             </div>
@@ -290,6 +321,38 @@ export default function IncomeScreen() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Due Date <span className="text-muted-foreground font-normal">(Optional)</span></Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      'w-full justify-start text-left font-normal',
+                      !formState.dueDate && 'text-muted-foreground'
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formState.dueDate
+                      ? format(parseISO(formState.dueDate), 'PPP')
+                      : 'Select a date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarPicker
+                    mode="single"
+                    selected={dueDateValue}
+                    onSelect={(date) =>
+                      setFormState({
+                        ...formState,
+                        dueDate: date ? format(date, 'yyyy-MM-dd') : '',
+                      })
+                    }
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-row">
             <Button className="w-full sm:w-auto" onClick={handleSaveSource}>
@@ -319,17 +382,19 @@ export default function IncomeScreen() {
       </Dialog>
 
       {/* Continue Button */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none w-full">
+      <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none w-full">
         <Button
           asChild
           className="pointer-events-auto w-full h-12 text-lg font-bold shadow-lg"
           size="lg"
         >
-          <Link href="/setup/required-expenses">
-            Continue <ArrowRight className="ml-2 h-5 w-5" />
+          <Link href="/essential-expenses">
+            Continue to Essential Expenses
           </Link>
         </Button>
       </div>
+
+      <BottomNav />
     </div>
   );
 }

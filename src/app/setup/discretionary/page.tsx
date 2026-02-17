@@ -62,7 +62,7 @@ import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/PageHeader';
-import { TopNav } from '@/components/TopNav';
+import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { HelpDialog } from '@/components/HelpDialog';
 import { BudgetTotalsBox } from '@/components/BudgetTotalsBox';
 import { OverBudgetBox } from '@/components/OverBudgetBox';
@@ -263,7 +263,7 @@ function DiscretionaryExpensesContent() {
         helpTitle="My Discretionary Expenses"
         helpContent={PAGE_HELP.discretionaryExpenses}
         subheader={PAGE_SUBHEADERS.discretionaryExpenses}
-        rightContent={<TopNav />}
+        rightContent={<HamburgerMenu />}
         leftContent={
           <Button variant="ghost" size="icon" asChild>
             <Link href={isEditMode ? "/budget" : "/setup/required-expenses"}>
