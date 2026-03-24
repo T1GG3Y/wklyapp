@@ -48,7 +48,6 @@ import { PageHeader } from '@/components/PageHeader';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { FREQUENCY_OPTIONS, PAGE_HELP, type Frequency } from '@/lib/constants';
 import { formatCurrency, formatAmountInput, parseFormattedAmount, getWeeklyAmount } from '@/lib/format';
-import { BottomNav } from '@/components/BottomNav';
 
 interface IncomeSource extends DocumentData {
   id: string;
@@ -394,7 +393,6 @@ export default function IncomePage() {
         </Button>
       </div>
 
-      <BottomNav />
     </div>
   );
 }

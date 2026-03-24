@@ -65,7 +65,6 @@ import { PageHeader } from '@/components/PageHeader';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { HelpDialog } from '@/components/HelpDialog';
 import { BudgetTotalsBox } from '@/components/BudgetTotalsBox';
-import { BottomNav } from '@/components/BottomNav';
 import {
   ESSENTIAL_CATEGORIES,
   FREQUENCY_OPTIONS,
@@ -628,7 +627,6 @@ export default function EssentialExpensesPage() {
         </div>
       </div>
 
-      <BottomNav />
     </div>
   );
 }

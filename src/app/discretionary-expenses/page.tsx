@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import {
   ArrowLeft,
+  ArrowRight,
   Trash2,
   Sparkles,
   Shirt,
@@ -67,7 +68,6 @@ import { PageHeader } from '@/components/PageHeader';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { HelpDialog } from '@/components/HelpDialog';
 import { BudgetTotalsBox } from '@/components/BudgetTotalsBox';
-import { BottomNav } from '@/components/BottomNav';
 import {
   DISCRETIONARY_CATEGORIES,
   FREQUENCY_OPTIONS,
@@ -309,17 +309,25 @@ export default function DiscretionaryExpensesPage() {
         helpTitle="My Discretionary Expenses"
         helpContent={PAGE_HELP.discretionaryExpenses}
         subheader="For Setup select 'Add New Expense' below and start adding each Expense"
-        rightContent={<HamburgerMenu />}
+        rightContent={
+          <Button variant="ghost" size="sm" asChild className="gap-1">
+            <Link href="/loans">
+              Planned
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        }
         leftContent={
-          <Button variant="ghost" size="icon" asChild>
+          <Button variant="ghost" size="sm" asChild className="gap-1">
             <Link href="/essential-expenses">
-              <ArrowLeft />
+              <ArrowLeft className="h-4 w-4" />
+              Essential
             </Link>
           </Button>
         }
       />
 
-      <main className="flex-1 overflow-y-auto pb-48">
+      <main className="flex-1 overflow-y-auto pb-8">
         <div className="px-4 py-4 space-y-4">
           <Button onClick={handleOpenCategoryPicker} className="w-full h-12">
             <Plus className="size-5 mr-2" />
@@ -554,24 +562,7 @@ export default function DiscretionaryExpensesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Footer Buttons */}
-      <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none w-full z-10">
-        <div className="pointer-events-auto flex gap-3">
-          <Button asChild variant="outline" className="flex-1 h-12 text-base font-bold" size="lg">
-            <Link href="/essential-expenses">
-              <ArrowLeft className="mr-2 h-5 w-5" />
-              Back to Essential
-            </Link>
-          </Button>
-          <Button asChild className="flex-1 h-12 text-base font-bold shadow-lg" size="lg">
-            <Link href="/loans">
-              Continue to Loans
-            </Link>
-          </Button>
-        </div>
-      </div>
 
-      <BottomNav />
     </div>
   );
 }

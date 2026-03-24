@@ -1,7 +1,6 @@
 
 'use client';
 
-import { BottomNav } from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -26,7 +25,6 @@ export default function ReportDetailLayout({
             <div className="w-10"></div>
         </header>
         {children}
-        <BottomNav />
       </div>
     </div>
   );

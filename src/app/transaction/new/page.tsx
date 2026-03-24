@@ -46,7 +46,6 @@ import {
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/PageHeader';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
-import { BottomNav } from '@/components/BottomNav';
 import {
   ESSENTIAL_CATEGORIES,
   DISCRETIONARY_CATEGORIES,
@@ -979,7 +978,6 @@ export default function NewTransactionScreen() {
         </DialogContent>
       </Dialog>
 
-      <BottomNav />
     </div>
   );
 }

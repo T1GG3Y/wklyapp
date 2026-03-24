@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/select';
 import { PageHeader } from '@/components/PageHeader';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
-import { BottomNav } from '@/components/BottomNav';
 import { formatCurrency, getWeeklyAmount } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { Frequency } from '@/lib/constants';
@@ -468,7 +467,6 @@ export default function ReportsScreen() {
         </div>
       </main>
 
-      <BottomNav />
     </div>
   );
 }

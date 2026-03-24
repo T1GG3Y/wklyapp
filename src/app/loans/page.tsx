@@ -52,7 +52,6 @@ import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/PageHeader';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { HelpDialog } from '@/components/HelpDialog';
-import { BottomNav } from '@/components/BottomNav';
 import {
   LOAN_CATEGORIES,
   FREQUENCY_OPTIONS,
@@ -534,7 +533,6 @@ export default function LoansPage() {
         </div>
       </div>
 
-      <BottomNav />
     </div>
   );
 }

@@ -55,7 +55,6 @@ import { startOfWeek, endOfWeek, isWithinInterval, format, subWeeks, isBefore, a
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/PageHeader';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
-import { BottomNav } from '@/components/BottomNav';
 import { formatCurrency, getWeeklyAmount } from '@/lib/format';
 import type { Frequency } from '@/lib/constants';
 
@@ -554,7 +553,6 @@ export default function DashboardScreen() {
         </div>
       </div>
 
-      <BottomNav />
     </div>
   );
 }
