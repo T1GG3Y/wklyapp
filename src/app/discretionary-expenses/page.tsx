@@ -108,7 +108,7 @@ const iconMap: Record<string, LucideIcon> = {
   'Pets': Dog,
   'Subscriptions': CreditCard,
   'Personal Expenses': User,
-  'Miscellaneous': MoreHorizontal,
+  'Custom': MoreHorizontal,
 };
 
 export default function DiscretionaryExpensesPage() {
@@ -193,8 +193,8 @@ export default function DiscretionaryExpensesPage() {
       return;
     }
 
-    if (formState.category === 'Miscellaneous' && !formState.description.trim()) {
-      alert('Please enter a description for Miscellaneous expenses.');
+    if (formState.category === 'Custom' && !formState.description.trim()) {
+      alert('Please enter a description for Custom expenses.');
       return;
     }
 
@@ -310,12 +310,15 @@ export default function DiscretionaryExpensesPage() {
         helpContent={PAGE_HELP.discretionaryExpenses}
         subheader="For Setup select 'Add New Expense' below and start adding each Expense"
         rightContent={
-          <Button variant="ghost" size="sm" asChild className="gap-1">
-            <Link href="/loans">
-              Planned
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" asChild className="gap-1">
+              <Link href="/loans">
+                Loans
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <HamburgerMenu />
+          </div>
         }
         leftContent={
           <Button variant="ghost" size="sm" asChild className="gap-1">
@@ -427,7 +430,7 @@ export default function DiscretionaryExpensesPage() {
                     <Icon className="size-4" />
                     <HelpDialog
                       title={name}
-                      content={CATEGORY_HELP[name] || CATEGORY_HELP['Miscellaneous']}
+                      content={CATEGORY_HELP[name] || CATEGORY_HELP['Custom']}
                       iconClassName="size-3"
                     />
                   </div>

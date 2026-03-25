@@ -45,6 +45,7 @@ import {
   User,
   FileText,
   ArrowLeft,
+  ArrowRight,
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -117,7 +118,7 @@ const essentialExpenseIcons: Record<string, LucideIcon> = {
   'Electrical': Lightbulb, 'Water/Sewer': Droplet, 'Garbage': MoreHorizontal,
   'Phone': Phone, 'Gas/Parking/Tolls': Car, 'Auto Insurance': Shield,
   'Auto Maintenance': Wrench, 'Auto Registration': FileText, 'Medical': Heart,
-  'Dental': Smile, 'Miscellaneous': MoreHorizontal,
+  'Dental': Smile, 'Custom': MoreHorizontal,
 };
 
 const discretionaryExpenseIcons: Record<string, LucideIcon> = {
@@ -125,18 +126,18 @@ const discretionaryExpenseIcons: Record<string, LucideIcon> = {
   'TV Service': Tv, 'Internet': Wifi, 'Children Activities': Baby,
   'Date Activities': Heart, 'Family Activities': Users, 'Vacation': Plane,
   'Fitness': Dumbbell, 'Gifts': Gift, 'Pets': Dog, 'Subscriptions': CreditCard,
-  'Personal Expenses': User, 'Miscellaneous': MoreHorizontal,
+  'Personal Expenses': User, 'Custom': MoreHorizontal,
 };
 
 const loanIcons: Record<string, LucideIcon> = {
   'Credit Cards': CreditCard, 'Auto Loan': Car, 'Home Mortgages': Home,
-  'Student Loan': GraduationCap, 'Miscellaneous': MoreHorizontal,
+  'Student Loan': GraduationCap, 'Custom': MoreHorizontal,
 };
 
 const savingsGoalIcons: Record<string, LucideIcon> = {
   'Emergency Fund': ShieldAlert, 'House Purchase': Home, 'Automobile': Car,
   'Vacation': Plane, 'Recreation Equipment': Bike, 'Education': GraduationCap,
-  'Miscellaneous': MoreHorizontal, 'Income Balance': Wallet,
+  'Custom': MoreHorizontal, 'Income Balance': Wallet,
 };
 
 // Budget Balance Circle
@@ -362,10 +363,28 @@ export default function DashboardScreen() {
     <div className="bg-background font-headline antialiased min-h-screen flex flex-col">
       <PageHeader
         title="HOME"
-        rightContent={<HamburgerMenu />}
+        rightContent={
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" asChild className="gap-1">
+              <Link href="/transaction/new">
+                Transactions
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <HamburgerMenu />
+          </div>
+        }
+        leftContent={
+          <Button variant="ghost" size="sm" asChild className="gap-1">
+            <Link href="/savings-goals">
+              <ArrowLeft className="h-4 w-4" />
+              Savings
+            </Link>
+          </Button>
+        }
       />
 
-      <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-48 space-y-4 pt-4">
+      <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-8 space-y-4 pt-4">
         {/* My Health Score */}
         <div className="bg-card rounded-xl p-4 border shadow-sm">
           <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider text-center mb-4">
@@ -536,22 +555,7 @@ export default function DashboardScreen() {
         </div>
       </main>
 
-      {/* Footer Buttons */}
-      <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none w-full z-10">
-        <div className="pointer-events-auto flex gap-3">
-          <Button asChild variant="outline" className="flex-1 h-12 text-base font-bold" size="lg">
-            <Link href="/savings-goals">
-              <ArrowLeft className="mr-2 h-5 w-5" />
-              Back to Savings Goals
-            </Link>
-          </Button>
-          <Button asChild className="flex-1 h-12 text-base font-bold shadow-lg" size="lg">
-            <Link href="/transaction/new">
-              Continue to Transactions
-            </Link>
-          </Button>
-        </div>
-      </div>
+
 
     </div>
   );

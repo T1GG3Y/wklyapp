@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import {
+  ArrowRight,
   CalendarDays,
   Briefcase,
   Plus,
@@ -175,10 +176,20 @@ export default function IncomePage() {
         helpTitle="My Income"
         helpContent={PAGE_HELP.income}
         subheader="For Setup select 'Add New Income' below and start adding each Income Source. To learn how to deal with inconsistent income go to FAQ under My Profile."
-        rightContent={<HamburgerMenu />}
+        rightContent={
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" asChild className="gap-1">
+              <Link href="/essential-expenses">
+                Essential
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <HamburgerMenu />
+          </div>
+        }
       />
 
-      <main className="flex-1 flex flex-col gap-6 p-4 pb-48">
+      <main className="flex-1 flex flex-col gap-6 p-4 pb-8">
         {/* Add New Income Button */}
         <Button
           className="w-full h-12 text-base font-bold tracking-wide"
@@ -380,18 +391,6 @@ export default function IncomePage() {
         </DialogContent>
       </Dialog>
 
-      {/* Continue Button */}
-      <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none w-full">
-        <Button
-          asChild
-          className="pointer-events-auto w-full h-12 text-lg font-bold shadow-lg"
-          size="lg"
-        >
-          <Link href="/essential-expenses">
-            Continue to Essential Expenses
-          </Link>
-        </Button>
-      </div>
 
     </div>
   );

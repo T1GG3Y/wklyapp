@@ -21,6 +21,7 @@ import {
   Edit,
   Calculator,
   ArrowLeft,
+  ArrowRight,
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -105,7 +106,7 @@ const iconMap: Record<string, LucideIcon> = {
   'Auto Registration': FileText,
   'Medical': Heart,
   'Dental': Smile,
-  'Miscellaneous': MoreHorizontal,
+  'Custom': MoreHorizontal,
 };
 
 export default function EssentialExpensesPage() {
@@ -193,8 +194,8 @@ export default function EssentialExpensesPage() {
       return;
     }
 
-    if (formState.category === 'Miscellaneous' && !formState.description.trim()) {
-      alert('Please enter a description for Miscellaneous expenses.');
+    if (formState.category === 'Custom' && !formState.description.trim()) {
+      alert('Please enter a description for Custom expenses.');
       return;
     }
 
@@ -318,17 +319,28 @@ export default function EssentialExpensesPage() {
         helpTitle="My Essential Expenses"
         helpContent={PAGE_HELP.essentialExpenses}
         subheader="For Setup select 'Add New Expense' below and start adding each Expense"
-        rightContent={<HamburgerMenu />}
+        rightContent={
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" asChild className="gap-1">
+              <Link href="/discretionary-expenses">
+                Discretionary
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <HamburgerMenu />
+          </div>
+        }
         leftContent={
-          <Button variant="ghost" size="icon" asChild>
+          <Button variant="ghost" size="sm" asChild className="gap-1">
             <Link href="/income">
-              <ArrowLeft />
+              <ArrowLeft className="h-4 w-4" />
+              Income
             </Link>
           </Button>
         }
       />
 
-      <main className="flex-1 overflow-y-auto pb-48">
+      <main className="flex-1 overflow-y-auto pb-8">
         <div className="px-4 py-4 space-y-4">
           {/* Add New Expense Button */}
           <Button
@@ -437,7 +449,7 @@ export default function EssentialExpensesPage() {
                     <Icon className="size-4" />
                     <HelpDialog
                       title={name}
-                      content={CATEGORY_HELP[name] || CATEGORY_HELP['Miscellaneous']}
+                      content={CATEGORY_HELP[name] || CATEGORY_HELP['Custom']}
                       iconClassName="size-3"
                     />
                   </div>
@@ -601,31 +613,6 @@ export default function EssentialExpensesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Footer Buttons */}
-      <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none w-full z-10">
-        <div className="pointer-events-auto flex gap-3">
-          <Button
-            asChild
-            variant="outline"
-            className="flex-1 h-12 text-base font-bold"
-            size="lg"
-          >
-            <Link href="/income">
-              <ArrowLeft className="mr-2 h-5 w-5" />
-              Back to Income
-            </Link>
-          </Button>
-          <Button
-            asChild
-            className="flex-1 h-12 text-base font-bold shadow-lg"
-            size="lg"
-          >
-            <Link href="/discretionary-expenses">
-              Continue to Discretionary
-            </Link>
-          </Button>
-        </div>
-      </div>
 
     </div>
   );

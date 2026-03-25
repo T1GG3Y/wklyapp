@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { Plus } from "lucide-react";
 import { HelpDialog } from "@/components/HelpDialog";
 import { cn } from "@/lib/utils";
 
@@ -50,7 +52,13 @@ export function PageHeader({
         </div>
 
         {/* Right content area */}
-        <div className="flex-1 flex justify-end">
+        <div className="flex-1 flex justify-end items-center gap-1">
+          <Link
+            href="/transaction/new"
+            className="inline-flex items-center justify-center rounded-full bg-primary p-1.5 text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+          </Link>
           {rightContent}
         </div>
       </div>

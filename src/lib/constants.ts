@@ -15,61 +15,61 @@ export const FREQUENCY_OPTIONS = [
 
 export type Frequency = (typeof FREQUENCY_OPTIONS)[number];
 
-// Essential Expense Categories (in order)
+// Essential Expense Categories (alphabetical, Custom last)
 export const ESSENTIAL_CATEGORIES = [
-  { name: 'Groceries', icon: 'ShoppingBasket' },
-  { name: 'Rent/Mortgage', icon: 'Home' },
-  { name: 'Natural Gas', icon: 'Flame' },
-  { name: 'Electrical', icon: 'Lightbulb' },
-  { name: 'Water/Sewer', icon: 'Droplet' },
-  { name: 'Garbage', icon: 'Trash2' },
-  { name: 'Phone', icon: 'Phone' },
-  { name: 'Gas/Parking/Tolls', icon: 'Car' },
   { name: 'Auto Insurance', icon: 'Shield' },
   { name: 'Auto Maintenance', icon: 'Wrench' },
   { name: 'Auto Registration', icon: 'FileText' },
-  { name: 'Medical', icon: 'Heart' },
   { name: 'Dental', icon: 'Smile' },
-  { name: 'Miscellaneous', icon: 'MoreHorizontal' },
+  { name: 'Electrical', icon: 'Lightbulb' },
+  { name: 'Garbage', icon: 'Trash2' },
+  { name: 'Gas/Parking/Tolls', icon: 'Car' },
+  { name: 'Groceries', icon: 'ShoppingBasket' },
+  { name: 'Medical', icon: 'Heart' },
+  { name: 'Natural Gas', icon: 'Flame' },
+  { name: 'Phone', icon: 'Phone' },
+  { name: 'Rent/Mortgage', icon: 'Home' },
+  { name: 'Water/Sewer', icon: 'Droplet' },
+  { name: 'Custom', icon: 'MoreHorizontal' },
 ] as const;
 
-// Discretionary Categories (in order)
+// Discretionary Categories (alphabetical, Custom last)
 export const DISCRETIONARY_CATEGORIES = [
-  { name: 'Personal Care', icon: 'Sparkles' },
   { name: 'Apparel', icon: 'Shirt' },
-  { name: 'House Maintenance', icon: 'Hammer' },
-  { name: 'TV Service', icon: 'Tv' },
-  { name: 'Internet', icon: 'Wifi' },
   { name: 'Children Activities', icon: 'Baby' },
   { name: 'Date Activities', icon: 'Heart' },
   { name: 'Family Activities', icon: 'Users' },
-  { name: 'Vacation', icon: 'Plane' },
   { name: 'Fitness', icon: 'Dumbbell' },
   { name: 'Gifts', icon: 'Gift' },
+  { name: 'House Maintenance', icon: 'Hammer' },
+  { name: 'Internet', icon: 'Wifi' },
+  { name: 'Personal Care', icon: 'Sparkles' },
+  { name: 'Personal Expenses', icon: 'User' },
   { name: 'Pets', icon: 'Dog' },
   { name: 'Subscriptions', icon: 'CreditCard' },
-  { name: 'Personal Expenses', icon: 'User' },
-  { name: 'Miscellaneous', icon: 'MoreHorizontal' },
+  { name: 'TV Service', icon: 'Tv' },
+  { name: 'Vacation', icon: 'Plane' },
+  { name: 'Custom', icon: 'MoreHorizontal' },
 ] as const;
 
-// Loan Categories
+// Loan Categories (alphabetical, Custom last)
 export const LOAN_CATEGORIES = [
-  { name: 'Credit Cards', icon: 'CreditCard' },
   { name: 'Auto Loan', icon: 'Car' },
+  { name: 'Credit Cards', icon: 'CreditCard' },
   { name: 'Home Mortgages', icon: 'Home' },
   { name: 'Student Loan', icon: 'GraduationCap' },
-  { name: 'Miscellaneous', icon: 'MoreHorizontal' },
+  { name: 'Custom', icon: 'MoreHorizontal' },
 ] as const;
 
-// Savings Categories
+// Savings Categories (alphabetical, Custom and Income Balance last)
 export const SAVINGS_CATEGORIES = [
+  { name: 'Automobile', icon: 'Car' },
+  { name: 'Education', icon: 'GraduationCap' },
   { name: 'Emergency Fund', icon: 'ShieldAlert' },
   { name: 'House Purchase', icon: 'Home' },
-  { name: 'Automobile', icon: 'Car' },
-  { name: 'Vacation', icon: 'Plane' },
   { name: 'Recreation Equipment', icon: 'Bike' },
-  { name: 'Education', icon: 'GraduationCap' },
-  { name: 'Miscellaneous', icon: 'MoreHorizontal' },
+  { name: 'Vacation', icon: 'Plane' },
+  { name: 'Custom', icon: 'MoreHorizontal' },
   { name: 'Income Balance', icon: 'Wallet' },
 ] as const;
 
@@ -121,7 +121,7 @@ export const CATEGORY_HELP: Record<string, string> = {
   'Income Balance': 'All income not designated in the budget.',
 
   // Generic (used by multiple categories)
-  'Miscellaneous': 'List the item in the description.',
+  'Custom': 'Name and describe your custom item.',
 };
 
 // Page Help Text

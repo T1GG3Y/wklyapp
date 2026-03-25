@@ -82,6 +82,7 @@ import {
 
 interface RequiredExpense extends DocumentData {
   id: string;
+  name?: string;
   category: string;
   amount: number;
   frequency: Frequency;
@@ -104,7 +105,7 @@ const iconMap: Record<string, LucideIcon> = {
   'Auto Registration': FileText,
   'Medical': Heart,
   'Dental': Smile,
-  'Miscellaneous': MoreHorizontal,
+  'Custom': MoreHorizontal,
 };
 
 function RequiredExpensesContent() {
@@ -121,12 +122,14 @@ function RequiredExpensesContent() {
     frequency: Frequency;
     dueDate?: Date;
     description: string;
+    name: string;
   }>({
     category: 'Groceries',
     amount: '',
     frequency: 'Monthly',
     dueDate: undefined,
     description: '',
+    name: '',
   });
 
   const requiredExpensesPath = useMemo(() => {
@@ -145,6 +148,7 @@ function RequiredExpensesContent() {
         frequency: expenseToEdit.frequency as Frequency,
         dueDate: expenseToEdit.dueDate ? parseISO(expenseToEdit.dueDate) : undefined,
         description: expenseToEdit.description || '',
+        name: expenseToEdit.name || '',
       });
     } else {
       setFormState({
@@ -153,6 +157,7 @@ function RequiredExpensesContent() {
         frequency: 'Monthly',
         dueDate: undefined,
         description: '',
+        name: '',
       });
     }
   }, [expenseToEdit]);
@@ -170,6 +175,7 @@ function RequiredExpensesContent() {
       frequency: 'Monthly',
       dueDate: undefined,
       description: '',
+      name: '',
     });
     setIsDialogOpen(true);
   };
@@ -188,15 +194,16 @@ function RequiredExpensesContent() {
       return;
     }
 
-    // Require description for Miscellaneous
-    if (formState.category === 'Miscellaneous' && !formState.description.trim()) {
-      alert('Please enter a description for Miscellaneous expenses.');
+    // Require name for Custom
+    if (formState.category === 'Custom' && !formState.name.trim()) {
+      alert('Please enter a name for Custom expenses.');
       return;
     }
 
     const expenseData = {
       userProfileId: user.uid,
       category: formState.category,
+      name: formState.name || formState.category,
       amount: expenseAmount,
       frequency: formState.frequency,
       description: formState.description,
@@ -373,7 +380,7 @@ function RequiredExpensesContent() {
                       <Icon className="size-5" />
                       <HelpDialog
                         title={name}
-                        content={CATEGORY_HELP[name] || CATEGORY_HELP['Miscellaneous']}
+                        content={CATEGORY_HELP[name] || CATEGORY_HELP['Custom']}
                         iconClassName="size-3"
                       />
                     </div>
@@ -489,7 +496,7 @@ function RequiredExpensesContent() {
                   <Label htmlFor="category">Category</Label>
                   <HelpDialog
                     title={formState.category}
-                    content={CATEGORY_HELP[formState.category] || CATEGORY_HELP['Miscellaneous']}
+                    content={CATEGORY_HELP[formState.category] || CATEGORY_HELP['Custom']}
                     iconClassName="size-3"
                   />
                 </div>
@@ -519,20 +526,29 @@ function RequiredExpensesContent() {
               </div>
             )}
 
-            {formState.category === 'Miscellaneous' && (
-              <div className="space-y-2">
-                <Label htmlFor="description">
-                  Description <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="description"
-                  placeholder="Describe this expense"
-                  value={formState.description}
-                  onChange={(e) =>
-                    setFormState({ ...formState, description: e.target.value })
-                  }
-                />
-              </div>
+            {formState.category === 'Custom' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="name"
+                    placeholder="e.g. My custom expense"
+                    value={formState.name}
+                    onChange={(e) => setFormState({ ...formState, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description (Optional)</Label>
+                  <Input
+                    id="description"
+                    placeholder="Describe this expense"
+                    value={formState.description}
+                    onChange={(e) =>
+                      setFormState({ ...formState, description: e.target.value })
+                    }
+                  />
+                </div>
+              </>
             )}
 
             <div className="space-y-2">
@@ -605,7 +621,7 @@ function RequiredExpensesContent() {
               </Popover>
             </div>
 
-            {formState.category !== 'Miscellaneous' && (
+            {formState.category !== 'Custom' && (
               <div className="space-y-2">
                 <Label htmlFor="description">Description (Optional)</Label>
                 <Input

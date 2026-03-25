@@ -87,7 +87,7 @@ const iconMap: Record<string, LucideIcon> = {
   'Auto Loan': Car,
   'Home Mortgages': Home,
   'Student Loan': GraduationCap,
-  'Miscellaneous': MoreHorizontal,
+  'Custom': MoreHorizontal,
 };
 
 function LoansScreenContent() {
@@ -189,9 +189,9 @@ function LoansScreenContent() {
       return;
     }
 
-    // Require description for Miscellaneous
-    if (formState.category === 'Miscellaneous' && !formState.description.trim()) {
-      alert('Please enter a description for Miscellaneous loans.');
+    // Require description for Custom
+    if (formState.category === 'Custom' && !formState.description.trim()) {
+      alert('Please enter a description for Custom loans.');
       return;
     }
 
@@ -450,7 +450,7 @@ function LoansScreenContent() {
                       <Icon className="size-5" />
                       <HelpDialog
                         title={name}
-                        content={CATEGORY_HELP[name] || CATEGORY_HELP['Miscellaneous']}
+                        content={CATEGORY_HELP[name] || CATEGORY_HELP['Custom']}
                         iconClassName="size-3"
                       />
                     </div>
@@ -543,7 +543,7 @@ function LoansScreenContent() {
                   <Label htmlFor="category">Category</Label>
                   <HelpDialog
                     title={formState.category}
-                    content={CATEGORY_HELP[formState.category] || CATEGORY_HELP['Miscellaneous']}
+                    content={CATEGORY_HELP[formState.category] || CATEGORY_HELP['Custom']}
                     iconClassName="size-3"
                   />
                 </div>
@@ -584,7 +584,7 @@ function LoansScreenContent() {
               />
             </div>
 
-            {formState.category === 'Miscellaneous' && (
+            {formState.category === 'Custom' && (
               <div className="space-y-2">
                 <Label htmlFor="description">
                   Description <span className="text-destructive">*</span>
@@ -707,7 +707,7 @@ function LoansScreenContent() {
               </Popover>
             </div>
 
-            {formState.category !== 'Miscellaneous' && (
+            {formState.category !== 'Custom' && (
               <div className="space-y-2">
                 <Label htmlFor="description">Description (Optional)</Label>
                 <Input

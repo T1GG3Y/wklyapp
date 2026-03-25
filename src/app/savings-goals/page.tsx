@@ -21,6 +21,7 @@ import {
   Plane,
   Car,
   ArrowLeft,
+  ArrowRight,
   Home,
   Trash2,
   GraduationCap,
@@ -99,7 +100,7 @@ const iconMap: Record<string, LucideIcon> = {
   'Vacation': Plane,
   'Recreation Equipment': Bike,
   'Education': GraduationCap,
-  'Miscellaneous': MoreHorizontal,
+  'Custom': MoreHorizontal,
   'Income Balance': Wallet,
 };
 
@@ -236,8 +237,8 @@ export default function SavingsGoalsPage() {
       return;
     }
 
-    if (formState.category === 'Miscellaneous' && !formState.description.trim()) {
-      alert('Please enter a description for Miscellaneous goals.');
+    if (formState.category === 'Custom' && !formState.description.trim()) {
+      alert('Please enter a description for Custom goals.');
       return;
     }
 
@@ -291,17 +292,28 @@ export default function SavingsGoalsPage() {
         helpTitle="My Planned Savings Goals"
         helpContent={PAGE_HELP.savings}
         subheader="Tap each category to add each savings goal. This week's balance will be added to next week."
-        rightContent={<HamburgerMenu />}
+        rightContent={
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" asChild className="gap-1">
+              <Link href="/dashboard">
+                Home
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <HamburgerMenu />
+          </div>
+        }
         leftContent={
-          <Button variant="ghost" size="icon" asChild>
+          <Button variant="ghost" size="sm" asChild className="gap-1">
             <Link href="/loans">
-              <ArrowLeft />
+              <ArrowLeft className="h-4 w-4" />
+              Loans
             </Link>
           </Button>
         }
       />
 
-      <main className="flex-1 flex flex-col p-4 w-full pb-48">
+      <main className="flex-1 flex flex-col p-4 w-full pb-8">
         <div className="space-y-4">
           <Button onClick={handleOpenCategoryPicker} className="w-full h-12">
             <Plus className="size-5 mr-2" />
@@ -427,7 +439,7 @@ export default function SavingsGoalsPage() {
                     <Icon className="size-4" />
                     <HelpDialog
                       title={name}
-                      content={CATEGORY_HELP[name] || CATEGORY_HELP['Miscellaneous']}
+                      content={CATEGORY_HELP[name] || CATEGORY_HELP['Custom']}
                       iconClassName="size-3"
                     />
                   </div>
@@ -557,23 +569,6 @@ export default function SavingsGoalsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Footer Buttons */}
-      <div className="fixed bottom-20 left-0 right-0 p-4 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none w-full z-10">
-        <div className="pointer-events-auto flex gap-3">
-          <Button asChild variant="outline" className="flex-1 h-12 text-base font-bold" size="lg">
-            <Link href="/loans">
-              <ArrowLeft className="mr-2 h-5 w-5" />
-              Back to Loans
-            </Link>
-          </Button>
-          <Button asChild className="flex-1 h-12 text-base font-bold shadow-lg" size="lg">
-            <Link href="/dashboard">
-              Continue to Home
-            </Link>
-          </Button>
-        </div>
-      </div>
 
     </div>
   );

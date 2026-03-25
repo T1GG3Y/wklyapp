@@ -42,6 +42,7 @@ import {
   Edit,
   Baby,
   Hammer,
+  ArrowLeft,
   Bike,
   User,
   FileText,
@@ -108,7 +109,7 @@ const essentialExpenseIcons: Record<string, LucideIcon> = {
   'Auto Registration': FileText,
   'Medical': Heart,
   'Dental': Smile,
-  'Miscellaneous': MoreHorizontal,
+  'Custom': MoreHorizontal,
 };
 
 // Icon Mappings for Discretionary Expenses
@@ -127,7 +128,7 @@ const discretionaryExpenseIcons: Record<string, LucideIcon> = {
   'Pets': Dog,
   'Subscriptions': CreditCard,
   'Personal Expenses': User,
-  'Miscellaneous': MoreHorizontal,
+  'Custom': MoreHorizontal,
 };
 
 // Icon Mappings for Loans
@@ -136,7 +137,7 @@ const loanIcons: Record<string, LucideIcon> = {
   'Auto Loan': Car,
   'Home Mortgages': Home,
   'Student Loan': GraduationCap,
-  'Miscellaneous': MoreHorizontal,
+  'Custom': MoreHorizontal,
 };
 
 // Icon Mappings for Savings Goals
@@ -147,7 +148,7 @@ const savingsGoalIcons: Record<string, LucideIcon> = {
   'Vacation': Plane,
   'Recreation Equipment': Bike,
   'Education': GraduationCap,
-  'Miscellaneous': MoreHorizontal,
+  'Custom': MoreHorizontal,
   'Income Balance': Wallet,
 };
 
@@ -261,6 +262,14 @@ export default function BudgetScreen() {
         title="MY BUDGET PLAN"
         subheader={PAGE_SUBHEADERS.budgetPlan}
         rightContent={<HamburgerMenu />}
+        leftContent={
+          <Button variant="ghost" size="sm" asChild className="gap-1">
+            <Link href="/dashboard">
+              <ArrowLeft className="h-4 w-4" />
+              Home
+            </Link>
+          </Button>
+        }
       />
 
       <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-28 space-y-3 pt-4">

@@ -83,6 +83,7 @@ import {
 
 interface DiscretionaryExpense extends DocumentData {
   id: string;
+  name?: string;
   category: string;
   plannedAmount: number;
   frequency?: Frequency;
@@ -106,7 +107,7 @@ const iconMap: Record<string, LucideIcon> = {
   'Pets': Dog,
   'Subscriptions': CreditCard,
   'Personal Expenses': User,
-  'Miscellaneous': MoreHorizontal,
+  'Custom': MoreHorizontal,
 };
 
 function DiscretionaryExpensesContent() {
@@ -122,12 +123,14 @@ function DiscretionaryExpensesContent() {
     amount: string;
     frequency: Frequency;
     description: string;
+    name: string;
     dueDate?: Date;
   }>({
     category: 'Personal Care',
     amount: '',
     frequency: 'Weekly',
     description: '',
+    name: '',
     dueDate: undefined,
   });
 
@@ -147,6 +150,7 @@ function DiscretionaryExpensesContent() {
         frequency: (expenseToEdit.frequency as Frequency) || 'Weekly',
         description: expenseToEdit.description || '',
         dueDate: expenseToEdit.dueDate ? parseISO(expenseToEdit.dueDate) : undefined,
+        name: expenseToEdit.name || '',
       });
     } else {
       setFormState({
@@ -154,6 +158,7 @@ function DiscretionaryExpensesContent() {
         amount: '',
         frequency: 'Weekly',
         description: '',
+        name: '',
         dueDate: undefined,
       });
     }
@@ -171,6 +176,7 @@ function DiscretionaryExpensesContent() {
       amount: '',
       frequency: 'Weekly',
       description: '',
+      name: '',
       dueDate: undefined,
     });
     setIsDialogOpen(true);
@@ -190,15 +196,16 @@ function DiscretionaryExpensesContent() {
       return;
     }
 
-    // Require description for Miscellaneous
-    if (formState.category === 'Miscellaneous' && !formState.description.trim()) {
-      alert('Please enter a description for Miscellaneous expenses.');
+    // Require name for Custom
+    if (formState.category === 'Custom' && !formState.name.trim()) {
+      alert('Please enter a name for Custom expenses.');
       return;
     }
 
     const expenseData = {
       userProfileId: user.uid,
       category: formState.category,
+      name: formState.name || formState.category,
       plannedAmount: amount,
       frequency: formState.frequency,
       description: formState.description,
@@ -377,7 +384,7 @@ function DiscretionaryExpensesContent() {
                       <Icon className="size-5" />
                       <HelpDialog
                         title={name}
-                        content={CATEGORY_HELP[name] || CATEGORY_HELP['Miscellaneous']}
+                        content={CATEGORY_HELP[name] || CATEGORY_HELP['Custom']}
                         iconClassName="size-3"
                       />
                     </div>
@@ -496,7 +503,7 @@ function DiscretionaryExpensesContent() {
                   <Label htmlFor="category">Category</Label>
                   <HelpDialog
                     title={formState.category}
-                    content={CATEGORY_HELP[formState.category] || CATEGORY_HELP['Miscellaneous']}
+                    content={CATEGORY_HELP[formState.category] || CATEGORY_HELP['Custom']}
                     iconClassName="size-3"
                   />
                 </div>
@@ -526,7 +533,7 @@ function DiscretionaryExpensesContent() {
               </div>
             )}
 
-            {formState.category === 'Miscellaneous' && (
+            {formState.category === 'Custom' && (
               <div className="space-y-2">
                 <Label htmlFor="description">
                   Description <span className="text-destructive">*</span>
@@ -612,7 +619,7 @@ function DiscretionaryExpensesContent() {
               </Popover>
             </div>
 
-            {formState.category !== 'Miscellaneous' && (
+            {formState.category !== 'Custom' && (
               <div className="space-y-2">
                 <Label htmlFor="description">Description (Optional)</Label>
                 <Input

@@ -2,8 +2,10 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { HamburgerMenu } from "@/components/HamburgerMenu";
 
 export default function ReportDetailLayout({
   children,
@@ -22,7 +24,15 @@ export default function ReportDetailLayout({
             <h1 className="text-lg font-bold font-headline text-foreground">
               Weekly Report
             </h1>
-            <div className="w-10"></div>
+            <div className="flex items-center gap-1">
+              <Link
+                href="/transaction/new"
+                className="inline-flex items-center justify-center rounded-full bg-primary p-1.5 text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+              </Link>
+              <HamburgerMenu />
+            </div>
         </header>
         {children}
       </div>

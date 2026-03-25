@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth, useUser, useFirestore } from "@/firebase";
 import { signOut, deleteUser, updateProfile } from "firebase/auth";
-import { LogOut, Shield, Trash2, Save, MessageSquare, LifeBuoy } from "lucide-react";
+import { ArrowLeft, LogOut, Plus, Shield, Trash2, Save, MessageSquare, LifeBuoy } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -22,6 +22,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { HamburgerMenu } from '@/components/HamburgerMenu';
 import {
   writeBatch,
   collection,
@@ -181,10 +182,31 @@ export default function ProfilePage() {
   return (
     user && (
       <div className="flex-1 overflow-y-auto no-scrollbar">
-        <header className="px-5 py-4 flex items-center justify-center sticky top-0 glass z-20">
-          <h1 className="text-xl font-bold font-headline tracking-tight text-foreground">
-            Your Profile
-          </h1>
+        <header className="px-5 py-4 sticky top-0 glass z-20">
+          <div className="flex items-center justify-between">
+            <div className="flex-1 flex justify-start">
+              <Button variant="ghost" size="sm" asChild className="gap-1">
+                <Link href="/reports">
+                  <ArrowLeft className="h-4 w-4" />
+                  Reports
+                </Link>
+              </Button>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <h1 className="text-xl font-bold font-headline tracking-tight text-foreground">
+                Your Profile
+              </h1>
+            </div>
+            <div className="flex-1 flex justify-end items-center gap-1">
+              <Link
+                href="/transaction/new"
+                className="inline-flex items-center justify-center rounded-full bg-primary p-1.5 text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+              </Link>
+              <HamburgerMenu />
+            </div>
+          </div>
         </header>
         <main className="px-4 pb-28 space-y-8 pt-4">
         <div className="text-center">

@@ -104,7 +104,7 @@ const iconMap: Record<string, LucideIcon> = {
   'Vacation': Plane,
   'Recreation Equipment': Bike,
   'Education': GraduationCap,
-  'Miscellaneous': MoreHorizontal,
+  'Custom': MoreHorizontal,
   'Income Balance': Wallet,
 };
 
@@ -294,9 +294,9 @@ function PlannedSavingsContent() {
       return;
     }
 
-    // Require description for Miscellaneous
-    if (formState.category === 'Miscellaneous' && !formState.description.trim()) {
-      alert('Please enter a description for Miscellaneous goals.');
+    // Require description for Custom
+    if (formState.category === 'Custom' && !formState.description.trim()) {
+      alert('Please enter a description for Custom goals.');
       return;
     }
 
@@ -536,7 +536,7 @@ function PlannedSavingsContent() {
                       <Icon className="size-5" />
                       <HelpDialog
                         title={name}
-                        content={CATEGORY_HELP[name] || CATEGORY_HELP['Miscellaneous']}
+                        content={CATEGORY_HELP[name] || CATEGORY_HELP['Custom']}
                         iconClassName="size-3"
                       />
                     </div>
@@ -642,7 +642,7 @@ function PlannedSavingsContent() {
                   <Label htmlFor="category">Category</Label>
                   <HelpDialog
                     title={formState.category}
-                    content={CATEGORY_HELP[formState.category] || CATEGORY_HELP['Miscellaneous']}
+                    content={CATEGORY_HELP[formState.category] || CATEGORY_HELP['Custom']}
                     iconClassName="size-3"
                   />
                 </div>
@@ -683,7 +683,7 @@ function PlannedSavingsContent() {
               />
             </div>
 
-            {formState.category === 'Miscellaneous' && (
+            {formState.category === 'Custom' && (
               <div className="space-y-2">
                 <Label htmlFor="description">
                   Description <span className="text-destructive">*</span>
@@ -772,7 +772,7 @@ function PlannedSavingsContent() {
               </div>
             </div>
 
-            {formState.category !== 'Miscellaneous' && (
+            {formState.category !== 'Custom' && (
               <div className="space-y-2">
                 <Label htmlFor="description">Description (Optional)</Label>
                 <Input

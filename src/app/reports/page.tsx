@@ -343,7 +343,25 @@ export default function ReportsScreen() {
       <PageHeader
         title="MY REPORTS"
         subheader="View your over-budget categories by week."
-        rightContent={<HamburgerMenu />}
+        rightContent={
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" asChild className="gap-1">
+              <Link href="/profile">
+                Profile
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <HamburgerMenu />
+          </div>
+        }
+        leftContent={
+          <Button variant="ghost" size="sm" asChild className="gap-1">
+            <Link href="/transaction/new">
+              <ArrowLeft className="h-4 w-4" />
+              Transactions
+            </Link>
+          </Button>
+        }
       />
 
       <main className="flex-1 overflow-y-auto p-4 pb-40 space-y-4">
