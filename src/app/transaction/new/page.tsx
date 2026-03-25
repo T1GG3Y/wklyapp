@@ -281,26 +281,18 @@ export default function NewTransactionScreen() {
           updated[index] = { ...updated[index], [field]: value };
         }
 
-        // Auto-populate the next empty row's amount with remaining balance
-        if (field === 'amount') {
-          const totalAllocated = updated.reduce(
-            (sum, row, i) => sum + (i <= index ? parseFormattedAmount(row.amount) : 0),
+        // Auto-populate the last row with the remaining balance
+        if (field === 'amount' && index < updated.length - 1) {
+          const lastIndex = updated.length - 1;
+          const sumExceptLast = updated.reduce(
+            (sum, row, i) => sum + (i < lastIndex ? parseFormattedAmount(row.amount) : 0),
             0
           );
-          const remaining = receiptAmount - totalAllocated;
-
-          // Find the next row after current that has no amount
-          for (let i = index + 1; i < updated.length; i++) {
-            if (!updated[i].amount || parseFormattedAmount(updated[i].amount) === 0) {
-              if (remaining > 0) {
-                updated[i] = {
-                  ...updated[i],
-                  amount: formatAmountInput(remaining.toFixed(2)),
-                };
-              }
-              break;
-            }
-          }
+          const remaining = receiptAmount - sumExceptLast;
+          updated[lastIndex] = {
+            ...updated[lastIndex],
+            amount: formatAmountInput(Math.max(0, remaining).toFixed(2)),
+          };
         }
 
         return updated;
@@ -309,9 +301,20 @@ export default function NewTransactionScreen() {
     [receiptAmount]
   );
 
-  // Add a new split row
+  // Add a new split row with remaining balance
   const addSplitRow = () => {
-    setSplitRows((prev) => [...prev, { amount: '', description: '', category: '' }]);
+    setSplitRows((prev) => {
+      const allocated = prev.reduce((sum, row) => sum + parseFormattedAmount(row.amount), 0);
+      const remaining = receiptAmount - allocated;
+      return [
+        ...prev,
+        {
+          amount: remaining > 0 ? formatAmountInput(remaining.toFixed(2)) : formatAmountInput('0.00'),
+          description: '',
+          category: '',
+        },
+      ];
+    });
   };
 
   // Remove a split row (minimum 2)
@@ -330,11 +333,11 @@ export default function NewTransactionScreen() {
       });
       return;
     }
-    // Reset split rows with remaining balance in the first row
+    // Split 1 gets the full amount, Split 2 starts at $0
     const total = parseFormattedAmount(amount);
     setSplitRows([
-      { amount: '', description: '', category: '' },
       { amount: formatAmountInput(total.toFixed(2)), description: '', category: '' },
+      { amount: formatAmountInput('0.00'), description: '', category: '' },
     ]);
     setSplitDialogOpen(true);
   };
@@ -543,7 +546,25 @@ export default function NewTransactionScreen() {
       <PageHeader
         title="MY TRANSACTIONS"
         subheader={PAGE_SUBHEADERS.transactions}
-        rightContent={<HamburgerMenu />}
+        rightContent={
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" asChild className="gap-1">
+              <Link href="/reports">
+                Reports
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <HamburgerMenu />
+          </div>
+        }
+        leftContent={
+          <Button variant="ghost" size="sm" asChild className="gap-1">
+            <Link href="/dashboard">
+              <ArrowLeft className="h-4 w-4" />
+              Home
+            </Link>
+          </Button>
+        }
       />
 
       <main className="flex-1 overflow-y-auto p-4 pb-40 space-y-4">
