@@ -54,7 +54,7 @@ import {
   PAGE_SUBHEADERS,
 } from '@/lib/constants';
 import { formatCurrency, formatAmountInput, parseFormattedAmount } from '@/lib/format';
-import { format, startOfDay, subDays, subMonths } from 'date-fns';
+import { format, startOfDay, subDays, subWeeks, subMonths, subYears } from 'date-fns';
 import Link from 'next/link';
 
 interface Transaction extends DocumentData {
@@ -97,23 +97,23 @@ const SELECT_EXPENSE_CATEGORY = 'Select Expense';
 
 // Date filter options
 const DATE_FILTERS = [
-  { label: 'All Time', value: 'all' },
   { label: 'Last 7 Days', value: '7days' },
-  { label: 'Last 30 Days', value: '30days' },
+  { label: 'Last 4 Weeks', value: '4weeks' },
   { label: 'Last 3 Months', value: '3months' },
+  { label: 'Last 6 Months', value: '6months' },
   { label: 'This Year', value: 'year' },
+  { label: 'Last Year', value: 'lastyear' },
+  { label: 'All Time', value: 'all' },
 ];
 
 function CategorySelect({
   value,
   onValueChange,
-  type,
   loans,
   savingsGoals,
 }: {
   value: string;
   onValueChange: (val: string) => void;
-  type: 'Income' | 'Expense';
   loans?: Loan[] | null;
   savingsGoals?: SavingsGoal[] | null;
 }) {
@@ -123,75 +123,46 @@ function CategorySelect({
         <SelectValue placeholder="Select a category" />
       </SelectTrigger>
       <SelectContent>
-        {type === 'Expense' && (
-          <>
-            <SelectGroup>
-              <SelectLabel className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">
-                My Essential Expenses
-              </SelectLabel>
-              {ESSENTIAL_CATEGORIES.map(({ name }) => (
-                <SelectItem key={name} value={name} className="pl-6">
-                  {name}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-            <SelectGroup>
-              <SelectLabel className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">
-                My Discretionary Expenses
-              </SelectLabel>
-              {DISCRETIONARY_CATEGORIES.map(({ name }) => (
-                <SelectItem key={name} value={name} className="pl-6">
-                  {name}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-            <SelectGroup>
-              <SelectLabel className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">
-                My Loans
-              </SelectLabel>
-              {LOAN_CATEGORIES.map(({ name }) => (
-                <SelectItem key={`loan-${name}`} value={`Loan: ${name}`} className="pl-6">
-                  {name}
-                </SelectItem>
-              ))}
-              {loans?.map((item) => (
-                <SelectItem key={item.id} value={item.name} className="pl-8">
-                  {item.name}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-            <SelectGroup>
-              <SelectLabel className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">
-                My Planned Savings Goals
-              </SelectLabel>
-              {SAVINGS_CATEGORIES.filter((c) => c.name !== 'Income Balance').map(({ name }) => (
-                <SelectItem key={`savings-${name}`} value={`Savings: ${name}`} className="pl-6">
-                  {name}
-                </SelectItem>
-              ))}
-              {savingsGoals
-                ?.filter((g) => g.category !== 'Income Balance')
-                .map((item) => (
-                  <SelectItem key={item.id} value={item.name} className="pl-8">
-                    {item.name}
-                  </SelectItem>
-                ))}
-            </SelectGroup>
-          </>
-        )}
-        {type === 'Income' && (
-          <SelectGroup>
-            <SelectLabel className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">
-              Income Sources
-            </SelectLabel>
-            <SelectItem value="Salary">Salary</SelectItem>
-            <SelectItem value="Freelance">Freelance</SelectItem>
-            <SelectItem value="Investment">Investment</SelectItem>
-            <SelectItem value="Gift">Gift</SelectItem>
-            <SelectItem value="Refund">Refund</SelectItem>
-            <SelectItem value="Other Income">Other Income</SelectItem>
-          </SelectGroup>
-        )}
+        <SelectGroup>
+          <SelectLabel className="text-sm font-bold text-foreground pl-2">
+            My Essential Expenses
+          </SelectLabel>
+          {ESSENTIAL_CATEGORIES.map(({ name }) => (
+            <SelectItem key={name} value={name} className="pl-8 text-sm">
+              {name}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+        <SelectGroup>
+          <SelectLabel className="text-sm font-bold text-foreground pl-2">
+            My Discretionary Expenses
+          </SelectLabel>
+          {DISCRETIONARY_CATEGORIES.map(({ name }) => (
+            <SelectItem key={name} value={name} className="pl-8 text-sm">
+              {name}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+        <SelectGroup>
+          <SelectLabel className="text-sm font-bold text-foreground pl-2">
+            My Loans
+          </SelectLabel>
+          {LOAN_CATEGORIES.map(({ name }) => (
+            <SelectItem key={`loan-${name}`} value={`Loan: ${name}`} className="pl-8 text-sm">
+              {name}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+        <SelectGroup>
+          <SelectLabel className="text-sm font-bold text-foreground pl-2">
+            My Savings Goals
+          </SelectLabel>
+          {SAVINGS_CATEGORIES.map(({ name }) => (
+            <SelectItem key={`savings-${name}`} value={`Savings: ${name}`} className="pl-8 text-sm">
+              {name}
+            </SelectItem>
+          ))}
+        </SelectGroup>
       </SelectContent>
     </Select>
   );
@@ -212,6 +183,16 @@ export default function NewTransactionScreen() {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState(SELECT_EXPENSE_CATEGORY);
+  const [expenseDate, setExpenseDate] = useState('');
+
+  // Move form state
+  const [moveAmount, setMoveAmount] = useState('');
+  const [moveFromCategory, setMoveFromCategory] = useState('');
+  const [moveToCategory, setMoveToCategory] = useState('');
+
+  // Track which section is active (Expense or Move)
+  const hasExpenseInput = !!(amount || description || (category && category !== SELECT_EXPENSE_CATEGORY) || expenseDate);
+  const hasMoveInput = !!(moveAmount || moveFromCategory || moveToCategory);
 
   // Split transaction state
   const [splitDialogOpen, setSplitDialogOpen] = useState(false);
@@ -442,18 +423,26 @@ export default function NewTransactionScreen() {
       const now = new Date();
       let startDate: Date;
 
+      let endDate: Date | null = null;
       switch (dateFilter) {
         case '7days':
           startDate = subDays(now, 7);
           break;
-        case '30days':
-          startDate = subDays(now, 30);
+        case '4weeks':
+          startDate = subWeeks(now, 4);
           break;
         case '3months':
           startDate = subMonths(now, 3);
           break;
+        case '6months':
+          startDate = subMonths(now, 6);
+          break;
         case 'year':
           startDate = new Date(now.getFullYear(), 0, 1);
+          break;
+        case 'lastyear':
+          startDate = new Date(now.getFullYear() - 1, 0, 1);
+          endDate = new Date(now.getFullYear() - 1, 11, 31, 23, 59, 59);
           break;
         default:
           startDate = new Date(0);
@@ -462,6 +451,9 @@ export default function NewTransactionScreen() {
       filtered = filtered.filter((t) => {
         if (!t.date) return false;
         const transactionDate = t.date.toDate();
+        if (endDate) {
+          return transactionDate >= startOfDay(startDate) && transactionDate <= endDate;
+        }
         return transactionDate >= startOfDay(startDate);
       });
     }
@@ -475,6 +467,54 @@ export default function NewTransactionScreen() {
     const categories = new Set(transactions.map((t) => t.category));
     return Array.from(categories).sort();
   }, [transactions]);
+
+  const handleMoveTransaction = async () => {
+    if (!firestore || !user) {
+      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
+      return;
+    }
+
+    const moveAmt = parseFormattedAmount(moveAmount);
+    if (moveAmt <= 0) {
+      toast({ variant: 'destructive', title: 'Invalid Amount', description: 'Please enter a valid amount.' });
+      return;
+    }
+    if (!moveFromCategory || !moveToCategory) {
+      toast({ variant: 'destructive', title: 'Categories Required', description: 'Please select both From and To categories.' });
+      return;
+    }
+    if (moveFromCategory === moveToCategory) {
+      toast({ variant: 'destructive', title: 'Same Category', description: 'From and To categories must be different.' });
+      return;
+    }
+
+    try {
+      const transactionsCollection = collection(firestore, `users/${user.uid}/transactions`);
+      const moveGroup = Date.now().toString();
+
+      // Deduct from source category
+      await addDoc(transactionsCollection, {
+        userProfileId: user.uid, type: 'Expense', amount: moveAmt,
+        description: `Move to ${moveToCategory}`, category: moveFromCategory,
+        date: serverTimestamp(), moveGroup,
+      });
+
+      // Add to destination category (negative expense = adding back)
+      await addDoc(transactionsCollection, {
+        userProfileId: user.uid, type: 'Income', amount: moveAmt,
+        description: `Move from ${moveFromCategory}`, category: moveToCategory,
+        date: serverTimestamp(), moveGroup,
+      });
+
+      toast({ title: 'Move Completed', description: `${formatCurrency(moveAmt)} moved from ${moveFromCategory} to ${moveToCategory}.` });
+      setMoveAmount('');
+      setMoveFromCategory('');
+      setMoveToCategory('');
+    } catch (error) {
+      console.error('Error moving funds:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not complete the move.' });
+    }
+  };
 
   const handleCreateTransaction = async (andNew: boolean = false) => {
     if (!firestore || !user) {
@@ -510,27 +550,28 @@ export default function NewTransactionScreen() {
         firestore,
         `users/${user.uid}/transactions`
       );
+      const txDate = expenseDate
+        ? Timestamp.fromDate(new Date(expenseDate + 'T12:00:00'))
+        : serverTimestamp();
+
       await addDoc(transactionsCollection, {
         userProfileId: user.uid,
-        type,
+        type: 'Expense',
         amount: transactionAmount,
         description,
         category,
-        date: serverTimestamp(),
+        date: txDate,
       });
 
       toast({
         title: 'Transaction Added',
-        description: `${type} of ${formatCurrency(transactionAmount)} recorded.`,
+        description: `Expense of ${formatCurrency(transactionAmount)} recorded.`,
       });
 
-      if (andNew) {
-        setAmount('');
-        setDescription('');
-        setCategory(SELECT_EXPENSE_CATEGORY);
-      } else {
-        router.push('/dashboard');
-      }
+      setAmount('');
+      setDescription('');
+      setCategory(SELECT_EXPENSE_CATEGORY);
+      setExpenseDate('');
     } catch (error) {
       console.error('Error adding transaction:', error);
       toast({
@@ -559,15 +600,15 @@ export default function NewTransactionScreen() {
         }
         leftContent={
           <Button variant="ghost" size="sm" asChild className="gap-1">
-            <Link href="/dashboard">
+            <Link href="/savings-goals">
               <ArrowLeft className="h-4 w-4" />
-              Home
+              Goals
             </Link>
           </Button>
         }
       />
 
-      <main className="flex-1 overflow-y-auto p-4 pb-40 space-y-4">
+      <main className="flex-1 overflow-y-auto p-4 pb-8 space-y-4">
         {/* Add New Transaction - Collapsible Section */}
         <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
           <button
@@ -577,7 +618,7 @@ export default function NewTransactionScreen() {
             <div>
               <h3 className="text-lg font-bold text-foreground text-left">Add New Transaction</h3>
               <p className="text-sm text-muted-foreground text-left">
-                Select expense or income followed by the transaction information
+                Select expense or move followed by the transaction information
               </p>
             </div>
             {addTransactionOpen ? (
@@ -589,42 +630,10 @@ export default function NewTransactionScreen() {
 
           {addTransactionOpen && (
             <div className="px-4 pb-4 space-y-4">
-              {/* Income/Expense Toggle */}
-              <div className="flex bg-muted rounded-lg p-1">
-                <Button
-                  onClick={() => {
-                    setType('Expense');
-                    setCategory(SELECT_EXPENSE_CATEGORY);
-                  }}
-                  variant={type === 'Expense' ? 'default' : 'ghost'}
-                  className={cn(
-                    'flex-1 rounded-md h-auto py-2 text-sm font-medium',
-                    type === 'Expense' && 'bg-secondary text-secondary-foreground shadow-sm'
-                  )}
-                >
-                  Expense
-                </Button>
-                <Button
-                  onClick={() => {
-                    setType('Income');
-                    setCategory('');
-                  }}
-                  variant={type === 'Income' ? 'default' : 'ghost'}
-                  className={cn(
-                    'flex-1 rounded-md h-auto py-2 text-sm font-medium',
-                    type === 'Income' && 'bg-primary text-primary-foreground shadow-sm'
-                  )}
-                >
-                  Income
-                </Button>
-              </div>
-
-              {/* Receipt Amount with Split Button */}
-              <div className="space-y-2">
+              {/* Expense Section */}
+              <div className={cn("space-y-3 p-3 rounded-xl border", hasMoveInput ? "opacity-40 pointer-events-none" : "")}>
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-semibold text-muted-foreground">
-                    Receipt Amount
-                  </Label>
+                  <h4 className="text-base font-bold text-foreground underline">Expense</h4>
                   <Button
                     variant="outline"
                     size="sm"
@@ -635,71 +644,109 @@ export default function NewTransactionScreen() {
                     Split
                   </Button>
                 </div>
-                <div className="relative">
-                  <span
-                    className={cn(
-                      'absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold',
-                      type === 'Income' ? 'text-primary' : 'text-secondary'
-                    )}
-                  >
-                    $
-                  </span>
+
+                {/* Receipt Name */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold text-muted-foreground">Receipt Name</Label>
                   <Input
-                    className={cn(
-                      'pl-10 pr-4 py-4 rounded-lg bg-background border-2 text-2xl font-bold h-auto text-left tabular-nums',
-                      type === 'Income'
-                        ? 'border-primary/20 text-primary focus:ring-primary'
-                        : 'border-secondary/20 text-secondary focus:ring-secondary'
-                    )}
-                    placeholder="0.00"
-                    value={amount}
-                    onChange={handleAmountChange}
-                    inputMode="decimal"
+                    className="h-10"
+                    placeholder="e.g., Costco"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    disabled={hasMoveInput}
                   />
+                </div>
+
+                {/* Amount, Category, Date Row */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-muted-foreground">Amount</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input
+                        className="pl-7 h-10"
+                        placeholder="0.00"
+                        value={amount}
+                        onChange={handleAmountChange}
+                        inputMode="decimal"
+                        disabled={hasMoveInput}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-muted-foreground">Category</Label>
+                    <CategorySelect
+                      value={category}
+                      onValueChange={setCategory}
+                      loans={loans}
+                      savingsGoals={savingsGoals}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-muted-foreground">Date</Label>
+                    <Input
+                      type="date"
+                      className="h-10"
+                      value={expenseDate}
+                      onChange={(e) => setExpenseDate(e.target.value)}
+                      disabled={hasMoveInput}
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Category Select */}
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-muted-foreground">Category</Label>
-                <CategorySelect
-                  value={category}
-                  onValueChange={setCategory}
-                  type={type}
-                  loans={loans}
-                  savingsGoals={savingsGoals}
-                />
+              {/* Move Section */}
+              <div className={cn("space-y-3 p-3 rounded-xl border", hasExpenseInput ? "opacity-40 pointer-events-none" : "")}>
+                <h4 className="text-base font-bold text-foreground underline">Move</h4>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-muted-foreground">Amount</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <Input
+                        className="pl-7 h-10"
+                        placeholder="0.00"
+                        value={moveAmount}
+                        onChange={(e) => setMoveAmount(formatAmountInput(e.target.value))}
+                        inputMode="decimal"
+                        disabled={hasExpenseInput}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-muted-foreground">From</Label>
+                    <CategorySelect
+                      value={moveFromCategory}
+                      onValueChange={setMoveFromCategory}
+                      loans={loans}
+                      savingsGoals={savingsGoals}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold text-muted-foreground">To</Label>
+                    <CategorySelect
+                      value={moveToCategory}
+                      onValueChange={setMoveToCategory}
+                      loans={loans}
+                      savingsGoals={savingsGoals}
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* Description Input */}
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-muted-foreground">
-                  Description (optional)
-                </Label>
-                <Input
-                  className="px-4 py-3 rounded-lg bg-background border text-base h-auto"
-                  placeholder="e.g., Coffee with a friend"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-2">
-                <Button
-                  onClick={() => handleCreateTransaction(true)}
-                  variant="outline"
-                  className="flex-1 py-3 h-12 font-semibold rounded-xl text-base"
-                >
-                  Create + New
-                </Button>
-                <Button
-                  onClick={() => handleCreateTransaction(false)}
-                  className="flex-1 py-3 h-12 font-semibold rounded-xl text-base shadow-md"
-                >
-                  Create
-                </Button>
-              </div>
+              {/* Add Button */}
+              <Button
+                onClick={() => {
+                  if (hasMoveInput) {
+                    handleMoveTransaction();
+                  } else {
+                    handleCreateTransaction(true);
+                  }
+                }}
+                className="w-full py-3 h-12 font-semibold rounded-xl text-base shadow-md"
+              >
+                Add
+              </Button>
             </div>
           )}
         </div>
@@ -835,28 +882,6 @@ export default function NewTransactionScreen() {
           )}
         </div>
 
-        {/* Footer Navigation */}
-        <div className="flex gap-3 pt-2">
-          <Link href="/dashboard" className="flex-1">
-            <Button
-              variant="outline"
-              className="w-full py-3 h-12 font-semibold rounded-xl text-base gap-2"
-            >
-              <ArrowLeft className="size-4" />
-              <span>
-                <span className="font-bold">Back</span> to Home
-              </span>
-            </Button>
-          </Link>
-          <Link href="/profile" className="flex-1">
-            <Button className="w-full py-3 h-12 font-semibold rounded-xl text-base gap-2">
-              <span>
-                <span className="font-bold">Continue</span> to My Profile
-              </span>
-              <ArrowRight className="size-4" />
-            </Button>
-          </Link>
-        </div>
       </main>
 
       {/* Split Transaction Dialog */}
@@ -952,7 +977,6 @@ export default function NewTransactionScreen() {
                       <CategorySelect
                         value={row.category}
                         onValueChange={(val) => updateSplitRow(index, 'category', val)}
-                        type={type}
                         loans={loans}
                         savingsGoals={savingsGoals}
                       />

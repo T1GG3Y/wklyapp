@@ -182,6 +182,13 @@ export default function LoginPage() {
           <Button type="submit" className="w-full h-12 text-lg font-bold">
             Log In
           </Button>
+          <Button
+            asChild
+            variant="outline"
+            className="w-full h-12 text-lg font-bold"
+          >
+            <Link href="/signup">Create Account</Link>
+          </Button>
         </form>
 
         <p className="mt-4 text-center text-xs text-muted-foreground px-4">
@@ -190,7 +197,7 @@ export default function LoginPage() {
                 Privacy Policy
             </Link>.
         </p>
-        
+
         <p className="mt-8 text-center text-muted-foreground">
           Don&apos;t have an account?{" "}
           <Link href="/signup" className="text-primary hover:underline font-semibold">

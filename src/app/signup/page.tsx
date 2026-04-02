@@ -57,18 +57,17 @@ export default function SignupPage() {
       await createUserProfileDocument(user, { displayName: name });
 
 
-      // Send email verification
-      await sendEmailVerification(user);
+      // Send email verification in the background (non-blocking)
+      sendEmailVerification(user).catch((err) =>
+        console.error('Error sending verification email:', err)
+      );
 
       toast({
-        title: 'Account Created & Verification Sent',
-        description: 'Please check your email to verify your account before logging in.',
+        title: 'Account Created',
+        description: 'Welcome to WKLY! Let\'s get you set up.',
       });
 
-      // Sign the user out until they are verified
-      await auth.signOut();
-      
-      router.push('/login'); // Redirect to login page to wait for verification
+      router.push('/setup/start-day');
     } catch (error: any) {
       console.error('Error signing up:', error);
       let errorMessage = 'An unexpected error occurred.';

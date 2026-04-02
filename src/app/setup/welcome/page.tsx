@@ -1,13 +1,36 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
-import Link from 'next/link';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 
 export default function WelcomePage() {
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const router = useRouter();
+
+  const handleContinue = async () => {
+    if (user && firestore) {
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await setDoc(userDocRef, { onboardingComplete: true }, { merge: true });
+    }
+    router.push('/dashboard');
+  };
+
   return (
-    <div className="bg-background min-h-screen flex flex-col justify-between font-body">
-      <main className="flex-1 flex flex-col items-center justify-start p-6 pt-12">
+    <div className="bg-background min-h-screen flex flex-col font-body">
+      <header className="flex justify-end p-4">
+        <button
+          onClick={handleContinue}
+          className="inline-flex items-center gap-1 text-primary hover:underline font-semibold text-sm"
+        >
+          Continue to Dashboard
+          <ArrowRight className="h-4 w-4" />
+        </button>
+      </header>
+
+      <main className="flex-1 flex flex-col items-center justify-start p-6 pt-4">
         <h1 className="text-3xl font-bold text-foreground font-headline mb-8">
           Welcome
         </h1>
@@ -22,18 +45,17 @@ export default function WelcomePage() {
           </p>
 
           <p>
-            The foundation for accomplishing this is called active budgeting. Here you
+            The foundation for accomplishing this is called <span className="underline">active budgeting</span>. Here you
             enter each income source and each expense category. This allows you to
             see where your money is really going. Where you are overspending you
-            can reduce your budget and increase it where needed. When you enter
-            an expense, you simply select its category from a drop down.
+            can reduce your budget and increase it where needed.
           </p>
 
           <p>
-            This app also allows for basic budgeting. Enter your income sources and
+            This app also allows for <span className="underline">basic budgeting</span>. Enter your income sources and
             then a few basic expense categories like rent and car loan then use the
-            miscellaneous category for the balance of your expenses. When you enter
-            your expenses, everything will be identified as miscellaneous except for
+            custom category for the balance of your expenses. When you enter
+            your expenses, everything will be identified as custom except for
             the few basic expense categories you have selected.
           </p>
 
@@ -42,20 +64,6 @@ export default function WelcomePage() {
           </p>
         </div>
       </main>
-
-      <footer className="p-6 pt-0">
-        <Button
-          asChild
-          className="w-full h-14 text-lg font-bold shadow-lg shadow-primary/20"
-          size="lg"
-        >
-          <Link href="/setup/start-day" className="flex items-center justify-center gap-2">
-            Continue
-            <span className="text-sm font-normal">to My Start Day</span>
-            <ArrowRight className="ml-1 h-5 w-5" />
-          </Link>
-        </Button>
-      </footer>
     </div>
   );
 }

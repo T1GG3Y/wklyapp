@@ -143,7 +143,7 @@ const loanIcons: Record<string, LucideIcon> = {
 // Icon Mappings for Savings Goals
 const savingsGoalIcons: Record<string, LucideIcon> = {
   'Emergency Fund': ShieldAlert,
-  'House Purchase': Home,
+  'Real Estate Purchase': Home,
   'Automobile': Car,
   'Vacation': Plane,
   'Recreation Equipment': Bike,
@@ -297,7 +297,7 @@ export default function BudgetScreen() {
             <AccordionContent className="divide-y border-t">
               <div className="pt-2 pb-3">
                 <Button variant="outline" className="w-full" asChild>
-                  <Link href="/setup/income">
+                  <Link href="/income">
                     <Edit className="mr-2 size-4" /> Edit My Income
                   </Link>
                 </Button>
@@ -331,7 +331,7 @@ export default function BudgetScreen() {
             <AccordionContent className="divide-y border-t">
               <div className="pt-2 pb-3">
                 <Button variant="outline" className="w-full" asChild>
-                  <Link href="/setup/required-expenses?source=budget">
+                  <Link href="/essential-expenses">
                     <Edit className="mr-2 size-4" /> Edit My Essential Expenses
                   </Link>
                 </Button>
@@ -365,7 +365,7 @@ export default function BudgetScreen() {
             <AccordionContent className="divide-y border-t">
               <div className="pt-2 pb-3">
                 <Button variant="outline" className="w-full" asChild>
-                  <Link href="/setup/discretionary?source=budget">
+                  <Link href="/discretionary-expenses">
                     <Edit className="mr-2 size-4" /> Edit My Discretionary Expenses
                   </Link>
                 </Button>
@@ -399,7 +399,7 @@ export default function BudgetScreen() {
             <AccordionContent className="divide-y border-t">
               <div className="pt-2 pb-3">
                 <Button variant="outline" className="w-full" asChild>
-                  <Link href="/setup/loans?source=budget">
+                  <Link href="/loans">
                     <Edit className="mr-2 size-4" /> Edit My Loans
                   </Link>
                 </Button>
@@ -415,7 +415,7 @@ export default function BudgetScreen() {
             </AccordionContent>
           </AccordionItem>
 
-          {/* My Planned Savings Goals */}
+          {/* My Savings Goals */}
           <AccordionItem value="item-5" className="glass rounded-2xl px-4">
             <AccordionTrigger className="py-4">
               <div className="flex items-center gap-3">
@@ -423,7 +423,7 @@ export default function BudgetScreen() {
                   <PiggyBank className="text-white size-4" />
                 </div>
                 <div className="text-left">
-                  <p className="font-semibold text-foreground">My Planned Savings Goals</p>
+                  <p className="font-semibold text-foreground">My Savings Goals</p>
                   <p className="text-xs text-muted-foreground">
                     {formatCurrency(totalSaved)} of {formatCurrency(totalSavingsTarget)} saved
                   </p>
@@ -433,8 +433,8 @@ export default function BudgetScreen() {
             <AccordionContent className="divide-y border-t">
               <div className="pt-2 pb-3">
                 <Button variant="outline" className="w-full" asChild>
-                  <Link href="/setup/savings?source=budget">
-                    <Edit className="mr-2 size-4" /> Edit My Planned Savings Goals
+                  <Link href="/savings-goals">
+                    <Edit className="mr-2 size-4" /> Edit My Savings Goals
                   </Link>
                 </Button>
               </div>

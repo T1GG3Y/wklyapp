@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth, useUser, useFirestore } from "@/firebase";
 import { signOut, deleteUser, updateProfile } from "firebase/auth";
-import { ArrowLeft, LogOut, Plus, Shield, Trash2, Save, MessageSquare, LifeBuoy } from "lucide-react";
+import { LogOut, Shield, Trash2, Save, MessageSquare, LifeBuoy, Heart, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { HamburgerMenu } from '@/components/HamburgerMenu';
+import { PageHeader } from '@/components/PageHeader';
 import {
   writeBatch,
   collection,
@@ -44,7 +45,7 @@ export default function ProfilePage() {
       setDisplayName(user.displayName);
     }
   }, [user]);
-  
+
   const handleSaveName = async () => {
     if (!user || !auth?.currentUser || !firestore) {
       toast({
@@ -54,7 +55,7 @@ export default function ProfilePage() {
       });
       return;
     }
-    
+
     if (displayName === user.displayName) {
       toast({
         title: "No Changes",
@@ -64,13 +65,10 @@ export default function ProfilePage() {
     }
 
     try {
-      // Update Firebase Auth profile
       await updateProfile(auth.currentUser, { displayName });
-
-      // Update Firestore document
       const userDocRef = doc(firestore, 'users', user.uid);
       await updateDoc(userDocRef, { displayName });
-      
+
       toast({
         title: "Success",
         description: "Your name has been updated.",
@@ -105,7 +103,6 @@ export default function ProfilePage() {
     }
 
     try {
-      // 1. Delete all user data from Firestore
       const collectionsToDelete = [
         "incomeSources",
         "requiredExpenses",
@@ -127,14 +124,9 @@ export default function ProfilePage() {
         });
       }
 
-      // Delete the main user profile document
       const userDocRef = doc(firestore, "users", user.uid);
       batch.delete(userDocRef);
-
-      // Commit the batch delete
       await batch.commit();
-
-      // 2. Delete the user from Firebase Authentication
       await deleteUser(auth.currentUser);
 
       toast({
@@ -142,7 +134,7 @@ export default function ProfilePage() {
         description: "Your account and all associated data have been permanently removed.",
       });
 
-      router.push("/signup");
+      router.push("/feedback");
     } catch (e: any) {
       console.error("Error deleting account:", e);
       let description = "An unexpected error occurred. Please try again.";
@@ -181,96 +173,89 @@ export default function ProfilePage() {
 
   return (
     user && (
-      <div className="flex-1 overflow-y-auto no-scrollbar">
-        <header className="px-5 py-4 sticky top-0 glass z-20">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 flex justify-start">
-              <Button variant="ghost" size="sm" asChild className="gap-1">
-                <Link href="/reports">
-                  <ArrowLeft className="h-4 w-4" />
-                  Reports
-                </Link>
-              </Button>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <h1 className="text-xl font-bold font-headline tracking-tight text-foreground">
-                Your Profile
-              </h1>
-            </div>
-            <div className="flex-1 flex justify-end items-center gap-1">
-              <Link
-                href="/transaction/new"
-                className="inline-flex items-center justify-center rounded-full bg-primary p-1.5 text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
+      <div className="bg-background font-headline flex flex-col min-h-screen overflow-hidden">
+        <PageHeader
+          title="MY PROFILE"
+          rightContent={<HamburgerMenu />}
+          leftContent={
+            <Button variant="ghost" size="sm" asChild className="gap-1">
+              <Link href="/reports">
+                <ArrowLeft className="h-4 w-4" />
+                Reports
               </Link>
-              <HamburgerMenu />
-            </div>
-          </div>
-        </header>
-        <main className="px-4 pb-28 space-y-8 pt-4">
-        <div className="text-center">
-            <p className="text-muted-foreground">{user.email}</p>
-        </div>
+            </Button>
+          }
+        />
 
-        <div className="space-y-4">
+        <main className="flex-1 overflow-y-auto px-4 pb-8 space-y-6 pt-4">
+          <div className="text-center">
+            <p className="text-muted-foreground">{user.email}</p>
+          </div>
+
+          {/* My Name */}
+          <div className="space-y-4">
             <div className="space-y-2">
-                <Label htmlFor="displayName">Your Name</Label>
-                <Input 
-                    id="displayName" 
-                    value={displayName} 
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    className="h-12 text-base"
-                />
+              <Label htmlFor="displayName">My Name</Label>
+              <Input
+                id="displayName"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                className="h-12 text-base"
+              />
             </div>
             <Button onClick={handleSaveName} className="w-full">
-                <Save className="mr-2 h-4 w-4" /> Save Changes
+              <Save className="mr-2 h-4 w-4" /> Save Changes
             </Button>
-        </div>
+          </div>
 
-
-        <div className="p-4 space-y-3 border-t">
-           <Button asChild variant="outline" className="w-full justify-start">
-                <a href="mailto:thetiger@alumni.stanford.edu?subject=Feedback for WKLY App">
-                    <MessageSquare className="mr-2 h-4 w-4" /> Send Feedback
-                </a>
+          {/* Actions */}
+          <div className="p-4 space-y-3 border-t">
+            <Button asChild variant="outline" className="w-full justify-start">
+              <a href="mailto:thetiger@alumni.stanford.edu?subject=Feedback for WKLY App&bcc=weeklybudgetapp@gmail.com">
+                <MessageSquare className="mr-2 h-4 w-4" /> Send Feedback
+              </a>
             </Button>
-           <Button asChild variant="outline" className="w-full justify-start">
+            <Button asChild variant="outline" className="w-full justify-start">
+              <a href="mailto:thetiger@alumni.stanford.edu?subject=My Weekly Budget Story&bcc=weeklybudgetapp@gmail.com&body=Share your story on how WeeklyBudget.app has helped you move towards debt-free living.%0A%0APlease let us know if we can share your story with others.%0A%0A">
+                <Heart className="mr-2 h-4 w-4" /> Share Your Story
+              </a>
+            </Button>
+            <Button asChild variant="outline" className="w-full justify-start">
               <Link href="/help">
                 <LifeBuoy className="mr-2 h-4 w-4" /> Help & FAQ
               </Link>
-          </Button>
-           <Button asChild variant="outline" className="w-full justify-start">
+            </Button>
+            <Button asChild variant="outline" className="w-full justify-start">
               <Link href="/privacy">
                 <Shield className="mr-2 h-4 w-4" /> Privacy Policy
               </Link>
-          </Button>
-           <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20 hover:border-destructive/40">
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20 hover:border-destructive/40">
                   <Trash2 className="mr-2 h-4 w-4" /> Delete Account
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete your
-                  account and remove all of your data from our servers.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
-                  Continue
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          <Button onClick={handleSignOut} variant="destructive" className="w-full">
-            <LogOut className="mr-2 h-4 w-4" /> Sign Out
-          </Button>
-        </div>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete your
+                    account and remove all of your data from our servers.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+                    Continue
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Button onClick={handleSignOut} variant="destructive" className="w-full">
+              <LogOut className="mr-2 h-4 w-4" /> Sign Out
+            </Button>
+          </div>
         </main>
       </div>
     )

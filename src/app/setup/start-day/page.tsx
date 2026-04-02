@@ -38,7 +38,7 @@ export default function StartDayScreen() {
         { startDayOfWeek: selectedDay },
         { merge: true }
       );
-      router.push('/setup/income');
+      router.push('/setup/welcome');
     } catch (error) {
       console.error('Error setting start day:', error);
       // Handle error, e.g., show a toast message
@@ -64,7 +64,7 @@ export default function StartDayScreen() {
                 <h1 className="text-2xl font-bold text-foreground mb-4 leading-tight">
                     Pick a day to start your week
                 </h1>
-                <p className="text-muted-foreground mb-8">This helps align your budget and tracking with your personal schedule.</p>
+                <p className="text-muted-foreground mb-8">This aligns your budget and tracking with your personal schedule. The default is Sunday</p>
                 <div className="flex justify-center items-center gap-2 mb-8">
                     {days.map((day) => (
                     <button

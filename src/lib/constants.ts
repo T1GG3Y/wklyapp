@@ -15,6 +15,19 @@ export const FREQUENCY_OPTIONS = [
 
 export type Frequency = (typeof FREQUENCY_OPTIONS)[number];
 
+// Income Categories (alphabetical, Custom last)
+export const INCOME_CATEGORIES = [
+  { name: 'Bank Transfer', icon: 'Landmark' },
+  { name: 'Freelance', icon: 'Laptop' },
+  { name: 'Gift', icon: 'Gift' },
+  { name: 'Investment', icon: 'TrendingUp' },
+  { name: 'Refund', icon: 'RotateCcw' },
+  { name: 'Salary', icon: 'Briefcase' },
+  { name: 'Side Work', icon: 'Hammer' },
+  { name: 'Tips', icon: 'HandCoins' },
+  { name: 'Custom', icon: 'MoreHorizontal' },
+] as const;
+
 // Essential Expense Categories (alphabetical, Custom last)
 export const ESSENTIAL_CATEGORIES = [
   { name: 'Auto Insurance', icon: 'Shield' },
@@ -25,9 +38,11 @@ export const ESSENTIAL_CATEGORIES = [
   { name: 'Garbage', icon: 'Trash2' },
   { name: 'Gas/Parking/Tolls', icon: 'Car' },
   { name: 'Groceries', icon: 'ShoppingBasket' },
+  { name: 'Home Insurance', icon: 'ShieldCheck' },
   { name: 'Medical', icon: 'Heart' },
   { name: 'Natural Gas', icon: 'Flame' },
   { name: 'Phone', icon: 'Phone' },
+  { name: 'Property Taxes', icon: 'Receipt' },
   { name: 'Rent/Mortgage', icon: 'Home' },
   { name: 'Water/Sewer', icon: 'Droplet' },
   { name: 'Custom', icon: 'MoreHorizontal' },
@@ -66,15 +81,24 @@ export const SAVINGS_CATEGORIES = [
   { name: 'Automobile', icon: 'Car' },
   { name: 'Education', icon: 'GraduationCap' },
   { name: 'Emergency Fund', icon: 'ShieldAlert' },
-  { name: 'House Purchase', icon: 'Home' },
+  { name: 'Real Estate Purchase', icon: 'Home' },
   { name: 'Recreation Equipment', icon: 'Bike' },
   { name: 'Vacation', icon: 'Plane' },
   { name: 'Custom', icon: 'MoreHorizontal' },
-  { name: 'Income Balance', icon: 'Wallet' },
 ] as const;
 
 // Category Help Text
 export const CATEGORY_HELP: Record<string, string> = {
+  // Income
+  'Salary': 'Regular employment wages or salary.',
+  'Tips': 'Tips, gratuities, and bonuses.',
+  'Freelance': 'Freelance or contract work income.',
+  'Side Work': 'Side jobs, gig work, odd jobs, etc.',
+  'Bank Transfer': 'Transfers from savings, other accounts, etc.',
+  'Investment': 'Dividends, interest, capital gains, etc.',
+  'Refund': 'Tax refunds, rebates, reimbursements, etc.',
+  'Gift': 'Monetary gifts received.',
+
   // Essential
   'Groceries': 'Food, soaps, toiletry etc.',
   'Rent/Mortgage': 'Mortgage payment, rent payment, insurance, taxes, etc.',
@@ -89,6 +113,8 @@ export const CATEGORY_HELP: Record<string, string> = {
   'Auto Registration': 'Testing & government fees.',
   'Medical': 'Doctor, hospital, prescriptions, labs, insurance etc. Yearly total is best.',
   'Dental': 'Dentist, orthodontist, oral surgeon, etc. Yearly total is best.',
+  'Home Insurance': 'Homeowners or renters insurance premiums.',
+  'Property Taxes': 'Annual property tax payments on real estate.',
 
   // Discretionary
   'Personal Care': 'Haircuts, nails etc.',
@@ -107,14 +133,14 @@ export const CATEGORY_HELP: Record<string, string> = {
   'Personal Expenses': 'Personal money that is yours to spend any way you want.',
 
   // Loans
-  'Credit Cards': 'Visa, MasterCard, Discover, etc.',
+  'Credit Cards': 'For unpaid credit cards that are no longer being used or the unpaid amount of active used credit cards that interest is being paid on. It is not the current purchases that are budgeted for under the Essential, Discretionary and Loan subcategories.',
   'Auto Loan': 'Cars, motorcycles, trailers, boats, etc.',
   'Home Mortgages': 'Primary residence, secondary residence, etc.',
   'Student Loan': 'Federal Loan, Private, Direct consolidation, etc.',
 
   // Savings
   'Emergency Fund': 'Savings for a dire time in life, typically 4 months of living expenses/budget.',
-  'House Purchase': 'Down payment, closing costs, house renovation, etc.',
+  'Real Estate Purchase': 'Down payment, closing costs, house renovation, etc.',
   'Automobile': 'New or used car, truck, motorcycle, etc.',
   'Recreation Equipment': 'Boat, dirt bike, surfboard, skis, fishing gear, etc.',
   'Education': 'College, Technical College, enhancement courses, etc.',
@@ -159,5 +185,5 @@ export const CATEGORY_TYPE_NAMES = {
   essential: 'My Essential Expenses',
   discretionary: 'My Discretionary Expenses',
   loans: 'My Loans',
-  savings: 'My Planned Savings Goals',
+  savings: 'My Savings Goals',
 } as const;

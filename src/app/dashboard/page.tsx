@@ -135,7 +135,7 @@ const loanIcons: Record<string, LucideIcon> = {
 };
 
 const savingsGoalIcons: Record<string, LucideIcon> = {
-  'Emergency Fund': ShieldAlert, 'House Purchase': Home, 'Automobile': Car,
+  'Emergency Fund': ShieldAlert, 'Real Estate Purchase': Home, 'Automobile': Car,
   'Vacation': Plane, 'Recreation Equipment': Bike, 'Education': GraduationCap,
   'Custom': MoreHorizontal, 'Income Balance': Wallet,
 };
@@ -366,8 +366,8 @@ export default function DashboardScreen() {
         rightContent={
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="sm" asChild className="gap-1">
-              <Link href="/transaction/new">
-                Transactions
+              <Link href="/income">
+                Income
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -376,9 +376,9 @@ export default function DashboardScreen() {
         }
         leftContent={
           <Button variant="ghost" size="sm" asChild className="gap-1">
-            <Link href="/savings-goals">
+            <Link href="/setup/welcome">
               <ArrowLeft className="h-4 w-4" />
-              Savings
+              Welcome
             </Link>
           </Button>
         }
@@ -520,7 +520,7 @@ export default function DashboardScreen() {
               </AccordionContent>
             </AccordionItem>
 
-            {/* My Planned Savings Goals */}
+            {/* My Savings Goals */}
             <AccordionItem value="item-5" className="glass rounded-2xl px-4">
               <AccordionTrigger className="py-4">
                 <div className="flex items-center gap-3">
@@ -528,7 +528,7 @@ export default function DashboardScreen() {
                     <PiggyBank className="text-white size-4" />
                   </div>
                   <div className="text-left">
-                    <p className="font-semibold text-foreground">My Planned Savings Goals</p>
+                    <p className="font-semibold text-foreground">My Savings Goals</p>
                     <p className="text-xs text-muted-foreground">{formatCurrency(totalSaved)} of {formatCurrency(totalSavingsTarget)} saved</p>
                   </div>
                 </div>
@@ -536,7 +536,7 @@ export default function DashboardScreen() {
               <AccordionContent className="divide-y border-t">
                 <div className="pt-2 pb-3">
                   <Button variant="outline" className="w-full" asChild>
-                    <Link href="/savings-goals"><Edit className="mr-2 size-4" /> Edit My Planned Savings Goals</Link>
+                    <Link href="/savings-goals"><Edit className="mr-2 size-4" /> Edit My Savings Goals</Link>
                   </Button>
                 </div>
                 {savingsGoals

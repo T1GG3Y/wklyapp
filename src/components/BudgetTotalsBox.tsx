@@ -10,6 +10,7 @@ interface BudgetTotalsBoxProps {
   yearlyTotal?: number;
   overbudgetTotal?: number;
   showOverbudget?: boolean;
+  overbudgetLabel?: string;
   title?: string;
   className?: string;
 }
@@ -20,6 +21,7 @@ export function BudgetTotalsBox({
   yearlyTotal,
   overbudgetTotal = 0,
   showOverbudget = false,
+  overbudgetLabel = "Overbudget",
   title = "Budget Totals",
   className,
 }: BudgetTotalsBoxProps) {
@@ -58,7 +60,7 @@ export function BudgetTotalsBox({
         </div>
         {showOverbudget && (
           <div className="text-center">
-            <p className="text-xs text-muted-foreground mb-1">Overbudget</p>
+            <p className="text-xs text-muted-foreground mb-1">{overbudgetLabel}</p>
             <p className={cn("text-lg font-bold", overbudgetTotal > 0 ? "text-destructive" : "text-foreground")}>
               {formatCurrency(overbudgetTotal)}
             </p>

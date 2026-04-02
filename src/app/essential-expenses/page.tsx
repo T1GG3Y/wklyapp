@@ -16,6 +16,8 @@ import {
   MoreHorizontal,
   Car,
   Shield,
+  ShieldCheck,
+  Receipt,
   CalendarIcon,
   Plus,
   Edit,
@@ -25,8 +27,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useState, useMemo, useEffect } from 'react';
-import { useUser, useFirestore, useCollection } from '@/firebase';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useUser, useFirestore, useCollection, useDoc } from '@/firebase';
 import {
   collection,
   addDoc,
@@ -37,6 +39,7 @@ import {
   where,
   getDocs,
   type DocumentData,
+  type Timestamp,
 } from 'firebase/firestore';
 import {
   Popover,
@@ -44,7 +47,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -91,6 +94,18 @@ interface RequiredExpense extends DocumentData {
   description?: string;
 }
 
+interface UserProfile extends DocumentData {
+  startDayOfWeek?: 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
+}
+
+interface Transaction extends DocumentData {
+  id: string;
+  type: 'Income' | 'Expense';
+  amount: number;
+  category: string;
+  date: Timestamp;
+}
+
 // Icon mapping for categories
 const iconMap: Record<string, LucideIcon> = {
   'Groceries': ShoppingBasket,
@@ -104,9 +119,15 @@ const iconMap: Record<string, LucideIcon> = {
   'Auto Insurance': Shield,
   'Auto Maintenance': Wrench,
   'Auto Registration': FileText,
+  'Home Insurance': ShieldCheck,
+  'Property Taxes': Receipt,
   'Medical': Heart,
   'Dental': Smile,
   'Custom': MoreHorizontal,
+};
+
+const dayIndexMap: Record<string, 0 | 1 | 2 | 3 | 4 | 5 | 6> = {
+  Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6,
 };
 
 export default function EssentialExpensesPage() {
@@ -116,6 +137,8 @@ export default function EssentialExpensesPage() {
   const [isCategoryPickerOpen, setIsCategoryPickerOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [expenseToEdit, setExpenseToEdit] = useState<RequiredExpense | null>(null);
+  const [weeklySpentByCategory, setWeeklySpentByCategory] = useState<Record<string, number>>({});
+  const hasLoadedTransactions = useRef(false);
 
   const [formState, setFormState] = useState<{
     category: string;
@@ -133,20 +156,56 @@ export default function EssentialExpensesPage() {
     description: '',
   });
 
+  const userProfilePath = useMemo(() => (user ? `users/${user.uid}` : null), [user]);
   const requiredExpensesPath = useMemo(() => {
     return user ? `users/${user.uid}/requiredExpenses` : null;
   }, [user]);
 
-  const { data: expenses, loading } = useCollection<RequiredExpense>(
-    requiredExpensesPath
-  );
+  const { data: userProfile } = useDoc<UserProfile>(userProfilePath);
+  const { data: expenses, loading } = useCollection<RequiredExpense>(requiredExpensesPath);
+
+  // Fetch current week's transactions to calculate Available amounts
+  const loadWeeklyTransactions = useCallback(async () => {
+    if (!firestore || !user || hasLoadedTransactions.current) return;
+    try {
+      const startDay = userProfile?.startDayOfWeek || 'Sunday';
+      const weekStartsOn = dayIndexMap[startDay];
+      const now = new Date();
+      const weekStart = startOfWeek(now, { weekStartsOn });
+      const weekEnd = endOfWeek(now, { weekStartsOn });
+
+      const txRef = collection(firestore, `users/${user.uid}/transactions`);
+      const snapshot = await getDocs(txRef);
+      const spentByCategory: Record<string, number> = {};
+
+      snapshot.forEach((d) => {
+        const data = d.data();
+        if (data.type === 'Expense' && data.date) {
+          const txDate = data.date.toDate();
+          if (isWithinInterval(txDate, { start: weekStart, end: weekEnd })) {
+            const cat = data.category || '';
+            spentByCategory[cat] = (spentByCategory[cat] || 0) + Math.abs(data.amount);
+          }
+        }
+      });
+
+      setWeeklySpentByCategory(spentByCategory);
+      hasLoadedTransactions.current = true;
+    } catch (error) {
+      console.error('Error loading weekly transactions:', error);
+    }
+  }, [firestore, user, userProfile]);
+
+  useEffect(() => {
+    if (user && firestore && userProfile) loadWeeklyTransactions();
+  }, [user, firestore, userProfile, loadWeeklyTransactions]);
 
   useEffect(() => {
     if (expenseToEdit) {
       setFormState({
         category: expenseToEdit.category,
         name: expenseToEdit.name || expenseToEdit.category,
-        amount: formatAmountInput(expenseToEdit.amount.toString()),
+        amount: formatAmountInput(expenseToEdit.amount.toFixed(2)),
         frequency: expenseToEdit.frequency as Frequency,
         dueDate: expenseToEdit.dueDate ? parseISO(expenseToEdit.dueDate) : undefined,
         description: expenseToEdit.description || '',
@@ -185,6 +244,11 @@ export default function EssentialExpensesPage() {
     setIsEditDialogOpen(true);
   };
 
+  // Check how many times a category is used
+  const getCategoryCount = (categoryName: string) => {
+    return (expenses || []).filter((e) => e.category === categoryName).length;
+  };
+
   const handleSaveExpense = async () => {
     if (!firestore || !user) return;
 
@@ -199,10 +263,21 @@ export default function EssentialExpensesPage() {
       return;
     }
 
+    // Require description if subcategory is used more than once
+    const existingCount = getCategoryCount(formState.category);
+    const willBeDuplicate = expenseToEdit
+      ? existingCount > 1
+      : existingCount >= 1;
+
+    if (willBeDuplicate && !formState.description.trim()) {
+      alert(`Please enter a description since "${formState.category}" is used more than once.`);
+      return;
+    }
+
     const expenseData = {
       userProfileId: user.uid,
       category: formState.category,
-      name: formState.name || formState.category,
+      name: formState.category,
       amount: expenseAmount,
       frequency: formState.frequency,
       description: formState.description,
@@ -245,7 +320,6 @@ export default function EssentialExpensesPage() {
     if (!firestore || !user) return;
 
     try {
-      // Query transactions for this category to calculate average
       const txRef = collection(firestore, `users/${user.uid}/transactions`);
       const q = query(txRef, where('category', '==', formState.category));
       const snapshot = await getDocs(q);
@@ -303,11 +377,30 @@ export default function EssentialExpensesPage() {
       return total + getWeeklyAmount(expense.amount, expense.frequency);
     }, 0);
 
-    const overBudget = 0; // Placeholder - needs actual spending data
+    const overBudget = 0;
     return { weeklyTotal: weekly, overBudgetTotal: overBudget };
   }, [expenses]);
 
-  // Get expense for a category (for the category picker)
+  // Sort expenses alphabetically by category then description
+  const sortedExpenses = useMemo(() => {
+    if (!expenses) return [];
+    return [...expenses].sort((a, b) => {
+      const catCmp = a.category.localeCompare(b.category);
+      if (catCmp !== 0) return catCmp;
+      return (a.description || '').localeCompare(b.description || '');
+    });
+  }, [expenses]);
+
+  // Display name: "Category - Description" if description exists
+  const getDisplayName = (expense: RequiredExpense) => {
+    const name = expense.category;
+    if (expense.description) {
+      return `${name} - ${expense.description}`;
+    }
+    return name;
+  };
+
+  // Get first expense for a category (for the category picker display)
   const getCategoryExpense = (categoryName: string) => {
     return expenses?.find((e) => e.category === categoryName);
   };
@@ -367,11 +460,12 @@ export default function EssentialExpensesPage() {
             <div className="divide-y">
               {loading ? (
                 <p className="text-center text-muted-foreground py-6">Loading...</p>
-              ) : expenses && expenses.length > 0 ? (
-                expenses.map((expense) => {
+              ) : sortedExpenses.length > 0 ? (
+                sortedExpenses.map((expense) => {
                   const Icon = iconMap[expense.category] || MoreHorizontal;
                   const weeklyAmount = getWeeklyAmount(expense.amount, expense.frequency);
-                  const amountAvailable = weeklyAmount; // Placeholder - needs carryover data
+                  const spent = weeklySpentByCategory[expense.category] || 0;
+                  const amountAvailable = weeklyAmount - spent;
 
                   return (
                     <div
@@ -383,7 +477,7 @@ export default function EssentialExpensesPage() {
                           <Icon className="size-4" />
                         </div>
                         <p className="font-semibold text-foreground truncate">
-                          {expense.name || expense.category}
+                          {getDisplayName(expense)}
                         </p>
                       </div>
                       <div className="flex items-center gap-3 text-sm shrink-0">
@@ -393,7 +487,9 @@ export default function EssentialExpensesPage() {
                         </div>
                         <div className="text-right">
                           <p className="text-xs text-muted-foreground">Available</p>
-                          <p className="font-semibold">{formatCurrency(amountAvailable)}</p>
+                          <p className={cn("font-semibold", amountAvailable < 0 ? "text-destructive" : "")}>
+                            {formatCurrency(amountAvailable)}
+                          </p>
                         </div>
                         <Button
                           variant="ghost"
@@ -433,11 +529,7 @@ export default function EssentialExpensesPage() {
               return (
                 <button
                   key={name}
-                  onClick={() =>
-                    isAdded && expense
-                      ? (setIsCategoryPickerOpen(false), handleOpenEditDialog(expense))
-                      : handleCategorySelected(name)
-                  }
+                  onClick={() => handleCategorySelected(name)}
                   className={cn(
                     'flex flex-col items-center justify-center gap-1.5 text-center p-3 rounded-xl border transition-all duration-200 relative min-h-[80px]',
                     isAdded
@@ -475,21 +567,20 @@ export default function EssentialExpensesPage() {
               <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
-                placeholder="e.g. Groceries"
-                value={formState.name}
+                value={formState.category}
+                disabled={formState.category !== 'Custom'}
+                className={formState.category !== 'Custom' ? 'opacity-60' : ''}
                 onChange={(e) =>
-                  setFormState({ ...formState, name: e.target.value })
+                  setFormState({ ...formState, category: e.target.value, name: e.target.value })
                 }
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">
-                Description <span className="text-muted-foreground font-normal">(Optional)</span>
-              </Label>
+              <Label htmlFor="description">Description</Label>
               <Input
                 id="description"
-                placeholder="Add a note"
+                placeholder="Add a description"
                 value={formState.description}
                 onChange={(e) =>
                   setFormState({ ...formState, description: e.target.value })
@@ -612,8 +703,6 @@ export default function EssentialExpensesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-
     </div>
   );
 }

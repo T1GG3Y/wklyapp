@@ -62,7 +62,6 @@ import {
   formatAmountInput,
   parseFormattedAmount,
   getWeeklyAmount,
-  formatPercent,
 } from '@/lib/format';
 
 interface SavingsGoal extends DocumentData {
@@ -95,7 +94,7 @@ interface DiscretionaryExpense extends DocumentData {
 
 const iconMap: Record<string, LucideIcon> = {
   'Emergency Fund': ShieldAlert,
-  'House Purchase': Home,
+  'Real Estate Purchase': Home,
   'Automobile': Car,
   'Vacation': Plane,
   'Recreation Equipment': Bike,
@@ -184,9 +183,9 @@ export default function SavingsGoalsPage() {
       setFormState({
         category: goalToEdit.category,
         name: goalToEdit.name,
-        targetAmount: formatAmountInput(goalToEdit.targetAmount.toString()),
-        currentAmount: formatAmountInput(goalToEdit.currentAmount.toString()),
-        weeklyContribution: formatAmountInput((goalToEdit.weeklyContribution || 0).toString()),
+        targetAmount: formatAmountInput(goalToEdit.targetAmount.toFixed(2)),
+        currentAmount: formatAmountInput(goalToEdit.currentAmount.toFixed(2)),
+        weeklyContribution: formatAmountInput((goalToEdit.weeklyContribution || 0).toFixed(2)),
         frequency: goalToEdit.frequency || 'Weekly',
         description: goalToEdit.description || '',
       });
@@ -204,12 +203,11 @@ export default function SavingsGoalsPage() {
   };
 
   const handleCategorySelected = (category: string) => {
-    if (category === 'Income Balance') return;
     setIsCategoryPickerOpen(false);
     setGoalToEdit(null);
     setFormState({
       category,
-      name: '',
+      name: category,
       targetAmount: '',
       currentAmount: '',
       weeklyContribution: '',
@@ -225,6 +223,11 @@ export default function SavingsGoalsPage() {
     setIsEditDialogOpen(true);
   };
 
+  // Check how many times a category is used
+  const getCategoryCount = (categoryName: string) => {
+    return (goals || []).filter((g) => g.category === categoryName).length;
+  };
+
   const handleSaveGoal = async () => {
     if (!firestore || !user) return;
 
@@ -232,8 +235,8 @@ export default function SavingsGoalsPage() {
     const currentAmount = parseFormattedAmount(formState.currentAmount);
     const weeklyContribution = parseFormattedAmount(formState.weeklyContribution);
 
-    if (targetAmount <= 0 || !formState.name) {
-      alert('Please enter a valid goal name and amount required.');
+    if (targetAmount <= 0) {
+      alert('Please enter a valid savings goal amount.');
       return;
     }
 
@@ -242,9 +245,20 @@ export default function SavingsGoalsPage() {
       return;
     }
 
+    // Require description if subcategory is used more than once
+    const existingCount = getCategoryCount(formState.category);
+    const willBeDuplicate = goalToEdit
+      ? existingCount > 1
+      : existingCount >= 1;
+
+    if (willBeDuplicate && !formState.description.trim()) {
+      alert(`Please enter a description since "${formState.category}" is used more than once.`);
+      return;
+    }
+
     const goalData = {
       userProfileId: user.uid,
-      name: formState.name,
+      name: formState.category,
       category: formState.category,
       targetAmount,
       currentAmount,
@@ -281,6 +295,27 @@ export default function SavingsGoalsPage() {
     }
   };
 
+  // Sort goals alphabetically by category then description
+  const sortedGoals = useMemo(() => {
+    if (!goals) return [];
+    return [...goals]
+      .filter(g => g.category !== 'Income Balance')
+      .sort((a, b) => {
+        const catCmp = a.category.localeCompare(b.category);
+        if (catCmp !== 0) return catCmp;
+        return (a.description || '').localeCompare(b.description || '');
+      });
+  }, [goals]);
+
+  // Display name: "Category - Description" if description exists
+  const getDisplayName = (goal: SavingsGoal) => {
+    const name = goal.category;
+    if (goal.description) {
+      return `${name} - ${goal.description}`;
+    }
+    return name;
+  };
+
   const getCategoryGoals = (categoryName: string) => {
     return goals?.filter((g) => g.category === categoryName) || [];
   };
@@ -288,15 +323,15 @@ export default function SavingsGoalsPage() {
   return (
     <div className="bg-background font-headline antialiased min-h-screen flex flex-col overflow-x-hidden">
       <PageHeader
-        title="MY PLANNED SAVINGS GOALS"
-        helpTitle="My Planned Savings Goals"
+        title="MY SAVINGS GOALS"
+        helpTitle="My Savings Goals"
         helpContent={PAGE_HELP.savings}
-        subheader="Tap each category to add each savings goal. This week's balance will be added to next week."
+        subheader="For Setup select 'Add New Saving Goal' below and start adding each Savings Goal. This week's balance will be added to next week."
         rightContent={
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="sm" asChild className="gap-1">
-              <Link href="/dashboard">
-                Home
+              <Link href="/transaction/new">
+                Transactions
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -320,10 +355,10 @@ export default function SavingsGoalsPage() {
             Add New Saving Goal
           </Button>
 
-          {/* My Total Savings Box */}
+          {/* My Savings Goal Totals Box */}
           <div className="bg-card rounded-xl p-4 border shadow-sm">
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">
-              My Savings Goals
+              My Savings Goal Totals
             </h3>
             <div className="grid grid-cols-3 gap-3 mb-3">
               <div className="text-center">
@@ -353,53 +388,61 @@ export default function SavingsGoalsPage() {
               My Goals
             </h3>
             <div className="divide-y">
+              {/* Unassigned Income - always at top */}
+              <div className="p-4 bg-muted/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <Wallet className="size-4" />
+                  </div>
+                  <span className="font-semibold text-foreground">Unassigned Income</span>
+                </div>
+                <p className="text-lg font-bold text-primary">{formatCurrency(incomeBalance)}<span className="text-sm font-normal text-muted-foreground"> / week</span></p>
+              </div>
+
               {loading ? (
                 <p className="text-center text-muted-foreground py-6">Loading...</p>
-              ) : goals && goals.filter(g => g.category !== 'Income Balance').length > 0 ? (
-                goals
-                  .filter(g => g.category !== 'Income Balance')
-                  .map((goal) => {
-                    const Icon = iconMap[goal.category] || PiggyBank;
-                    const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
-                    const remaining = goal.targetAmount - goal.currentAmount;
-                    const estimatedDate = getEstimatedTargetDate(goal);
+              ) : sortedGoals.length > 0 ? (
+                sortedGoals.map((goal) => {
+                  const Icon = iconMap[goal.category] || PiggyBank;
+                  const progress = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
+                  const estimatedDate = getEstimatedTargetDate(goal);
 
-                    return (
-                      <div key={goal.id} className="p-4 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                              <Icon className="size-4" />
-                            </div>
-                            <span className="font-semibold text-foreground">{goal.name}</span>
+                  return (
+                    <div key={goal.id} className="p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                            <Icon className="size-4" />
                           </div>
-                          <Button variant="ghost" size="icon" className="size-8" onClick={() => handleOpenEditDialog(goal)}>
-                            <Edit className="size-4" />
-                          </Button>
+                          <span className="font-semibold text-foreground">{getDisplayName(goal)}</span>
                         </div>
-                        <div className="relative h-5 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full bg-primary transition-all duration-300" style={{ width: `${Math.min(100, progress)}%` }} />
-                          <span className="absolute inset-0 flex items-center pl-2 text-xs font-semibold">{progress.toFixed(0)}%</span>
+                        <Button variant="ghost" size="icon" className="size-8" onClick={() => handleOpenEditDialog(goal)}>
+                          <Edit className="size-4" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-6 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Saved: </span>
+                          <span className="font-semibold">{formatCurrency(goal.currentAmount)}</span>
                         </div>
-                        <div className="flex items-center gap-6 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Saved: </span>
-                            <span className="font-semibold">{formatCurrency(goal.currentAmount)}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Goal: </span>
-                            <span className="font-semibold">{formatCurrency(goal.targetAmount)}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Target: </span>
-                            <span className="font-semibold">
-                              {estimatedDate ? format(estimatedDate, 'MMM yyyy') : '—'}
-                            </span>
-                          </div>
+                        <div>
+                          <span className="text-muted-foreground">Goal: </span>
+                          <span className="font-semibold">{formatCurrency(goal.targetAmount)}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Target: </span>
+                          <span className="font-semibold">
+                            {estimatedDate ? format(estimatedDate, 'MMM yyyy') : '—'}
+                          </span>
                         </div>
                       </div>
-                    );
-                  })
+                      <div className="relative h-5 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-primary transition-all duration-300" style={{ width: `${Math.min(100, progress)}%` }} />
+                        <span className="absolute inset-0 flex items-center pl-2 text-xs font-semibold">{progress.toFixed(0)}%</span>
+                      </div>
+                    </div>
+                  );
+                })
               ) : (
                 <p className="text-center text-muted-foreground py-6">No savings goals added yet.</p>
               )}
@@ -408,7 +451,7 @@ export default function SavingsGoalsPage() {
         </div>
       </main>
 
-      {/* Category Picker Dialog */}
+      {/* Category Picker Dialog - Income Balance removed */}
       <Dialog open={isCategoryPickerOpen} onOpenChange={setIsCategoryPickerOpen}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -419,18 +462,14 @@ export default function SavingsGoalsPage() {
               const Icon = iconMap[name] || PiggyBank;
               const categoryGoals = getCategoryGoals(name);
               const hasGoals = categoryGoals.length > 0;
-              const isIncomeBalance = name === 'Income Balance';
 
               return (
                 <button
                   key={name}
-                  onClick={() => !isIncomeBalance && handleCategorySelected(name)}
-                  disabled={isIncomeBalance}
+                  onClick={() => handleCategorySelected(name)}
                   className={cn(
                     'flex flex-col items-center justify-center gap-1.5 text-center p-3 rounded-xl border transition-all duration-200 relative min-h-[80px]',
-                    isIncomeBalance
-                      ? 'bg-muted/50 border-muted cursor-default'
-                      : hasGoals
+                    hasGoals
                       ? 'bg-primary/10 border-primary text-primary'
                       : 'bg-card hover:bg-muted border-border'
                   )}
@@ -444,13 +483,9 @@ export default function SavingsGoalsPage() {
                     />
                   </div>
                   <span className="text-xs font-semibold leading-tight">{name}</span>
-                  {isIncomeBalance ? (
-                    <span className="text-[10px] font-bold text-muted-foreground">
-                      {formatCurrency(incomeBalance)}/wk
-                    </span>
-                  ) : hasGoals ? (
+                  {hasGoals && (
                     <span className="text-[10px] font-bold">{categoryGoals.length} goal(s)</span>
-                  ) : null}
+                  )}
                 </button>
               );
             })}
@@ -458,7 +493,7 @@ export default function SavingsGoalsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Box – My Savings Goal (no Auto Calculate) */}
+      {/* Edit Box – My Savings Goal */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -469,26 +504,25 @@ export default function SavingsGoalsPage() {
               <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
-                placeholder="e.g. Summer Vacation Fund"
-                value={formState.name}
-                onChange={(e) => setFormState({ ...formState, name: e.target.value })}
+                value={formState.category}
+                disabled={formState.category !== 'Custom'}
+                className={formState.category !== 'Custom' ? 'opacity-60' : ''}
+                onChange={(e) => setFormState({ ...formState, category: e.target.value, name: e.target.value })}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">
-                Description <span className="text-muted-foreground font-normal">(Optional)</span>
-              </Label>
+              <Label htmlFor="description">Description</Label>
               <Input
                 id="description"
-                placeholder="Add a note"
+                placeholder="Add a description"
                 value={formState.description}
                 onChange={(e) => setFormState({ ...formState, description: e.target.value })}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="targetAmount">Amount Required</Label>
+              <Label htmlFor="targetAmount">Savings Goal</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                 <Input
@@ -496,21 +530,6 @@ export default function SavingsGoalsPage() {
                   placeholder="0.00"
                   value={formState.targetAmount}
                   onChange={handleAmountChange('targetAmount')}
-                  className="pl-7"
-                  inputMode="decimal"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="currentAmount">Current Balance Saved</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                <Input
-                  id="currentAmount"
-                  placeholder="0.00"
-                  value={formState.currentAmount}
-                  onChange={handleAmountChange('currentAmount')}
                   className="pl-7"
                   inputMode="decimal"
                 />
@@ -549,6 +568,21 @@ export default function SavingsGoalsPage() {
                 </Select>
               </div>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="currentAmount">Current Balance Saved</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input
+                  id="currentAmount"
+                  placeholder="0.00"
+                  value={formState.currentAmount}
+                  onChange={handleAmountChange('currentAmount')}
+                  className="pl-7"
+                  inputMode="decimal"
+                />
+              </div>
+            </div>
           </div>
 
           <DialogFooter className="flex-col gap-2 sm:flex-row">
@@ -569,7 +603,6 @@ export default function SavingsGoalsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }

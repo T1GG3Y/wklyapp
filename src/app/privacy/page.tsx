@@ -1,14 +1,32 @@
+'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+import { PageHeader } from '@/components/PageHeader';
+import { HamburgerMenu } from '@/components/HamburgerMenu';
 
 export default function PrivacyPolicyPage() {
   return (
-    <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-24 space-y-4 pt-4">
+    <div className="bg-background font-headline flex flex-col min-h-screen overflow-hidden">
+      <PageHeader
+        title="PRIVACY POLICY"
+        rightContent={<HamburgerMenu />}
+        leftContent={
+          <Button variant="ghost" size="sm" asChild className="gap-1">
+            <Link href="/profile">
+              <ArrowLeft className="h-4 w-4" />
+              Profile
+            </Link>
+          </Button>
+        }
+      />
+      <main className="flex-1 overflow-y-auto px-4 pb-8 space-y-4 pt-4">
         <div className="space-y-6 text-sm text-muted-foreground">
             <p>Last updated: {new Date().toLocaleDateString()}</p>
 
             <p>
-                Welcome to WKLY. We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application.
+                Welcome to WKLY. We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our application.
             </p>
 
             <div className="space-y-2">
@@ -21,7 +39,7 @@ export default function PrivacyPolicyPage() {
                         <strong>Personal Data:</strong> Personally identifiable information, such as your name, email address, that you voluntarily give to us when you register with the Application.
                     </li>
                     <li>
-                        <strong>Financial Data:</strong> Financial information, such as data related to your income, expenses, and transactions, that you voluntarily provide when using our app's features. All financial data is stored securely and is only accessible by you.
+                        <strong>Financial Data:</strong> Financial information, such as data related to your income, expenses, and transactions, that you voluntarily provide when using our app&apos;s features. All financial data is stored securely and is only accessible by you.
                     </li>
                     <li>
                         <strong>Mobile Device Data:</strong> We do not collect device information, such as your mobile device ID, model, and manufacturer.
@@ -54,11 +72,11 @@ export default function PrivacyPolicyPage() {
                     We use administrative, technical, and physical security measures to help protect your personal information. We use Firebase, a platform by Google, which provides industry-leading security for your data. While we have taken reasonable steps to secure the personal information you provide to us, please be aware that despite our efforts, no security measures are perfect or impenetrable.
                 </p>
             </div>
-            
+
             <div className="space-y-2">
                 <h2 className="text-lg font-bold text-foreground">Account Deletion</h2>
                 <p>
-                    You may request to delete your account at any time by navigating to the "Profile" section of the application and selecting the "Delete Account" option. Upon your request, we will permanently delete your account and all associated data from our systems. This action is irreversible.
+                    You may request to delete your account at any time by navigating to the &quot;Profile&quot; section of the application and selecting the &quot;Delete Account&quot; option. Upon your request, we will permanently delete your account and all associated data from our systems. This action is irreversible.
                 </p>
             </div>
 
@@ -69,6 +87,7 @@ export default function PrivacyPolicyPage() {
                 </p>
             </div>
         </div>
-    </main>
+      </main>
+    </div>
   );
 }

@@ -72,6 +72,7 @@ interface Loan extends DocumentData {
   category: string;
   totalBalance: number;
   paidAmount?: number;
+  originalLoanAmount?: number;
   interestRate?: number;
   paymentFrequency: Frequency;
   payoffDate?: string;
@@ -98,6 +99,7 @@ export default function LoansPage() {
     name: string;
     balance: string;
     paidAmount: string;
+    originalLoanAmount: string;
     interestRate: string;
     frequency: Frequency;
     payoffDate?: Date;
@@ -107,6 +109,7 @@ export default function LoansPage() {
     name: '',
     balance: '',
     paidAmount: '',
+    originalLoanAmount: '',
     interestRate: '',
     frequency: 'Monthly',
     payoffDate: undefined,
@@ -124,8 +127,9 @@ export default function LoansPage() {
       setFormState({
         category: loanToEdit.category,
         name: loanToEdit.name,
-        balance: formatAmountInput(loanToEdit.totalBalance.toString()),
-        paidAmount: loanToEdit.paidAmount ? formatAmountInput(loanToEdit.paidAmount.toString()) : '',
+        balance: formatAmountInput(loanToEdit.totalBalance.toFixed(2)),
+        paidAmount: loanToEdit.paidAmount ? formatAmountInput(loanToEdit.paidAmount.toFixed(2)) : '',
+        originalLoanAmount: loanToEdit.originalLoanAmount ? formatAmountInput(loanToEdit.originalLoanAmount.toFixed(2)) : '',
         interestRate: loanToEdit.interestRate?.toString() || '',
         frequency: loanToEdit.paymentFrequency as Frequency,
         payoffDate: loanToEdit.payoffDate ? parseISO(loanToEdit.payoffDate) : undefined,
@@ -142,6 +146,10 @@ export default function LoansPage() {
     setFormState({ ...formState, paidAmount: formatAmountInput(e.target.value) });
   };
 
+  const handleOriginalLoanAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormState({ ...formState, originalLoanAmount: formatAmountInput(e.target.value) });
+  };
+
   const handleOpenCategoryPicker = () => {
     setIsCategoryPickerOpen(true);
   };
@@ -151,9 +159,10 @@ export default function LoansPage() {
     setLoanToEdit(null);
     setFormState({
       category,
-      name: '',
+      name: category,
       balance: '',
       paidAmount: '',
+      originalLoanAmount: '',
       interestRate: '',
       frequency: 'Monthly',
       payoffDate: undefined,
@@ -167,12 +176,17 @@ export default function LoansPage() {
     setIsEditDialogOpen(true);
   };
 
+  // Check how many times a category is used
+  const getCategoryCount = (categoryName: string) => {
+    return (loans || []).filter((l) => l.category === categoryName).length;
+  };
+
   const handleSaveLoan = async () => {
     if (!firestore || !user) return;
 
     const totalBalance = parseFormattedAmount(formState.balance);
-    if (totalBalance <= 0 || !formState.name) {
-      alert('Please enter a valid loan name and balance.');
+    if (totalBalance <= 0) {
+      alert('Please enter a valid balance.');
       return;
     }
 
@@ -181,14 +195,27 @@ export default function LoansPage() {
       return;
     }
 
+    // Require description if subcategory is used more than once
+    const existingCount = getCategoryCount(formState.category);
+    const willBeDuplicate = loanToEdit
+      ? existingCount > 1
+      : existingCount >= 1;
+
+    if (willBeDuplicate && !formState.description.trim()) {
+      alert(`Please enter a description since "${formState.category}" is used more than once.`);
+      return;
+    }
+
     const paidAmount = parseFormattedAmount(formState.paidAmount);
+    const originalLoanAmount = parseFormattedAmount(formState.originalLoanAmount);
 
     const loanData = {
       userProfileId: user.uid,
-      name: formState.name,
+      name: formState.category,
       category: formState.category,
       totalBalance,
       paidAmount: paidAmount || 0,
+      originalLoanAmount: originalLoanAmount || 0,
       paymentFrequency: formState.frequency,
       description: formState.description,
       ...(formState.interestRate && { interestRate: parseFloat(formState.interestRate) }),
@@ -234,6 +261,25 @@ export default function LoansPage() {
     return { totalPaid, totalBalance, delinquent: 0, percentPaid };
   }, [loans]);
 
+  // Sort loans alphabetically by category then description
+  const sortedLoans = useMemo(() => {
+    if (!loans) return [];
+    return [...loans].sort((a, b) => {
+      const catCmp = a.category.localeCompare(b.category);
+      if (catCmp !== 0) return catCmp;
+      return (a.description || '').localeCompare(b.description || '');
+    });
+  }, [loans]);
+
+  // Display name: "Category - Description" if description exists
+  const getDisplayName = (loan: Loan) => {
+    const name = loan.category;
+    if (loan.description) {
+      return `${name} - ${loan.description}`;
+    }
+    return name;
+  };
+
   const getCategoryLoans = (categoryName: string) => {
     return loans?.filter((l) => l.category === categoryName) || [];
   };
@@ -244,7 +290,7 @@ export default function LoansPage() {
         title="MY LOANS"
         helpTitle="My Loans"
         helpContent={PAGE_HELP.loans}
-        subheader="Tap each category to add each loan."
+        subheader="For Setup select 'Add New Loan' below and start adding each Loan"
         rightContent={
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="sm" asChild className="gap-1">
@@ -273,10 +319,10 @@ export default function LoansPage() {
             Add New Loan
           </Button>
 
-          {/* My Total Loans Box */}
+          {/* My Loan Totals Box */}
           <div className="bg-card rounded-xl p-4 border shadow-sm">
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">
-              My Total Loans
+              My Loan Totals
             </h3>
             <div className="grid grid-cols-3 gap-3 mb-3">
               <div className="text-center">
@@ -310,8 +356,8 @@ export default function LoansPage() {
             <div className="divide-y">
               {loading ? (
                 <p className="text-center text-muted-foreground py-6">Loading...</p>
-              ) : loans && loans.length > 0 ? (
-                loans.map((loan) => {
+              ) : sortedLoans.length > 0 ? (
+                sortedLoans.map((loan) => {
                   const Icon = iconMap[loan.category] || MoreHorizontal;
                   const paidAmount = loan.paidAmount || 0;
                   const totalOriginal = paidAmount + loan.totalBalance;
@@ -324,15 +370,11 @@ export default function LoansPage() {
                           <div className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
                             <Icon className="size-4" />
                           </div>
-                          <span className="font-semibold text-foreground">{loan.name}</span>
+                          <span className="font-semibold text-foreground">{getDisplayName(loan)}</span>
                         </div>
                         <Button variant="ghost" size="icon" className="size-8" onClick={() => handleOpenEditDialog(loan)}>
                           <Edit className="size-4" />
                         </Button>
-                      </div>
-                      <div className="relative h-5 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary transition-all duration-300" style={{ width: `${percentPaid}%` }} />
-                        <span className="absolute inset-0 flex items-center pl-2 text-xs font-semibold">{percentPaid.toFixed(0)}%</span>
                       </div>
                       <div className="flex items-center gap-6 text-sm">
                         <div>
@@ -349,6 +391,10 @@ export default function LoansPage() {
                             {loan.payoffDate ? format(parseISO(loan.payoffDate), 'MMM yyyy') : '—'}
                           </span>
                         </div>
+                      </div>
+                      <div className="relative h-5 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-primary transition-all duration-300" style={{ width: `${percentPaid}%` }} />
+                        <span className="absolute inset-0 flex items-center pl-2 text-xs font-semibold">{percentPaid.toFixed(0)}%</span>
                       </div>
                     </div>
                   );
@@ -414,19 +460,18 @@ export default function LoansPage() {
               <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
-                placeholder="e.g. Chase Sapphire"
-                value={formState.name}
-                onChange={(e) => setFormState({ ...formState, name: e.target.value })}
+                value={formState.category}
+                disabled={formState.category !== 'Custom'}
+                className={formState.category !== 'Custom' ? 'opacity-60' : ''}
+                onChange={(e) => setFormState({ ...formState, category: e.target.value, name: e.target.value })}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">
-                Description <span className="text-muted-foreground font-normal">(Optional)</span>
-              </Label>
+              <Label htmlFor="description">Description</Label>
               <Input
                 id="description"
-                placeholder="Add a note"
+                placeholder="Add a description"
                 value={formState.description}
                 onChange={(e) => setFormState({ ...formState, description: e.target.value })}
               />
@@ -434,7 +479,7 @@ export default function LoansPage() {
 
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="balance">Amount</Label>
+                <Label htmlFor="balance">Payment Amount</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                   <Input
@@ -493,18 +538,34 @@ export default function LoansPage() {
               </div>
             </div>
 
-            {/* Interest Rate (replaces Auto Calculate) */}
-            <div className="space-y-2">
-              <Label htmlFor="interestRate">Interest Rate</Label>
-              <div className="relative">
-                <Input
-                  id="interestRate"
-                  placeholder="0.00"
-                  value={formState.interestRate}
-                  onChange={(e) => setFormState({ ...formState, interestRate: e.target.value })}
-                  inputMode="decimal"
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+            {/* Interest Rate and Original Loan Amount */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="interestRate">Interest Rate</Label>
+                <div className="relative">
+                  <Input
+                    id="interestRate"
+                    placeholder="0.00"
+                    value={formState.interestRate}
+                    onChange={(e) => setFormState({ ...formState, interestRate: e.target.value })}
+                    inputMode="decimal"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="originalLoanAmount">Original Loan Amount</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    id="originalLoanAmount"
+                    placeholder="0.00"
+                    value={formState.originalLoanAmount}
+                    onChange={handleOriginalLoanAmountChange}
+                    className="pl-7"
+                    inputMode="decimal"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -527,7 +588,6 @@ export default function LoansPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }

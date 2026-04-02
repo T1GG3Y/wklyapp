@@ -147,7 +147,7 @@ export default function WeeklySummaryScreen() {
           </div>
           <div className="flex items-center justify-between w-full mt-8">
             <Button variant="link" asChild>
-              <Link href="/setup/savings">Back</Link>
+              <Link href="/savings-goals">Back</Link>
             </Button>
             <Button asChild className="py-3 px-10 rounded-full shadow-lg">
               <Link href="/dashboard">Continue</Link>

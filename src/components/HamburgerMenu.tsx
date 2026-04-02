@@ -25,12 +25,12 @@ import {
 import { cn } from "@/lib/utils";
 
 const menuItems = [
+  { href: "/dashboard", icon: LayoutDashboard, label: "Home" },
   { href: "/income", icon: Wallet, label: "Income" },
   { href: "/essential-expenses", icon: HomeIcon, label: "Essential Expenses" },
   { href: "/discretionary-expenses", icon: ShoppingBasket, label: "Discretionary Expenses" },
   { href: "/loans", icon: Landmark, label: "Loans" },
   { href: "/savings-goals", icon: PiggyBank, label: "Savings Goals" },
-  { href: "/dashboard", icon: LayoutDashboard, label: "Home" },
   { href: "/transaction/new", icon: Plus, label: "Transactions" },
   { href: "/reports", icon: PieChart, label: "Reports" },
   { href: "/profile", icon: User, label: "Profile" },
