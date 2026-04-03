@@ -522,9 +522,10 @@ export default function EssentialExpensesPage() {
           <div className="grid grid-cols-3 gap-3 py-2">
             {ESSENTIAL_CATEGORIES.map(({ name }) => {
               const Icon = iconMap[name] || MoreHorizontal;
-              const expense = getCategoryExpense(name);
-              const isAdded = !!expense;
-              const weeklyAmount = expense ? getWeeklyAmount(expense.amount, expense.frequency) : 0;
+              const categoryExpenses = (expenses || []).filter((e) => e.category === name);
+              const count = categoryExpenses.length;
+              const isAdded = count > 0;
+              const weeklyAmount = count === 1 ? getWeeklyAmount(categoryExpenses[0].amount, categoryExpenses[0].frequency) : 0;
 
               return (
                 <button
@@ -547,7 +548,9 @@ export default function EssentialExpensesPage() {
                   </div>
                   <span className="text-xs font-semibold leading-tight">{name}</span>
                   {isAdded && (
-                    <span className="text-[10px] font-bold">{formatCurrency(weeklyAmount)}/wk</span>
+                    count > 1
+                      ? <span className="text-[10px] font-bold">{count} added</span>
+                      : <span className="text-[10px] font-bold">{formatCurrency(weeklyAmount)}/wk</span>
                   )}
                 </button>
               );

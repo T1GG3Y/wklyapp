@@ -15,7 +15,7 @@ export default function WelcomePage() {
       const userDocRef = doc(firestore, 'users', user.uid);
       await setDoc(userDocRef, { onboardingComplete: true }, { merge: true });
     }
-    router.push('/dashboard');
+    router.push('/income');
   };
 
   return (
@@ -25,7 +25,7 @@ export default function WelcomePage() {
           onClick={handleContinue}
           className="inline-flex items-center gap-1 text-primary hover:underline font-semibold text-sm"
         >
-          Continue to Dashboard
+          Continue to My Income
           <ArrowRight className="h-4 w-4" />
         </button>
       </header>

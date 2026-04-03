@@ -46,6 +46,7 @@ import {
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/PageHeader';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
+import { HelpDialog } from '@/components/HelpDialog';
 import {
   ESSENTIAL_CATEGORIES,
   DISCRETIONARY_CATEGORIES,
@@ -70,21 +71,25 @@ interface RequiredExpense extends DocumentData {
   id: string;
   category: string;
   name?: string;
+  description?: string;
 }
 interface DiscretionaryExpense extends DocumentData {
   id: string;
   category: string;
   name?: string;
+  description?: string;
 }
 interface Loan extends DocumentData {
   id: string;
   name: string;
   category: string;
+  description?: string;
 }
 interface SavingsGoal extends DocumentData {
   id: string;
   name: string;
   category: string;
+  description?: string;
 }
 
 interface SplitRow {
@@ -109,14 +114,93 @@ const DATE_FILTERS = [
 function CategorySelect({
   value,
   onValueChange,
+  requiredExpenses,
+  discretionaryExpenses,
   loans,
   savingsGoals,
 }: {
   value: string;
   onValueChange: (val: string) => void;
+  requiredExpenses?: RequiredExpense[] | null;
+  discretionaryExpenses?: DiscretionaryExpense[] | null;
   loans?: Loan[] | null;
   savingsGoals?: SavingsGoal[] | null;
 }) {
+  // Build display items from user's actual budget entries
+  const getDisplayName = (category: string, description?: string) => {
+    if (description) return `${category} - ${description}`;
+    return category;
+  };
+
+  // Deduplicate items by display name
+  const essentialItems = useMemo(() => {
+    if (!requiredExpenses || requiredExpenses.length === 0) {
+      return ESSENTIAL_CATEGORIES.map(({ name }) => ({ value: name, label: name }));
+    }
+    const seen = new Set<string>();
+    return requiredExpenses
+      .map((e) => {
+        const label = getDisplayName(e.category, e.description);
+        if (seen.has(label)) return null;
+        seen.add(label);
+        return { value: label, label };
+      })
+      .filter(Boolean) as { value: string; label: string }[];
+  }, [requiredExpenses]);
+
+  const discretionaryItems = useMemo(() => {
+    if (!discretionaryExpenses || discretionaryExpenses.length === 0) {
+      return DISCRETIONARY_CATEGORIES.map(({ name }) => ({ value: name, label: name }));
+    }
+    const seen = new Set<string>();
+    return discretionaryExpenses
+      .map((e) => {
+        const label = getDisplayName(e.category, e.description);
+        if (seen.has(label)) return null;
+        seen.add(label);
+        return { value: label, label };
+      })
+      .filter(Boolean) as { value: string; label: string }[];
+  }, [discretionaryExpenses]);
+
+  const loanItems = useMemo(() => {
+    if (!loans || loans.length === 0) {
+      return LOAN_CATEGORIES.map(({ name }) => ({ value: `Loan: ${name}`, label: name }));
+    }
+    const seen = new Set<string>();
+    return loans
+      .map((l) => {
+        const label = getDisplayName(l.category, l.description);
+        const val = `Loan: ${label}`;
+        if (seen.has(val)) return null;
+        seen.add(val);
+        return { value: val, label };
+      })
+      .filter(Boolean) as { value: string; label: string }[];
+  }, [loans]);
+
+  const savingsItems = useMemo(() => {
+    if (!savingsGoals || savingsGoals.length === 0) {
+      return SAVINGS_CATEGORIES.map(({ name }) => ({ value: `Savings: ${name}`, label: name }));
+    }
+    const seen = new Set<string>();
+    // Include Unassigned Income
+    const items: { value: string; label: string }[] = [{
+      value: 'Savings: Unassigned Income',
+      label: 'Unassigned Income',
+    }];
+    seen.add('Savings: Unassigned Income');
+    savingsGoals.forEach((g) => {
+      const label = getDisplayName(g.category, g.description);
+      const val = `Savings: ${label}`;
+      if (!seen.has(val)) {
+        seen.add(val);
+        items.push({ value: val, label });
+      }
+    });
+    return items;
+  }, [savingsGoals]);
+
   return (
     <Select value={value} onValueChange={onValueChange}>
       <SelectTrigger className="h-12 text-base">
@@ -127,9 +211,9 @@ function CategorySelect({
           <SelectLabel className="text-sm font-bold text-foreground pl-2">
             My Essential Expenses
           </SelectLabel>
-          {ESSENTIAL_CATEGORIES.map(({ name }) => (
-            <SelectItem key={name} value={name} className="pl-8 text-sm">
-              {name}
+          {essentialItems.map((item) => (
+            <SelectItem key={item.value} value={item.value} className="pl-8 text-sm">
+              {item.label}
             </SelectItem>
           ))}
         </SelectGroup>
@@ -137,9 +221,9 @@ function CategorySelect({
           <SelectLabel className="text-sm font-bold text-foreground pl-2">
             My Discretionary Expenses
           </SelectLabel>
-          {DISCRETIONARY_CATEGORIES.map(({ name }) => (
-            <SelectItem key={name} value={name} className="pl-8 text-sm">
-              {name}
+          {discretionaryItems.map((item) => (
+            <SelectItem key={item.value} value={item.value} className="pl-8 text-sm">
+              {item.label}
             </SelectItem>
           ))}
         </SelectGroup>
@@ -147,9 +231,9 @@ function CategorySelect({
           <SelectLabel className="text-sm font-bold text-foreground pl-2">
             My Loans
           </SelectLabel>
-          {LOAN_CATEGORIES.map(({ name }) => (
-            <SelectItem key={`loan-${name}`} value={`Loan: ${name}`} className="pl-8 text-sm">
-              {name}
+          {loanItems.map((item) => (
+            <SelectItem key={item.value} value={item.value} className="pl-8 text-sm">
+              {item.label}
             </SelectItem>
           ))}
         </SelectGroup>
@@ -157,9 +241,9 @@ function CategorySelect({
           <SelectLabel className="text-sm font-bold text-foreground pl-2">
             My Savings Goals
           </SelectLabel>
-          {SAVINGS_CATEGORIES.map(({ name }) => (
-            <SelectItem key={`savings-${name}`} value={`Savings: ${name}`} className="pl-8 text-sm">
-              {name}
+          {savingsItems.map((item) => (
+            <SelectItem key={item.value} value={item.value} className="pl-8 text-sm">
+              {item.label}
             </SelectItem>
           ))}
         </SelectGroup>
@@ -492,21 +576,26 @@ export default function NewTransactionScreen() {
       const transactionsCollection = collection(firestore, `users/${user.uid}/transactions`);
       const moveGroup = Date.now().toString();
 
+      // Strip prefixes (Savings: , Loan: ) so categories match budget pages
+      const stripPrefix = (cat: string) => cat.replace(/^(Savings|Loan): /, '');
+      const fromCat = stripPrefix(moveFromCategory);
+      const toCat = stripPrefix(moveToCategory);
+
       // Deduct from source category
       await addDoc(transactionsCollection, {
         userProfileId: user.uid, type: 'Expense', amount: moveAmt,
-        description: `Move to ${moveToCategory}`, category: moveFromCategory,
+        description: `Move to ${toCat}`, category: fromCat,
         date: serverTimestamp(), moveGroup,
       });
 
       // Add to destination category (negative expense = adding back)
       await addDoc(transactionsCollection, {
         userProfileId: user.uid, type: 'Income', amount: moveAmt,
-        description: `Move from ${moveFromCategory}`, category: moveToCategory,
+        description: `Move from ${fromCat}`, category: toCat,
         date: serverTimestamp(), moveGroup,
       });
 
-      toast({ title: 'Move Completed', description: `${formatCurrency(moveAmt)} moved from ${moveFromCategory} to ${moveToCategory}.` });
+      toast({ title: 'Move Completed', description: `${formatCurrency(moveAmt)} moved from ${fromCat} to ${toCat}.` });
       setMoveAmount('');
       setMoveFromCategory('');
       setMoveToCategory('');
@@ -583,7 +672,7 @@ export default function NewTransactionScreen() {
   };
 
   return (
-    <div className="bg-background font-headline antialiased min-h-screen flex flex-col">
+    <div className="bg-background font-headline antialiased min-h-screen flex flex-col overflow-hidden">
       <PageHeader
         title="MY TRANSACTIONS"
         subheader={PAGE_SUBHEADERS.transactions}
@@ -602,7 +691,7 @@ export default function NewTransactionScreen() {
           <Button variant="ghost" size="sm" asChild className="gap-1">
             <Link href="/savings-goals">
               <ArrowLeft className="h-4 w-4" />
-              Goals
+              Savings
             </Link>
           </Button>
         }
@@ -633,7 +722,13 @@ export default function NewTransactionScreen() {
               {/* Expense Section */}
               <div className={cn("space-y-3 p-3 rounded-xl border", hasMoveInput ? "opacity-40 pointer-events-none" : "")}>
                 <div className="flex items-center justify-between">
-                  <h4 className="text-base font-bold text-foreground underline">Expense</h4>
+                  <div className="flex items-center gap-1">
+                    <h4 className="text-base font-bold text-foreground underline">Expense</h4>
+                    <HelpDialog
+                      title="Expense"
+                      content="Record a purchase or payment. Enter the receipt name, amount, select the budget category it applies to, and optionally set the date. Use Split to divide one receipt across multiple categories."
+                    />
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
@@ -678,6 +773,8 @@ export default function NewTransactionScreen() {
                     <CategorySelect
                       value={category}
                       onValueChange={setCategory}
+                      requiredExpenses={requiredExpenses}
+                      discretionaryExpenses={discretionaryExpenses}
                       loans={loans}
                       savingsGoals={savingsGoals}
                     />
@@ -697,7 +794,13 @@ export default function NewTransactionScreen() {
 
               {/* Move Section */}
               <div className={cn("space-y-3 p-3 rounded-xl border", hasExpenseInput ? "opacity-40 pointer-events-none" : "")}>
-                <h4 className="text-base font-bold text-foreground underline">Move</h4>
+                <div className="flex items-center gap-1">
+                  <h4 className="text-base font-bold text-foreground underline">Move</h4>
+                  <HelpDialog
+                    title="Move"
+                    content="Transfer funds between budget categories. Enter the amount, select which category to move from, and which category to move to. This is commonly used to move funds from Unassigned Income in My Savings to another category."
+                  />
+                </div>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="space-y-1">
                     <Label className="text-xs font-semibold text-muted-foreground">Amount</Label>
@@ -718,6 +821,8 @@ export default function NewTransactionScreen() {
                     <CategorySelect
                       value={moveFromCategory}
                       onValueChange={setMoveFromCategory}
+                      requiredExpenses={requiredExpenses}
+                      discretionaryExpenses={discretionaryExpenses}
                       loans={loans}
                       savingsGoals={savingsGoals}
                     />
@@ -727,6 +832,8 @@ export default function NewTransactionScreen() {
                     <CategorySelect
                       value={moveToCategory}
                       onValueChange={setMoveToCategory}
+                      requiredExpenses={requiredExpenses}
+                      discretionaryExpenses={discretionaryExpenses}
                       loans={loans}
                       savingsGoals={savingsGoals}
                     />

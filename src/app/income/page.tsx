@@ -117,6 +117,13 @@ interface SavingsGoal extends DocumentData {
   frequency?: Frequency;
 }
 
+interface LoanData extends DocumentData {
+  id: string;
+  paymentAmount?: number;
+  totalBalance?: number;
+  paymentFrequency?: Frequency;
+}
+
 export default function IncomePage() {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -157,10 +164,15 @@ export default function IncomePage() {
     return user ? `users/${user.uid}/savingsGoals` : null;
   }, [user]);
 
+  const loansPath = useMemo(() => {
+    return user ? `users/${user.uid}/loans` : null;
+  }, [user]);
+
   const { data: incomeSources, loading } = useCollection<IncomeSource>(incomeSourcesPath);
   const { data: requiredExpenses } = useCollection<RequiredExpense>(requiredExpensesPath);
   const { data: discretionaryExpenses } = useCollection<DiscretionaryExpense>(discretionaryExpensesPath);
   const { data: savingsGoals } = useCollection<SavingsGoal>(savingsGoalsPath);
+  const { data: loans } = useCollection<LoanData>(loansPath);
 
   useEffect(() => {
     if (sourceToEdit) {
@@ -286,7 +298,7 @@ export default function IncomePage() {
     }, 0);
   }, [incomeSources]);
 
-  // Income Shortage = Income - (Essential + Discretionary + Savings Contributions)
+  // Income Shortage = Income - (Essential + Discretionary + Loans + Savings Contributions)
   const incomeShortage = useMemo(() => {
     const weeklyEssential = (requiredExpenses || []).reduce(
       (t, e) => t + getWeeklyAmount(e.amount, e.frequency), 0
@@ -294,13 +306,16 @@ export default function IncomePage() {
     const weeklyDiscretionary = (discretionaryExpenses || []).reduce(
       (t, e) => t + getWeeklyAmount(e.plannedAmount, (e as any).frequency || 'Weekly'), 0
     );
+    const weeklyLoans = (loans || []).reduce(
+      (t, l) => t + getWeeklyAmount(l.paymentAmount || l.totalBalance || 0, l.paymentFrequency || 'Monthly'), 0
+    );
     const weeklySavings = (savingsGoals || [])
       .filter((g) => g.category !== 'Income Balance')
       .reduce((t, g) => t + getWeeklyAmount(g.weeklyContribution || 0, g.frequency || 'Weekly'), 0);
 
-    const totalOutflows = weeklyEssential + weeklyDiscretionary + weeklySavings;
+    const totalOutflows = weeklyEssential + weeklyDiscretionary + weeklyLoans + weeklySavings;
     return weeklyTotal - totalOutflows;
-  }, [weeklyTotal, requiredExpenses, discretionaryExpenses, savingsGoals]);
+  }, [weeklyTotal, requiredExpenses, discretionaryExpenses, loans, savingsGoals]);
 
   // Sorted income sources alphabetically by category then description
   const sortedSources = useMemo(() => {
@@ -436,9 +451,10 @@ export default function IncomePage() {
           <div className="grid grid-cols-3 gap-3 py-2">
             {INCOME_CATEGORIES.map(({ name }) => {
               const Icon = iconMap[name] || MoreHorizontal;
-              const source = getCategorySource(name);
-              const isAdded = !!source;
-              const weeklyAmount = source ? getWeeklyAmount(source.amount, source.frequency) : 0;
+              const categorySources = (incomeSources || []).filter((s) => s.category === name);
+              const count = categorySources.length;
+              const isAdded = count > 0;
+              const weeklyAmount = count === 1 ? getWeeklyAmount(categorySources[0].amount, categorySources[0].frequency) : 0;
 
               return (
                 <button
@@ -461,7 +477,9 @@ export default function IncomePage() {
                   </div>
                   <span className="text-xs font-semibold leading-tight">{name}</span>
                   {isAdded && (
-                    <span className="text-[10px] font-bold">{formatCurrency(weeklyAmount)}/wk</span>
+                    count > 1
+                      ? <span className="text-[10px] font-bold">{count} added</span>
+                      : <span className="text-[10px] font-bold">{formatCurrency(weeklyAmount)}/wk</span>
                   )}
                 </button>
               );

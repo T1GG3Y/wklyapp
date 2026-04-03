@@ -70,6 +70,7 @@ interface Loan extends DocumentData {
   id: string;
   name: string;
   category: string;
+  paymentAmount: number;
   totalBalance: number;
   paidAmount?: number;
   originalLoanAmount?: number;
@@ -97,6 +98,7 @@ export default function LoansPage() {
   const [formState, setFormState] = useState<{
     category: string;
     name: string;
+    paymentAmount: string;
     balance: string;
     paidAmount: string;
     originalLoanAmount: string;
@@ -107,6 +109,7 @@ export default function LoansPage() {
   }>({
     category: 'Credit Cards',
     name: '',
+    paymentAmount: '',
     balance: '',
     paidAmount: '',
     originalLoanAmount: '',
@@ -127,7 +130,8 @@ export default function LoansPage() {
       setFormState({
         category: loanToEdit.category,
         name: loanToEdit.name,
-        balance: formatAmountInput(loanToEdit.totalBalance.toFixed(2)),
+        paymentAmount: loanToEdit.paymentAmount ? formatAmountInput(loanToEdit.paymentAmount.toFixed(2)) : (loanToEdit.totalBalance ? formatAmountInput(loanToEdit.totalBalance.toFixed(2)) : ''),
+        balance: loanToEdit.totalBalance ? formatAmountInput(loanToEdit.totalBalance.toFixed(2)) : '',
         paidAmount: loanToEdit.paidAmount ? formatAmountInput(loanToEdit.paidAmount.toFixed(2)) : '',
         originalLoanAmount: loanToEdit.originalLoanAmount ? formatAmountInput(loanToEdit.originalLoanAmount.toFixed(2)) : '',
         interestRate: loanToEdit.interestRate?.toString() || '',
@@ -137,6 +141,10 @@ export default function LoansPage() {
       });
     }
   }, [loanToEdit]);
+
+  const handlePaymentAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormState({ ...formState, paymentAmount: formatAmountInput(e.target.value) });
+  };
 
   const handleBalanceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormState({ ...formState, balance: formatAmountInput(e.target.value) });
@@ -160,6 +168,7 @@ export default function LoansPage() {
     setFormState({
       category,
       name: category,
+      paymentAmount: '',
       balance: '',
       paidAmount: '',
       originalLoanAmount: '',
@@ -184,9 +193,9 @@ export default function LoansPage() {
   const handleSaveLoan = async () => {
     if (!firestore || !user) return;
 
-    const totalBalance = parseFormattedAmount(formState.balance);
-    if (totalBalance <= 0) {
-      alert('Please enter a valid balance.');
+    const paymentAmount = parseFormattedAmount(formState.paymentAmount);
+    if (paymentAmount <= 0) {
+      alert('Please enter a valid payment amount.');
       return;
     }
 
@@ -206,6 +215,7 @@ export default function LoansPage() {
       return;
     }
 
+    const totalBalance = parseFormattedAmount(formState.balance);
     const paidAmount = parseFormattedAmount(formState.paidAmount);
     const originalLoanAmount = parseFormattedAmount(formState.originalLoanAmount);
 
@@ -213,7 +223,8 @@ export default function LoansPage() {
       userProfileId: user.uid,
       name: formState.category,
       category: formState.category,
-      totalBalance,
+      paymentAmount,
+      totalBalance: totalBalance || 0,
       paidAmount: paidAmount || 0,
       originalLoanAmount: originalLoanAmount || 0,
       paymentFrequency: formState.frequency,
@@ -252,13 +263,12 @@ export default function LoansPage() {
 
   const loanTotals = useMemo(() => {
     if (!loans || loans.length === 0) {
-      return { totalPaid: 0, totalBalance: 0, delinquent: 0, percentPaid: 0 };
+      return { totalBalance: 0, totalOriginal: 0, percentPaid: 0 };
     }
-    const totalPaid = loans.reduce((sum, loan) => sum + (loan.paidAmount || 0), 0);
-    const totalBalance = loans.reduce((sum, loan) => sum + loan.totalBalance, 0);
-    const totalOriginal = totalPaid + totalBalance;
-    const percentPaid = totalOriginal > 0 ? (totalPaid / totalOriginal) * 100 : 0;
-    return { totalPaid, totalBalance, delinquent: 0, percentPaid };
+    const totalBalance = loans.reduce((sum, loan) => sum + (loan.totalBalance || 0), 0);
+    const totalOriginal = loans.reduce((sum, loan) => sum + (loan.originalLoanAmount || 0), 0);
+    const percentPaid = totalOriginal > 0 ? ((totalOriginal - totalBalance) / totalOriginal) * 100 : 0;
+    return { totalBalance, totalOriginal, percentPaid };
   }, [loans]);
 
   // Sort loans alphabetically by category then description
@@ -324,20 +334,14 @@ export default function LoansPage() {
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">
               My Loan Totals
             </h3>
-            <div className="grid grid-cols-3 gap-3 mb-3">
+            <div className="grid grid-cols-2 gap-3 mb-3">
               <div className="text-center">
-                <p className="text-xs text-muted-foreground">Paid</p>
-                <p className="text-lg font-bold">{formatCurrency(loanTotals.totalPaid)}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Balance</p>
+                <p className="text-xs text-muted-foreground">Total Balance</p>
                 <p className="text-lg font-bold">{formatCurrency(loanTotals.totalBalance)}</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-muted-foreground">Delinquent</p>
-                <p className={cn("text-lg font-bold", loanTotals.delinquent > 0 ? "text-destructive" : "text-foreground")}>
-                  {formatCurrency(loanTotals.delinquent)}
-                </p>
+                <p className="text-xs text-muted-foreground">Total Original</p>
+                <p className="text-lg font-bold">{formatCurrency(loanTotals.totalOriginal)}</p>
               </div>
             </div>
             <div className="relative h-6 bg-muted rounded-full overflow-hidden">
@@ -359,9 +363,10 @@ export default function LoansPage() {
               ) : sortedLoans.length > 0 ? (
                 sortedLoans.map((loan) => {
                   const Icon = iconMap[loan.category] || MoreHorizontal;
-                  const paidAmount = loan.paidAmount || 0;
-                  const totalOriginal = paidAmount + loan.totalBalance;
-                  const percentPaid = totalOriginal > 0 ? (paidAmount / totalOriginal) * 100 : 0;
+                  const payment = loan.paymentAmount || loan.totalBalance || 0;
+                  const balance = loan.totalBalance || 0;
+                  const original = loan.originalLoanAmount || 0;
+                  const percentPaid = original > 0 ? ((original - balance) / original) * 100 : 0;
 
                   return (
                     <div key={loan.id} className="p-4 space-y-2">
@@ -376,26 +381,27 @@ export default function LoansPage() {
                           <Edit className="size-4" />
                         </Button>
                       </div>
-                      <div className="flex items-center gap-6 text-sm">
+                      <div className="flex items-center gap-4 text-sm">
                         <div>
-                          <span className="text-muted-foreground">Paid: </span>
-                          <span className="font-semibold">{formatCurrency(paidAmount)}</span>
+                          <span className="text-muted-foreground">Payment: </span>
+                          <span className="font-semibold">{formatCurrency(payment)}</span>
+                          <span className="text-xs text-muted-foreground ml-0.5">/{loan.paymentFrequency === 'Monthly' ? 'mo' : loan.paymentFrequency === 'Weekly' ? 'wk' : loan.paymentFrequency?.toLowerCase()}</span>
                         </div>
                         <div>
                           <span className="text-muted-foreground">Balance: </span>
-                          <span className="font-semibold">{formatCurrency(loan.totalBalance)}</span>
+                          <span className="font-semibold">{formatCurrency(balance)}</span>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Payoff: </span>
-                          <span className="font-semibold">
-                            {loan.payoffDate ? format(parseISO(loan.payoffDate), 'MMM yyyy') : '—'}
-                          </span>
+                          <span className="text-muted-foreground">Original: </span>
+                          <span className="font-semibold">{original > 0 ? formatCurrency(original) : '—'}</span>
                         </div>
                       </div>
-                      <div className="relative h-5 bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary transition-all duration-300" style={{ width: `${percentPaid}%` }} />
-                        <span className="absolute inset-0 flex items-center pl-2 text-xs font-semibold">{percentPaid.toFixed(0)}%</span>
-                      </div>
+                      {original > 0 && (
+                        <div className="relative h-5 bg-muted rounded-full overflow-hidden">
+                          <div className="h-full bg-primary transition-all duration-300" style={{ width: `${Math.min(100, percentPaid)}%` }} />
+                          <span className="absolute inset-0 flex items-center pl-2 text-xs font-semibold">{percentPaid.toFixed(0)}%</span>
+                        </div>
+                      )}
                     </div>
                   );
                 })
@@ -479,14 +485,14 @@ export default function LoansPage() {
 
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="balance">Payment Amount</Label>
+                <Label htmlFor="paymentAmount">Payment Amount</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
                   <Input
-                    id="balance"
+                    id="paymentAmount"
                     placeholder="0.00"
-                    value={formState.balance}
-                    onChange={handleBalanceChange}
+                    value={formState.paymentAmount}
+                    onChange={handlePaymentAmountChange}
                     className="pl-7"
                     inputMode="decimal"
                   />
@@ -538,8 +544,36 @@ export default function LoansPage() {
               </div>
             </div>
 
-            {/* Interest Rate and Original Loan Amount */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Balance, Original Loan Amount, Interest Rate */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="balance">Balance</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    id="balance"
+                    placeholder="0.00"
+                    value={formState.balance}
+                    onChange={handleBalanceChange}
+                    className="pl-7"
+                    inputMode="decimal"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="originalLoanAmount">Original Amount</Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <Input
+                    id="originalLoanAmount"
+                    placeholder="0.00"
+                    value={formState.originalLoanAmount}
+                    onChange={handleOriginalLoanAmountChange}
+                    className="pl-7"
+                    inputMode="decimal"
+                  />
+                </div>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="interestRate">Interest Rate</Label>
                 <div className="relative">
@@ -551,20 +585,6 @@ export default function LoansPage() {
                     inputMode="decimal"
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="originalLoanAmount">Original Loan Amount</Label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                  <Input
-                    id="originalLoanAmount"
-                    placeholder="0.00"
-                    value={formState.originalLoanAmount}
-                    onChange={handleOriginalLoanAmountChange}
-                    className="pl-7"
-                    inputMode="decimal"
-                  />
                 </div>
               </div>
             </div>

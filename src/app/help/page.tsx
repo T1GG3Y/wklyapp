@@ -44,7 +44,7 @@ const faqs = [
       "Variable income such as tips or commission jobs can create a problem for budgeting but there are a couple of ways to deal with it. This app allows for both.\n\n1. Enter your lowest monthly income. As additional income is received enter it into My Income as a one-time income in the Frequency. It will drop into My Savings under Unassigned Income.\n\n2. Have two checking accounts. In account 2 put all of your income as you receive it and then have a fixed auto deposit to account 1. This can be calculated by taking the last 12 months and dividing by 12. Account 1 is the account that you live on using this WeeklyBudget app. This does require you to have some reserve in account 2, to account for months with little income. (No cheating taking money out of account 2 to spend on things not budgeted for!) If account 2 ends up with additional funds put it in the app as a one-time income and designate where you want it to go in savings. For further support on this Send Feedback under My Profile.",
   },
   {
-    question: "Do I add additional funds to a category one time?",
+    question: "How do I add additional funds to a category one time?",
     answer:
       'Go to My Transactions and under Move you can enter the amount you want to move, from what category, and to what category. Usually you will be moving funds from the My Savings category of Unassigned Income.',
   },
