@@ -58,9 +58,9 @@ const faqs = [
 
 export default function HelpPage() {
   return (
-    <div className="bg-background font-headline flex flex-col min-h-screen overflow-hidden">
+    <div className="bg-background font-headline flex flex-col min-h-screen h-screen overflow-y-auto">
       <PageHeader
-        title="HELP & FAQ"
+        title="FAQ"
         rightContent={<HamburgerMenu />}
         leftContent={
           <Button variant="ghost" size="sm" asChild className="gap-1">
@@ -71,7 +71,7 @@ export default function HelpPage() {
           </Button>
         }
       />
-      <main className="flex-1 overflow-y-auto px-4 pb-8 space-y-4 pt-4">
+      <main className="flex-1 px-4 pb-8 space-y-4 pt-4">
         <Accordion type="single" collapsible className="w-full">
             {faqs.map((faq, index) => (
                 <AccordionItem key={index} value={`item-${index}`} className="glass rounded-lg border px-4 mb-2 shadow-sm">

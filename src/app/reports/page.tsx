@@ -345,7 +345,7 @@ export default function ReportsScreen() {
   const loading = txLoading;
 
   return (
-    <div className="bg-background font-headline antialiased min-h-screen flex flex-col">
+    <div className="bg-background font-headline antialiased min-h-screen flex flex-col h-screen overflow-y-auto">
       <PageHeader
         title="MY REPORTS"
         subheader="View your over-budget categories by week."
@@ -370,7 +370,7 @@ export default function ReportsScreen() {
         }
       />
 
-      <main className="flex-1 overflow-y-auto p-4 pb-8 space-y-4">
+      <main className="flex-1 p-4 pb-8 space-y-4">
         {/* Over Budget Card */}
         <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
           {/* Header with Date Range */}

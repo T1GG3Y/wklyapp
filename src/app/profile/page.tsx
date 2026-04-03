@@ -173,7 +173,7 @@ export default function ProfilePage() {
 
   return (
     user && (
-      <div className="bg-background font-headline flex flex-col min-h-screen overflow-hidden">
+      <div className="bg-background font-headline flex flex-col min-h-screen h-screen overflow-y-auto">
         <PageHeader
           title="MY PROFILE"
           rightContent={<HamburgerMenu />}
@@ -187,7 +187,7 @@ export default function ProfilePage() {
           }
         />
 
-        <main className="flex-1 overflow-y-auto px-4 pb-8 space-y-6 pt-4">
+        <main className="flex-1 px-4 pb-8 space-y-6 pt-4">
           <div className="text-center">
             <p className="text-muted-foreground">{user.email}</p>
           </div>

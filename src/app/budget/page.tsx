@@ -257,7 +257,7 @@ export default function BudgetScreen() {
   );
 
   return (
-    <div className="bg-background font-headline antialiased min-h-screen flex flex-col">
+    <div className="bg-background font-headline antialiased min-h-screen flex flex-col h-screen overflow-y-auto">
       <PageHeader
         title="MY BUDGET PLAN"
         subheader={PAGE_SUBHEADERS.budgetPlan}
@@ -272,7 +272,7 @@ export default function BudgetScreen() {
         }
       />
 
-      <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-28 space-y-3 pt-4">
+      <main className="flex-1 px-4 pb-28 space-y-3 pt-4">
         <Accordion
           type="multiple"
           value={expandedItems}

@@ -360,7 +360,7 @@ export default function DashboardScreen() {
   );
 
   return (
-    <div className="bg-background font-headline antialiased min-h-screen flex flex-col">
+    <div className="bg-background font-headline antialiased min-h-screen flex flex-col h-screen overflow-y-auto">
       <PageHeader
         title="HOME"
         rightContent={
@@ -384,7 +384,7 @@ export default function DashboardScreen() {
         }
       />
 
-      <main className="flex-1 overflow-y-auto no-scrollbar px-4 pb-8 space-y-4 pt-4">
+      <main className="flex-1 px-4 pb-8 space-y-4 pt-4">
         {/* My Health Score */}
         <div className="bg-card rounded-xl p-4 border shadow-sm">
           <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider text-center mb-4">

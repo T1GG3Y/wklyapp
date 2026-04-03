@@ -385,7 +385,7 @@ export default function DiscretionaryExpensesPage() {
   };
 
   return (
-    <div className="bg-background font-headline flex flex-col min-h-screen overflow-hidden">
+    <div className="bg-background font-headline flex flex-col min-h-screen h-screen overflow-y-auto">
       <PageHeader
         title="MY DISCRETIONARY EXPENSES"
         helpTitle="My Discretionary Expenses"
@@ -412,7 +412,7 @@ export default function DiscretionaryExpensesPage() {
         }
       />
 
-      <main className="flex-1 overflow-y-auto pb-8">
+      <main className="flex-1 pb-8">
         <div className="px-4 py-4 space-y-4">
           <Button onClick={handleOpenCategoryPicker} className="w-full h-12">
             <Plus className="size-5 mr-2" />

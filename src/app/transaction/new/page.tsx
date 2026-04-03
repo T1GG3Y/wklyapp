@@ -672,7 +672,7 @@ export default function NewTransactionScreen() {
   };
 
   return (
-    <div className="bg-background font-headline antialiased min-h-screen flex flex-col overflow-hidden">
+    <div className="bg-background font-headline antialiased min-h-screen flex flex-col h-screen overflow-y-auto">
       <PageHeader
         title="MY TRANSACTIONS"
         subheader={PAGE_SUBHEADERS.transactions}
@@ -697,7 +697,7 @@ export default function NewTransactionScreen() {
         }
       />
 
-      <main className="flex-1 overflow-y-auto p-4 pb-8 space-y-4">
+      <main className="flex-1 p-4 pb-8 space-y-4">
         {/* Add New Transaction - Collapsible Section */}
         <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
           <button

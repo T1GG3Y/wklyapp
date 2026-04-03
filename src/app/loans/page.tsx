@@ -295,7 +295,7 @@ export default function LoansPage() {
   };
 
   return (
-    <div className="bg-background font-headline antialiased min-h-screen flex flex-col overflow-x-hidden">
+    <div className="bg-background font-headline antialiased min-h-screen flex flex-col h-screen overflow-y-auto">
       <PageHeader
         title="MY LOANS"
         helpTitle="My Loans"

@@ -406,7 +406,7 @@ export default function EssentialExpensesPage() {
   };
 
   return (
-    <div className="bg-background font-headline flex flex-col min-h-screen overflow-hidden">
+    <div className="bg-background font-headline flex flex-col min-h-screen h-screen overflow-y-auto">
       <PageHeader
         title="MY ESSENTIAL EXPENSES"
         helpTitle="My Essential Expenses"
@@ -433,7 +433,7 @@ export default function EssentialExpensesPage() {
         }
       />
 
-      <main className="flex-1 overflow-y-auto pb-8">
+      <main className="flex-1 pb-8">
         <div className="px-4 py-4 space-y-4">
           {/* Add New Expense Button */}
           <Button

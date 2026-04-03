@@ -342,7 +342,7 @@ export default function IncomePage() {
   };
 
   return (
-    <div className="bg-background font-headline flex flex-col min-h-screen overflow-hidden">
+    <div className="bg-background font-headline flex flex-col min-h-screen h-screen overflow-y-auto">
       <PageHeader
         title="MY INCOME"
         helpTitle="My Income"
@@ -369,7 +369,7 @@ export default function IncomePage() {
         }
       />
 
-      <main className="flex-1 overflow-y-auto pb-8">
+      <main className="flex-1 pb-8">
         <div className="px-4 py-4 space-y-4">
           {/* Add New Income Button */}
           <Button
