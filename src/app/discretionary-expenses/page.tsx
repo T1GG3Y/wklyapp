@@ -176,23 +176,31 @@ export default function DiscretionaryExpensesPage() {
 
       snapshot.forEach((d) => {
         const data = d.data();
-        if (data.type === 'Expense' && data.date) {
-          const txDate = data.date.toDate();
-          const cat = data.category || '';
-          const amt = Math.abs(data.amount);
+        if (!data.date) return;
+        const txDate = data.date.toDate();
+        const cat = data.category || '';
 
-          // All-time totals for carryover
-          allTimeSpent[cat] = (allTimeSpent[cat] || 0) + amt;
+        // Expense adds to spent, Income (from Moves) subtracts from spent
+        let amt = 0;
+        if (data.type === 'Expense') {
+          amt = Math.abs(data.amount);
+        } else if (data.type === 'Income') {
+          amt = -Math.abs(data.amount);
+        } else {
+          return;
+        }
 
-          // Track earliest transaction for budget start date
-          if (!earliestDate || txDate < earliestDate) {
-            earliestDate = txDate;
-          }
+        // All-time net spent for carryover
+        allTimeSpent[cat] = (allTimeSpent[cat] || 0) + amt;
 
-          // Current week totals
-          if (isWithinInterval(txDate, { start: weekStart, end: weekEnd })) {
-            currentWeekSpent[cat] = (currentWeekSpent[cat] || 0) + amt;
-          }
+        // Track earliest transaction for budget start date
+        if (!earliestDate || txDate < earliestDate) {
+          earliestDate = txDate;
+        }
+
+        // Current week net spent
+        if (isWithinInterval(txDate, { start: weekStart, end: weekEnd })) {
+          currentWeekSpent[cat] = (currentWeekSpent[cat] || 0) + amt;
         }
       });
 
@@ -333,8 +341,8 @@ export default function DiscretionaryExpensesPage() {
           });
           await addDoc(txCollection, {
             userProfileId: user.uid,
-            type: 'Expense',
-            amount: -available,
+            type: 'Income',
+            amount: available,
             description: `From deleted: ${expense.name || expense.category}`,
             category: 'Savings: Unassigned Income',
             date: serverTimestamp(),

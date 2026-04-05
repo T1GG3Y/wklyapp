@@ -156,13 +156,21 @@ export default function LoansPage() {
 
       snapshot.forEach((d) => {
         const data = d.data();
-        if (data.type === 'Expense' && data.date) {
-          const txDate = data.date.toDate();
-          const cat = data.category || '';
-          const amt = Math.abs(data.amount);
-          allTimeSpent[cat] = (allTimeSpent[cat] || 0) + amt;
-          if (!earliestDate || txDate < earliestDate) earliestDate = txDate;
+        if (!data.date) return;
+        const txDate = data.date.toDate();
+        const cat = data.category || '';
+
+        let amt = 0;
+        if (data.type === 'Expense') {
+          amt = Math.abs(data.amount);
+        } else if (data.type === 'Income') {
+          amt = -Math.abs(data.amount);
+        } else {
+          return;
         }
+
+        allTimeSpent[cat] = (allTimeSpent[cat] || 0) + amt;
+        if (!earliestDate || txDate < earliestDate) earliestDate = txDate;
       });
 
       setAllTimeSpentByCategory(allTimeSpent);
@@ -327,8 +335,8 @@ export default function LoansPage() {
           });
           await addDoc(txCollection, {
             userProfileId: user.uid,
-            type: 'Expense',
-            amount: -available,
+            type: 'Income',
+            amount: available,
             description: `From deleted loan: ${loan.name || loan.category}`,
             category: 'Savings: Unassigned Income',
             date: serverTimestamp(),
