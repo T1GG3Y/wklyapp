@@ -7,7 +7,10 @@ import { useCollection, useFirestore, useUser } from '@/firebase';
 import {
   addDoc,
   collection,
+  doc,
+  increment,
   serverTimestamp,
+  updateDoc,
   type DocumentData,
   Timestamp,
 } from 'firebase/firestore';
@@ -17,6 +20,7 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
+  CreditCard,
   Filter,
   Plus,
   Search,
@@ -29,6 +33,7 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -84,6 +89,7 @@ interface Loan extends DocumentData {
   name: string;
   category: string;
   description?: string;
+  totalBalance?: number;
 }
 interface SavingsGoal extends DocumentData {
   id: string;
@@ -272,6 +278,10 @@ export default function NewTransactionScreen() {
   const [category, setCategory] = useState(SELECT_EXPENSE_CATEGORY);
   const [expenseDate, setExpenseDate] = useState('');
 
+  // Credit card state
+  const [paidWithCreditCard, setPaidWithCreditCard] = useState(false);
+  const [selectedCreditCardId, setSelectedCreditCardId] = useState('');
+
   // Move form state
   const [moveAmount, setMoveAmount] = useState('');
   const [moveFromCategory, setMoveFromCategory] = useState('');
@@ -321,6 +331,11 @@ export default function NewTransactionScreen() {
     orderBy: ['date', 'desc'],
     limit: 100,
   });
+
+  // Credit card loans for the "paid with credit card" dropdown
+  const creditCardLoans = useMemo(() => {
+    return (loans || []).filter(l => l.category === 'Credit Cards');
+  }, [loans]);
 
   // Handle amount change with auto-formatting
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -458,7 +473,7 @@ export default function NewTransactionScreen() {
           type,
           amount: parseFormattedAmount(row.amount),
           description: row.description || '',
-          category: row.category,
+          category: row.category.replace(/^(Savings|Loan): /, ''),
           date: serverTimestamp(),
           splitGroup: Date.now().toString(),
         });
@@ -646,14 +661,37 @@ export default function NewTransactionScreen() {
         ? Timestamp.fromDate(new Date(expenseDate + 'T12:00:00'))
         : serverTimestamp();
 
+      // Strip "Loan: " and "Savings: " prefixes so categories match budget pages
+      const storedCategory = category.replace(/^(Savings|Loan): /, '');
+
       await addDoc(transactionsCollection, {
         userProfileId: user.uid,
         type: 'Expense',
         amount: transactionAmount,
         description,
-        category,
+        category: storedCategory,
         date: txDate,
+        ...(paidWithCreditCard && selectedCreditCardId ? { creditCardLoanId: selectedCreditCardId } : {}),
       });
+
+      // If paid with credit card, increase the card's balance (more debt)
+      if (paidWithCreditCard && selectedCreditCardId) {
+        const loanRef = doc(firestore, `users/${user.uid}/loans`, selectedCreditCardId);
+        await updateDoc(loanRef, { totalBalance: increment(transactionAmount) });
+      }
+
+      // If this is a credit card payment (category is a Credit Cards loan), decrease balance
+      if (category.startsWith('Loan: Credit Cards')) {
+        const strippedCat = category.replace(/^Loan: /, '');
+        const matchingLoan = creditCardLoans.find(l => {
+          const displayName = l.description ? `${l.category} - ${l.description}` : l.category;
+          return displayName === strippedCat;
+        });
+        if (matchingLoan) {
+          const loanRef = doc(firestore, `users/${user.uid}/loans`, matchingLoan.id);
+          await updateDoc(loanRef, { totalBalance: increment(-transactionAmount) });
+        }
+      }
 
       toast({
         title: 'Transaction Added',
@@ -664,6 +702,8 @@ export default function NewTransactionScreen() {
       setDescription('');
       setCategory(SELECT_EXPENSE_CATEGORY);
       setExpenseDate('');
+      setPaidWithCreditCard(false);
+      setSelectedCreditCardId('');
     } catch (error) {
       console.error('Error adding transaction:', error);
       toast({
@@ -793,6 +833,39 @@ export default function NewTransactionScreen() {
                     />
                   </div>
                 </div>
+
+                {/* Paid with Credit Card */}
+                {creditCardLoans.length > 0 && !category.startsWith('Loan:') && (
+                  <div className="flex items-center gap-3 pt-1">
+                    <Checkbox
+                      id="credit-card"
+                      checked={paidWithCreditCard}
+                      onCheckedChange={(checked) => {
+                        setPaidWithCreditCard(!!checked);
+                        if (!checked) setSelectedCreditCardId('');
+                      }}
+                      disabled={hasMoveInput}
+                    />
+                    <Label htmlFor="credit-card" className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 cursor-pointer">
+                      <CreditCard className="size-3.5" />
+                      Paid with credit card?
+                    </Label>
+                    {paidWithCreditCard && (
+                      <Select value={selectedCreditCardId} onValueChange={setSelectedCreditCardId}>
+                        <SelectTrigger className="h-8 text-xs flex-1">
+                          <SelectValue placeholder="Select card" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {creditCardLoans.map((loan) => (
+                            <SelectItem key={loan.id} value={loan.id} className="text-xs">
+                              {loan.name || loan.description || 'Credit Card'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Move Section */}
