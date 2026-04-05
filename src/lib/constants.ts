@@ -43,7 +43,7 @@ export const ESSENTIAL_CATEGORIES = [
   { name: 'Natural Gas', icon: 'Flame' },
   { name: 'Phone', icon: 'Phone' },
   { name: 'Property Taxes', icon: 'Receipt' },
-  { name: 'Rent/Mortgage', icon: 'Home' },
+  { name: 'Rent', icon: 'Home' },
   { name: 'Water/Sewer', icon: 'Droplet' },
   { name: 'Custom', icon: 'MoreHorizontal' },
 ] as const;
@@ -101,7 +101,7 @@ export const CATEGORY_HELP: Record<string, string> = {
 
   // Essential
   'Groceries': 'Food, soaps, toiletry etc.',
-  'Rent/Mortgage': 'Mortgage payment, rent payment, insurance, taxes, etc.',
+  'Rent': 'Mortgage payment, rent payment, insurance, taxes, etc.',
   'Natural Gas': 'Yearly total is best.',
   'Electrical': 'Yearly total is best.',
   'Water/Sewer': 'Yearly total is best.',

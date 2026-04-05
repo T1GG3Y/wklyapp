@@ -114,7 +114,7 @@ interface UserProfile extends DocumentData {
 
 // Icon Mappings
 const essentialExpenseIcons: Record<string, LucideIcon> = {
-  'Groceries': ShoppingBasket, 'Rent/Mortgage': Home, 'Natural Gas': Flame,
+  'Groceries': ShoppingBasket, 'Rent': Home, 'Natural Gas': Flame,
   'Electrical': Lightbulb, 'Water/Sewer': Droplet, 'Garbage': MoreHorizontal,
   'Phone': Phone, 'Gas/Parking/Tolls': Car, 'Auto Insurance': Shield,
   'Auto Maintenance': Wrench, 'Auto Registration': FileText, 'Medical': Heart,

@@ -38,21 +38,24 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useUser, useFirestore, useCollection } from '@/firebase';
+import { useUser, useFirestore, useCollection, useDoc } from '@/firebase';
 import {
   collection,
   addDoc,
   deleteDoc,
   updateDoc,
   doc,
+  getDocs,
   type DocumentData,
+  type Timestamp,
 } from 'firebase/firestore';
-import { useMemo, useState, useEffect } from 'react';
-import { format, parseISO } from 'date-fns';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/PageHeader';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { HelpDialog } from '@/components/HelpDialog';
+import { BudgetTotalsBox } from '@/components/BudgetTotalsBox';
 import {
   LOAN_CATEGORIES,
   FREQUENCY_OPTIONS,
@@ -64,7 +67,9 @@ import {
   formatCurrency,
   formatAmountInput,
   parseFormattedAmount,
+  getWeeklyAmount,
 } from '@/lib/format';
+import { calculateAvailable } from '@/lib/budget';
 
 interface Loan extends DocumentData {
   id: string;
@@ -80,6 +85,14 @@ interface Loan extends DocumentData {
   description?: string;
 }
 
+interface UserProfile extends DocumentData {
+  startDayOfWeek?: 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
+}
+
+const dayIndexMap: Record<string, 0 | 1 | 2 | 3 | 4 | 5 | 6> = {
+  Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6,
+};
+
 const iconMap: Record<string, LucideIcon> = {
   'Credit Cards': CreditCard,
   'Auto Loan': Car,
@@ -94,6 +107,9 @@ export default function LoansPage() {
   const [isCategoryPickerOpen, setIsCategoryPickerOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [loanToEdit, setLoanToEdit] = useState<Loan | null>(null);
+  const [allTimeSpentByCategory, setAllTimeSpentByCategory] = useState<Record<string, number>>({});
+  const [budgetStartDate, setBudgetStartDate] = useState<Date>(new Date());
+  const hasLoadedTransactions = useRef(false);
 
   const [formState, setFormState] = useState<{
     category: string;
@@ -124,6 +140,41 @@ export default function LoansPage() {
   }, [user]);
 
   const { data: loans, loading } = useCollection<Loan>(loansPath);
+
+  const userProfilePath = useMemo(() => (user ? `users/${user.uid}` : null), [user]);
+  const { data: userProfile } = useDoc<UserProfile>(userProfilePath);
+
+  // Fetch transactions to calculate Available amounts with weekly carryover
+  const loadTransactions = useCallback(async () => {
+    if (!firestore || !user || hasLoadedTransactions.current) return;
+    try {
+      const txRef = collection(firestore, `users/${user.uid}/transactions`);
+      const snapshot = await getDocs(txRef);
+      const allTimeSpent: Record<string, number> = {};
+      let earliestDate: Date | null = null;
+
+      snapshot.forEach((d) => {
+        const data = d.data();
+        if (data.type === 'Expense' && data.date) {
+          const txDate = data.date.toDate();
+          const cat = data.category || '';
+          const amt = Math.abs(data.amount);
+          allTimeSpent[cat] = (allTimeSpent[cat] || 0) + amt;
+          if (!earliestDate || txDate < earliestDate) earliestDate = txDate;
+        }
+      });
+
+      setAllTimeSpentByCategory(allTimeSpent);
+      if (earliestDate) setBudgetStartDate(earliestDate);
+      hasLoadedTransactions.current = true;
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+    }
+  }, [firestore, user]);
+
+  useEffect(() => {
+    if (user && firestore) loadTransactions();
+  }, [user, firestore, loadTransactions]);
 
   useEffect(() => {
     if (loanToEdit) {
@@ -271,6 +322,27 @@ export default function LoansPage() {
     return { totalBalance, totalOriginal, percentPaid };
   }, [loans]);
 
+  const { weeklyTotal, overBudgetTotal } = useMemo(() => {
+    if (!loans || loans.length === 0) return { weeklyTotal: 0, overBudgetTotal: 0 };
+    const weekly = loans.reduce((total, loan) => {
+      const payment = loan.paymentAmount || loan.totalBalance || 0;
+      return total + getWeeklyAmount(payment, loan.paymentFrequency);
+    }, 0);
+
+    const startDay = userProfile?.startDayOfWeek || 'Sunday';
+    const wsOn = dayIndexMap[startDay];
+    const overBudget = loans.reduce((total, loan) => {
+      const payment = loan.paymentAmount || loan.totalBalance || 0;
+      const wkAmt = getWeeklyAmount(payment, loan.paymentFrequency);
+      const cat = loan.category;
+      const totalSpent = allTimeSpentByCategory[cat] || 0;
+      const avail = calculateAvailable(wkAmt, totalSpent, budgetStartDate, wsOn);
+      return total + (avail < 0 ? Math.abs(avail) : 0);
+    }, 0);
+
+    return { weeklyTotal: weekly, overBudgetTotal: overBudget };
+  }, [loans, allTimeSpentByCategory, budgetStartDate, userProfile]);
+
   // Sort loans alphabetically by category then description
   const sortedLoans = useMemo(() => {
     if (!loans) return [];
@@ -352,6 +424,14 @@ export default function LoansPage() {
             </div>
           </div>
 
+          {/* My Loan Budget Totals */}
+          <BudgetTotalsBox
+            weeklyTotal={weeklyTotal}
+            overbudgetTotal={overBudgetTotal}
+            showOverbudget={true}
+            title="My Loan Payment Totals"
+          />
+
           {/* My Loans Table */}
           <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider p-4 border-b text-center">
@@ -364,44 +444,45 @@ export default function LoansPage() {
                 sortedLoans.map((loan) => {
                   const Icon = iconMap[loan.category] || MoreHorizontal;
                   const payment = loan.paymentAmount || loan.totalBalance || 0;
-                  const balance = loan.totalBalance || 0;
-                  const original = loan.originalLoanAmount || 0;
-                  const percentPaid = original > 0 ? ((original - balance) / original) * 100 : 0;
+                  const weeklyAmount = getWeeklyAmount(payment, loan.paymentFrequency);
+                  const startDay = userProfile?.startDayOfWeek || 'Sunday';
+                  const wsOn = dayIndexMap[startDay];
+                  const totalSpent = allTimeSpentByCategory[loan.category] || 0;
+                  const amountAvailable = calculateAvailable(weeklyAmount, totalSpent, budgetStartDate, wsOn);
 
                   return (
-                    <div key={loan.id} className="p-4 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                            <Icon className="size-4" />
-                          </div>
-                          <span className="font-semibold text-foreground">{getDisplayName(loan)}</span>
+                    <div
+                      key={loan.id}
+                      className="flex items-center px-4 py-3 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                          <Icon className="size-4" />
                         </div>
-                        <Button variant="ghost" size="icon" className="size-8" onClick={() => handleOpenEditDialog(loan)}>
+                        <p className="font-semibold text-foreground truncate">
+                          {getDisplayName(loan)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm shrink-0">
+                        <div className="text-right">
+                          <p className="text-xs text-muted-foreground">Wk Budget</p>
+                          <p className="font-semibold">{formatCurrency(weeklyAmount)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-muted-foreground">Available</p>
+                          <p className={cn("font-semibold", amountAvailable < 0 ? "text-destructive" : "")}>
+                            {formatCurrency(amountAvailable)}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          onClick={() => handleOpenEditDialog(loan)}
+                        >
                           <Edit className="size-4" />
                         </Button>
                       </div>
-                      <div className="flex items-center gap-4 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Payment: </span>
-                          <span className="font-semibold">{formatCurrency(payment)}</span>
-                          <span className="text-xs text-muted-foreground ml-0.5">/{loan.paymentFrequency === 'Monthly' ? 'mo' : loan.paymentFrequency === 'Weekly' ? 'wk' : loan.paymentFrequency?.toLowerCase()}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Balance: </span>
-                          <span className="font-semibold">{formatCurrency(balance)}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Original: </span>
-                          <span className="font-semibold">{original > 0 ? formatCurrency(original) : '—'}</span>
-                        </div>
-                      </div>
-                      {original > 0 && (
-                        <div className="relative h-5 bg-muted rounded-full overflow-hidden">
-                          <div className="h-full bg-primary transition-all duration-300" style={{ width: `${Math.min(100, percentPaid)}%` }} />
-                          <span className="absolute inset-0 flex items-center pl-2 text-xs font-semibold">{percentPaid.toFixed(0)}%</span>
-                        </div>
-                      )}
                     </div>
                   );
                 })

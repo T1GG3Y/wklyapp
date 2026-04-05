@@ -97,7 +97,7 @@ interface SavingsGoal extends DocumentData {
 // Icon Mappings for Essential Expenses
 const essentialExpenseIcons: Record<string, LucideIcon> = {
   'Groceries': ShoppingBasket,
-  'Rent/Mortgage': Home,
+  'Rent': Home,
   'Natural Gas': Flame,
   'Electrical': Lightbulb,
   'Water/Sewer': Droplet,

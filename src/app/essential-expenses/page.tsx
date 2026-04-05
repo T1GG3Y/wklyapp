@@ -110,7 +110,7 @@ interface Transaction extends DocumentData {
 // Icon mapping for categories
 const iconMap: Record<string, LucideIcon> = {
   'Groceries': ShoppingBasket,
-  'Rent/Mortgage': Home,
+  'Rent': Home,
   'Natural Gas': Flame,
   'Electrical': Lightbulb,
   'Water/Sewer': Droplet,
