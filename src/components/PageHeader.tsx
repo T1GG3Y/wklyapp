@@ -28,7 +28,7 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        "px-5 py-4 glass z-20",
+        "px-5 py-4 sticky top-0 glass z-20",
         className
       )}
     >
