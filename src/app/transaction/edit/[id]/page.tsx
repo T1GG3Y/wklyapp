@@ -295,25 +295,25 @@ export default function EditTransactionScreen() {
                      {discretionaryExpenses && discretionaryExpenses.length > 0 && (
                         <SelectGroup>
                             <SelectLabel className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">Discretionary</SelectLabel>
-                            {discretionaryExpenses.map(item => <SelectItem key={item.id} value={item.category}>{item.category}</SelectItem>)}
+                            {discretionaryExpenses.slice().sort((a, b) => a.category.localeCompare(b.category)).map(item => <SelectItem key={item.id} value={item.category}>{item.category}</SelectItem>)}
                         </SelectGroup>
                     )}
                      {requiredExpenses && requiredExpenses.length > 0 && (
                         <SelectGroup>
                             <SelectLabel className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">Required</SelectLabel>
-                            {requiredExpenses.map(item => <SelectItem key={item.id} value={item.category}>{item.category}</SelectItem>)}
+                            {requiredExpenses.slice().sort((a, b) => a.category.localeCompare(b.category)).map(item => <SelectItem key={item.id} value={item.category}>{item.category}</SelectItem>)}
                         </SelectGroup>
                     )}
                     {savingsGoals && savingsGoals.length > 0 && (
                          <SelectGroup>
                             <SelectLabel className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">Savings</SelectLabel>
-                            {savingsGoals.map(item => <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>)}
+                            {savingsGoals.slice().sort((a, b) => a.name.localeCompare(b.name)).map(item => <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>)}
                         </SelectGroup>
                     )}
                     {loans && loans.length > 0 && (
                         <SelectGroup>
                             <SelectLabel className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">Loans</SelectLabel>
-                            {loans.map(item => <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>)}
+                            {loans.slice().sort((a, b) => a.name.localeCompare(b.name)).map(item => <SelectItem key={item.id} value={item.name}>{item.name}</SelectItem>)}
                         </SelectGroup>
                     )}
                 </SelectContent>

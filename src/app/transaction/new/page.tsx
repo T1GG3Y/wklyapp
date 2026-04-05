@@ -138,7 +138,7 @@ function CategorySelect({
       return ESSENTIAL_CATEGORIES.map(({ name }) => ({ value: name, label: name }));
     }
     const seen = new Set<string>();
-    return requiredExpenses
+    const items = requiredExpenses
       .map((e) => {
         const label = getDisplayName(e.category, e.description);
         if (seen.has(label)) return null;
@@ -146,6 +146,7 @@ function CategorySelect({
         return { value: label, label };
       })
       .filter(Boolean) as { value: string; label: string }[];
+    return items.sort((a, b) => a.label.localeCompare(b.label));
   }, [requiredExpenses]);
 
   const discretionaryItems = useMemo(() => {
@@ -153,7 +154,7 @@ function CategorySelect({
       return DISCRETIONARY_CATEGORIES.map(({ name }) => ({ value: name, label: name }));
     }
     const seen = new Set<string>();
-    return discretionaryExpenses
+    const items = discretionaryExpenses
       .map((e) => {
         const label = getDisplayName(e.category, e.description);
         if (seen.has(label)) return null;
@@ -161,6 +162,7 @@ function CategorySelect({
         return { value: label, label };
       })
       .filter(Boolean) as { value: string; label: string }[];
+    return items.sort((a, b) => a.label.localeCompare(b.label));
   }, [discretionaryExpenses]);
 
   const loanItems = useMemo(() => {
@@ -168,7 +170,7 @@ function CategorySelect({
       return LOAN_CATEGORIES.map(({ name }) => ({ value: `Loan: ${name}`, label: name }));
     }
     const seen = new Set<string>();
-    return loans
+    const items = loans
       .map((l) => {
         const label = getDisplayName(l.category, l.description);
         const val = `Loan: ${label}`;
@@ -177,6 +179,7 @@ function CategorySelect({
         return { value: val, label };
       })
       .filter(Boolean) as { value: string; label: string }[];
+    return items.sort((a, b) => a.label.localeCompare(b.label));
   }, [loans]);
 
   const savingsItems = useMemo(() => {
@@ -198,7 +201,7 @@ function CategorySelect({
         items.push({ value: val, label });
       }
     });
-    return items;
+    return items.sort((a, b) => a.label.localeCompare(b.label));
   }, [savingsGoals]);
 
   return (

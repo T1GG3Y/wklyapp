@@ -302,7 +302,7 @@ export default function BudgetScreen() {
                   </Link>
                 </Button>
               </div>
-              {incomeSources?.map((item) =>
+              {incomeSources?.slice().sort((a, b) => a.name.localeCompare(b.name)).map((item) =>
                 renderListItem(
                   item.id,
                   Briefcase,
@@ -336,7 +336,7 @@ export default function BudgetScreen() {
                   </Link>
                 </Button>
               </div>
-              {requiredExpenses?.map((item) =>
+              {requiredExpenses?.slice().sort((a, b) => (a.name || a.category).localeCompare(b.name || b.category)).map((item) =>
                 renderListItem(
                   item.id,
                   essentialExpenseIcons[item.category] || Wallet,
@@ -370,7 +370,7 @@ export default function BudgetScreen() {
                   </Link>
                 </Button>
               </div>
-              {discretionaryExpenses?.map((item) =>
+              {discretionaryExpenses?.slice().sort((a, b) => (a.name || a.category).localeCompare(b.name || b.category)).map((item) =>
                 renderListItem(
                   item.id,
                   discretionaryExpenseIcons[item.category] || Wallet,
@@ -404,7 +404,7 @@ export default function BudgetScreen() {
                   </Link>
                 </Button>
               </div>
-              {loans?.map((item) =>
+              {loans?.slice().sort((a, b) => a.name.localeCompare(b.name)).map((item) =>
                 renderListItem(
                   item.id,
                   loanIcons[item.category] || CreditCard,
@@ -440,6 +440,7 @@ export default function BudgetScreen() {
               </div>
               {savingsGoals
                 ?.filter((g) => g.category !== 'Income Balance')
+                .sort((a, b) => a.name.localeCompare(b.name))
                 .map((item) =>
                   renderListItem(
                     item.id,
