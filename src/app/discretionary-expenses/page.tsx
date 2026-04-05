@@ -82,6 +82,7 @@ import {
   parseFormattedAmount,
   getWeeklyAmount,
 } from '@/lib/format';
+import { calculateAvailable } from '@/lib/budget';
 import { useToast } from '@/hooks/use-toast';
 
 interface DiscretionaryExpense extends DocumentData {
@@ -128,6 +129,8 @@ export default function DiscretionaryExpensesPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [expenseToEdit, setExpenseToEdit] = useState<DiscretionaryExpense | null>(null);
   const [weeklySpentByCategory, setWeeklySpentByCategory] = useState<Record<string, number>>({});
+  const [allTimeSpentByCategory, setAllTimeSpentByCategory] = useState<Record<string, number>>({});
+  const [budgetStartDate, setBudgetStartDate] = useState<Date>(new Date());
   const hasLoadedTransactions = useRef(false);
 
   const [formState, setFormState] = useState<{
@@ -154,7 +157,7 @@ export default function DiscretionaryExpensesPage() {
   const { data: userProfile } = useDoc<UserProfile>(userProfilePath);
   const { data: expenses, loading } = useCollection<DiscretionaryExpense>(discretionaryExpensesPath);
 
-  // Fetch current week's transactions to calculate Available amounts
+  // Fetch transactions to calculate Available amounts with weekly carryover
   const loadWeeklyTransactions = useCallback(async () => {
     if (!firestore || !user || hasLoadedTransactions.current) return;
     try {
@@ -166,20 +169,35 @@ export default function DiscretionaryExpensesPage() {
 
       const txRef = collection(firestore, `users/${user.uid}/transactions`);
       const snapshot = await getDocs(txRef);
-      const spentByCategory: Record<string, number> = {};
+      const currentWeekSpent: Record<string, number> = {};
+      const allTimeSpent: Record<string, number> = {};
+      let earliestDate: Date | null = null;
 
       snapshot.forEach((d) => {
         const data = d.data();
         if (data.type === 'Expense' && data.date) {
           const txDate = data.date.toDate();
+          const cat = data.category || '';
+          const amt = Math.abs(data.amount);
+
+          // All-time totals for carryover
+          allTimeSpent[cat] = (allTimeSpent[cat] || 0) + amt;
+
+          // Track earliest transaction for budget start date
+          if (!earliestDate || txDate < earliestDate) {
+            earliestDate = txDate;
+          }
+
+          // Current week totals
           if (isWithinInterval(txDate, { start: weekStart, end: weekEnd })) {
-            const cat = data.category || '';
-            spentByCategory[cat] = (spentByCategory[cat] || 0) + Math.abs(data.amount);
+            currentWeekSpent[cat] = (currentWeekSpent[cat] || 0) + amt;
           }
         }
       });
 
-      setWeeklySpentByCategory(spentByCategory);
+      setWeeklySpentByCategory(currentWeekSpent);
+      setAllTimeSpentByCategory(allTimeSpent);
+      if (earliestDate) setBudgetStartDate(earliestDate);
       hasLoadedTransactions.current = true;
     } catch (error) {
       console.error('Error loading weekly transactions:', error);
@@ -358,8 +376,18 @@ export default function DiscretionaryExpensesPage() {
       const freq = expense.frequency || 'Weekly';
       return total + getWeeklyAmount(expense.plannedAmount, freq);
     }, 0);
-    return { weeklyTotal: weekly, overBudgetTotal: 0 };
-  }, [expenses]);
+
+    const startDay = userProfile?.startDayOfWeek || 'Sunday';
+    const wsOn = dayIndexMap[startDay];
+    const overBudget = expenses.reduce((total, expense) => {
+      const wkAmt = getWeeklyAmount(expense.plannedAmount, expense.frequency || 'Weekly');
+      const totalSpent = allTimeSpentByCategory[expense.category] || 0;
+      const avail = calculateAvailable(wkAmt, totalSpent, budgetStartDate, wsOn);
+      return total + (avail < 0 ? Math.abs(avail) : 0);
+    }, 0);
+
+    return { weeklyTotal: weekly, overBudgetTotal: overBudget };
+  }, [expenses, allTimeSpentByCategory, budgetStartDate, userProfile]);
 
   // Sort expenses alphabetically by category then description
   const sortedExpenses = useMemo(() => {
@@ -437,8 +465,10 @@ export default function DiscretionaryExpensesPage() {
                 sortedExpenses.map((expense) => {
                   const Icon = iconMap[expense.category] || MoreHorizontal;
                   const weeklyAmount = getWeeklyAmount(expense.plannedAmount, expense.frequency || 'Weekly');
-                  const spent = weeklySpentByCategory[expense.category] || 0;
-                  const amountAvailable = weeklyAmount - spent;
+                  const startDay = userProfile?.startDayOfWeek || 'Sunday';
+                  const wsOn = dayIndexMap[startDay];
+                  const totalSpent = allTimeSpentByCategory[expense.category] || 0;
+                  const amountAvailable = calculateAvailable(weeklyAmount, totalSpent, budgetStartDate, wsOn);
 
                   return (
                     <div key={expense.id} className="flex items-center px-4 py-3 hover:bg-muted/50 transition-colors">
