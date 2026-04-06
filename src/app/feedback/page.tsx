@@ -27,7 +27,7 @@ export default function FeedbackPage() {
       `Recommendations: ${recommendations || 'None provided'}`,
     ].join('\n\n');
 
-    const mailtoLink = `mailto:thetiger@alumni.stanford.edu?subject=WKLY Account Deletion Feedback&bcc=weeklybudgetapp@gmail.com&body=${encodeURIComponent(body)}`;
+    const mailtoLink = `mailto:thetiger@alumni.stanford.edu?subject=WKLY Account Deletion Feedback&bcc=weeklybudgetapp@gmail.com,Weeklybcb@gmail.com&body=${encodeURIComponent(body)}`;
     window.location.href = mailtoLink;
     setSubmitted(true);
   };

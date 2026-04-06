@@ -645,7 +645,7 @@ export default function LoansPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Due Date <span className="text-muted-foreground font-normal text-xs">(Opt.)</span></Label>
+                <Label>Payment Date</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button

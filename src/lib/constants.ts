@@ -152,7 +152,7 @@ export const CATEGORY_HELP: Record<string, string> = {
 
 // Page Help Text
 export const PAGE_HELP = {
-  income: 'Sources include employer, self-employed, Social Security, Pension, etc.',
+  income: 'Income is the amount that you receive in the paycheck (net). This will be after the company has removed taxes, insurance contributions, etc.',
   essentialExpenses: 'These are expenses required to sustain life.',
   discretionaryExpenses: 'These are expenses that make life nicer.',
   loans: 'This includes anything you have owing and are making payments on.',

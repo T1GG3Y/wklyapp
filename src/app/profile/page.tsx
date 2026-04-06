@@ -211,12 +211,12 @@ export default function ProfilePage() {
           {/* Actions */}
           <div className="p-4 space-y-3 border-t">
             <Button asChild variant="outline" className="w-full justify-start">
-              <a href="mailto:thetiger@alumni.stanford.edu?subject=Feedback for WKLY App&cc=weeklybudgetapp@gmail.com">
+              <a href="mailto:thetiger@alumni.stanford.edu?subject=Feedback for WKLY App&cc=weeklybudgetapp@gmail.com,Weeklybcb@gmail.com">
                 <MessageSquare className="mr-2 h-4 w-4" /> Send Feedback
               </a>
             </Button>
             <Button asChild variant="outline" className="w-full justify-start">
-              <a href="mailto:thetiger@alumni.stanford.edu?subject=My Weekly Budget Story&cc=weeklybudgetapp@gmail.com&body=Share your story on how WeeklyBudget.app has helped you move towards debt-free living.%0A%0APlease let us know if we can share your story with others.%0A%0A">
+              <a href="mailto:thetiger@alumni.stanford.edu?subject=My Weekly Budget Story&cc=weeklybudgetapp@gmail.com,Weeklybcb@gmail.com&body=Share your story on how WeeklyBudget.app has helped you move towards debt-free living.%0A%0APlease let us know if we can share your story with others.%0A%0A">
                 <Heart className="mr-2 h-4 w-4" /> Share Your Story
               </a>
             </Button>
