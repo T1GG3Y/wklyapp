@@ -96,6 +96,7 @@ interface SavingsGoal extends DocumentData {
   name: string;
   category: string;
   description?: string;
+  currentAmount?: number;
 }
 
 interface SplitRow {
@@ -124,6 +125,7 @@ function CategorySelect({
   discretionaryExpenses,
   loans,
   savingsGoals,
+  hideLoans,
 }: {
   value: string;
   onValueChange: (val: string) => void;
@@ -131,6 +133,7 @@ function CategorySelect({
   discretionaryExpenses?: DiscretionaryExpense[] | null;
   loans?: Loan[] | null;
   savingsGoals?: SavingsGoal[] | null;
+  hideLoans?: boolean;
 }) {
   // Build display items from user's actual budget entries
   const getDisplayName = (category: string, description?: string) => {
@@ -236,16 +239,18 @@ function CategorySelect({
             </SelectItem>
           ))}
         </SelectGroup>
-        <SelectGroup>
-          <SelectLabel className="text-sm font-bold text-foreground pl-2">
-            My Loans
-          </SelectLabel>
-          {loanItems.map((item) => (
-            <SelectItem key={item.value} value={item.value} className="pl-8 text-sm">
-              {item.label}
-            </SelectItem>
-          ))}
-        </SelectGroup>
+        {!hideLoans && (
+          <SelectGroup>
+            <SelectLabel className="text-sm font-bold text-foreground pl-2">
+              My Loans
+            </SelectLabel>
+            {loanItems.map((item) => (
+              <SelectItem key={item.value} value={item.value} className="pl-8 text-sm">
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        )}
         <SelectGroup>
           <SelectLabel className="text-sm font-bold text-foreground pl-2">
             My Savings Goals
@@ -599,19 +604,82 @@ export default function NewTransactionScreen() {
       const fromCat = stripPrefix(moveFromCategory);
       const toCat = stripPrefix(moveToCategory);
 
-      // Deduct from source category
-      await addDoc(transactionsCollection, {
-        userProfileId: user.uid, type: 'Expense', amount: moveAmt,
-        description: `Move to ${toCat}`, category: fromCat,
-        date: serverTimestamp(), moveGroup,
-      });
+      const isFromSavings = moveFromCategory.startsWith('Savings:');
+      const isToSavings = moveToCategory.startsWith('Savings:');
+      const isToLoan = moveToCategory.startsWith('Loan:');
 
-      // Add to destination category (negative expense = adding back)
-      await addDoc(transactionsCollection, {
-        userProfileId: user.uid, type: 'Income', amount: moveAmt,
-        description: `Move from ${fromCat}`, category: toCat,
-        date: serverTimestamp(), moveGroup,
-      });
+      // Helper to find matching savings goal by display name
+      const findSavingsGoal = (displayName: string) => {
+        return (savingsGoals || []).find(g => {
+          const dn = g.description ? `${g.category} - ${g.description}` : g.category;
+          return dn === displayName;
+        });
+      };
+
+      // Helper to find matching loan by display name
+      const findLoan = (displayName: string) => {
+        return (loans || []).find(l => {
+          const dn = l.description ? `${l.category} - ${l.description}` : l.category;
+          return dn === displayName;
+        });
+      };
+
+      // For Essential/Discretionary: use transactions to track available
+      // For Savings: update currentAmount on the document
+      // For Loans: update totalBalance on the document
+
+      if (isFromSavings) {
+        // Savings source: decrement currentAmount on the goal doc
+        const goal = findSavingsGoal(fromCat);
+        if (goal) {
+          const goalRef = doc(firestore, `users/${user.uid}/savingsGoals`, goal.id);
+          await updateDoc(goalRef, { currentAmount: increment(-moveAmt) });
+        } else {
+          // Unassigned Income or unmatched savings — use transaction to track
+          await addDoc(transactionsCollection, {
+            userProfileId: user.uid, type: 'Expense', amount: moveAmt,
+            description: `Move to ${toCat}`, category: fromCat,
+            date: serverTimestamp(), moveGroup,
+          });
+        }
+      } else {
+        // Essential/Discretionary source: create Expense transaction (reduces available)
+        await addDoc(transactionsCollection, {
+          userProfileId: user.uid, type: 'Expense', amount: moveAmt,
+          description: `Move to ${toCat}`, category: fromCat,
+          date: serverTimestamp(), moveGroup,
+        });
+      }
+
+      if (isToSavings) {
+        // Savings destination: increment currentAmount on the goal doc
+        const goal = findSavingsGoal(toCat);
+        if (goal) {
+          const goalRef = doc(firestore, `users/${user.uid}/savingsGoals`, goal.id);
+          await updateDoc(goalRef, { currentAmount: increment(moveAmt) });
+        } else {
+          // Unassigned Income or unmatched savings — use transaction to track
+          await addDoc(transactionsCollection, {
+            userProfileId: user.uid, type: 'Income', amount: moveAmt,
+            description: `Move from ${fromCat}`, category: toCat,
+            date: serverTimestamp(), moveGroup,
+          });
+        }
+      } else if (isToLoan) {
+        // Loan destination: increment totalBalance (adding to balance/debt payment pool)
+        const loan = findLoan(toCat);
+        if (loan) {
+          const loanRef = doc(firestore, `users/${user.uid}/loans`, loan.id);
+          await updateDoc(loanRef, { totalBalance: increment(moveAmt) });
+        }
+      } else {
+        // Essential/Discretionary destination: create Income transaction (increases available)
+        await addDoc(transactionsCollection, {
+          userProfileId: user.uid, type: 'Income', amount: moveAmt,
+          description: `Move from ${fromCat}`, category: toCat,
+          date: serverTimestamp(), moveGroup,
+        });
+      }
 
       toast({ title: 'Move Completed', description: `${formatCurrency(moveAmt)} moved from ${fromCat} to ${toCat}.` });
       setMoveAmount('');
@@ -901,6 +969,7 @@ export default function NewTransactionScreen() {
                       discretionaryExpenses={discretionaryExpenses}
                       loans={loans}
                       savingsGoals={savingsGoals}
+                      hideLoans
                     />
                   </div>
                   <div className="space-y-1">
