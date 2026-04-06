@@ -3,11 +3,12 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useCollection, useFirestore, useUser } from '@/firebase';
+import { useCollection, useDoc, useFirestore, useUser } from '@/firebase';
 import {
   addDoc,
   collection,
   doc,
+  getDocs,
   increment,
   serverTimestamp,
   updateDoc,
@@ -28,6 +29,7 @@ import {
   Trash2,
   ArrowLeft,
   ArrowRight,
+  RotateCcw,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useCallback } from 'react';
@@ -49,6 +51,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { PageHeader } from '@/components/PageHeader';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { HelpDialog } from '@/components/HelpDialog';
@@ -59,8 +71,10 @@ import {
   SAVINGS_CATEGORIES,
   PAGE_SUBHEADERS,
 } from '@/lib/constants';
-import { formatCurrency, formatAmountInput, parseFormattedAmount } from '@/lib/format';
-import { format, startOfDay, subDays, subWeeks, subMonths, subYears } from 'date-fns';
+import { formatCurrency, formatAmountInput, parseFormattedAmount, getWeeklyAmount } from '@/lib/format';
+import { calculateAvailable } from '@/lib/budget';
+import { format, startOfDay, startOfWeek, subDays, subWeeks, subMonths, subYears, differenceInWeeks, parseISO } from 'date-fns';
+import { type Frequency } from '@/lib/constants';
 import Link from 'next/link';
 
 interface Transaction extends DocumentData {
@@ -77,12 +91,18 @@ interface RequiredExpense extends DocumentData {
   category: string;
   name?: string;
   description?: string;
+  amount?: number;
+  frequency?: Frequency;
+  dueDate?: string;
 }
 interface DiscretionaryExpense extends DocumentData {
   id: string;
   category: string;
   name?: string;
   description?: string;
+  plannedAmount?: number;
+  frequency?: Frequency;
+  dueDate?: string;
 }
 interface Loan extends DocumentData {
   id: string;
@@ -90,6 +110,9 @@ interface Loan extends DocumentData {
   category: string;
   description?: string;
   totalBalance?: number;
+  paymentAmount?: number;
+  paymentFrequency?: Frequency;
+  payoffDate?: string;
 }
 interface SavingsGoal extends DocumentData {
   id: string;
@@ -266,6 +289,14 @@ function CategorySelect({
   );
 }
 
+interface UserProfile extends DocumentData {
+  startDayOfWeek?: 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
+}
+
+const dayIndexMap: Record<string, 0 | 1 | 2 | 3 | 4 | 5 | 6> = {
+  Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6,
+};
+
 export default function NewTransactionScreen() {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -275,6 +306,10 @@ export default function NewTransactionScreen() {
   // Section collapse state
   const [addTransactionOpen, setAddTransactionOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
+
+  // Reset state
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   // Transaction form state
   const [type, setType] = useState<'Income' | 'Expense'>('Expense');
@@ -327,6 +362,8 @@ export default function NewTransactionScreen() {
     [user]
   );
 
+  const userProfilePath = useMemo(() => (user ? `users/${user.uid}` : null), [user]);
+  const { data: userProfile } = useDoc<UserProfile>(userProfilePath);
   const { data: requiredExpenses } = useCollection<RequiredExpense>(requiredExpensesPath);
   const { data: discretionaryExpenses } =
     useCollection<DiscretionaryExpense>(discretionaryExpensesPath);
@@ -782,6 +819,171 @@ export default function NewTransactionScreen() {
     }
   };
 
+  const handleResetBudget = async () => {
+    if (!firestore || !user) return;
+    setIsResetting(true);
+
+    try {
+      const txCollection = collection(firestore, `users/${user.uid}/transactions`);
+
+      // 1. Load all transactions to calculate current available balances
+      const txSnapshot = await getDocs(txCollection);
+      const allTimeSpent: Record<string, number> = {};
+      let earliestDate: Date | null = null;
+
+      txSnapshot.forEach((d) => {
+        const data = d.data();
+        if (!data.date) return;
+        const txDate = data.date.toDate();
+        const cat = data.category || '';
+        let amt = 0;
+        if (data.type === 'Expense') amt = Math.abs(data.amount);
+        else if (data.type === 'Income') amt = -Math.abs(data.amount);
+        else return;
+        allTimeSpent[cat] = (allTimeSpent[cat] || 0) + amt;
+        if (!earliestDate || txDate < earliestDate) earliestDate = txDate;
+      });
+
+      const budgetStart = earliestDate || new Date();
+      const startDay = userProfile?.startDayOfWeek || 'Sunday';
+      const wsOn = dayIndexMap[startDay];
+      const resetGroup = Date.now().toString();
+
+      // 2. Zero out Essential Expenses available
+      if (requiredExpenses) {
+        for (const expense of requiredExpenses) {
+          const displayName = expense.description
+            ? `${expense.category} - ${expense.description}`
+            : expense.category;
+          const weeklyAmount = getWeeklyAmount(expense.amount || 0, expense.frequency || 'Monthly');
+          const totalSpent = allTimeSpent[displayName] || 0;
+          const available = calculateAvailable(weeklyAmount, totalSpent, budgetStart, wsOn);
+
+          if (Math.abs(available) > 0.01) {
+            // Create transaction to zero out available
+            await addDoc(txCollection, {
+              userProfileId: user.uid,
+              type: available > 0 ? 'Expense' : 'Income',
+              amount: Math.abs(available),
+              description: 'Budget reset',
+              category: displayName,
+              date: serverTimestamp(),
+              moveGroup: resetGroup,
+              autoGenerated: true,
+            });
+          }
+        }
+      }
+
+      // 3. Zero out Discretionary Expenses available
+      if (discretionaryExpenses) {
+        for (const expense of discretionaryExpenses) {
+          const displayName = expense.description
+            ? `${expense.category} - ${expense.description}`
+            : expense.category;
+          const weeklyAmount = getWeeklyAmount(expense.plannedAmount || 0, expense.frequency || 'Weekly');
+          const totalSpent = allTimeSpent[displayName] || 0;
+          const available = calculateAvailable(weeklyAmount, totalSpent, budgetStart, wsOn);
+
+          if (Math.abs(available) > 0.01) {
+            await addDoc(txCollection, {
+              userProfileId: user.uid,
+              type: available > 0 ? 'Expense' : 'Income',
+              amount: Math.abs(available),
+              description: 'Budget reset',
+              category: displayName,
+              date: serverTimestamp(),
+              moveGroup: resetGroup,
+              autoGenerated: true,
+            });
+          }
+        }
+      }
+
+      // 4. Reset all Savings Goals currentAmount to 0
+      if (savingsGoals) {
+        for (const goal of savingsGoals) {
+          if (goal.currentAmount && goal.currentAmount > 0) {
+            const goalRef = doc(firestore, `users/${user.uid}/savingsGoals`, goal.id);
+            await updateDoc(goalRef, { currentAmount: 0 });
+          }
+        }
+      }
+
+      // 5. Re-seed each category with initial available funds based on payment dates
+      if (requiredExpenses) {
+        for (const expense of requiredExpenses) {
+          if (expense.dueDate && expense.amount) {
+            const weeklyAmount = getWeeklyAmount(expense.amount, expense.frequency || 'Monthly');
+            const dueDate = parseISO(expense.dueDate);
+            const weeksUntilDue = Math.max(1, differenceInWeeks(dueDate, new Date()) + 1);
+            const budgetWillAccumulate = weeklyAmount * weeksUntilDue;
+            const initialSeed = expense.amount - budgetWillAccumulate;
+
+            if (initialSeed > 0) {
+              const displayName = expense.description
+                ? `${expense.category} - ${expense.description}`
+                : expense.category;
+              await addDoc(txCollection, {
+                userProfileId: user.uid,
+                type: 'Income',
+                amount: initialSeed,
+                description: `Initial balance seed for ${displayName}`,
+                category: displayName,
+                date: serverTimestamp(),
+                moveGroup: resetGroup,
+                autoGenerated: true,
+              });
+            }
+          }
+        }
+      }
+
+      if (discretionaryExpenses) {
+        for (const expense of discretionaryExpenses) {
+          if (expense.dueDate && expense.plannedAmount) {
+            const weeklyAmount = getWeeklyAmount(expense.plannedAmount, expense.frequency || 'Weekly');
+            const dueDate = parseISO(expense.dueDate);
+            const weeksUntilDue = Math.max(1, differenceInWeeks(dueDate, new Date()) + 1);
+            const budgetWillAccumulate = weeklyAmount * weeksUntilDue;
+            const initialSeed = expense.plannedAmount - budgetWillAccumulate;
+
+            if (initialSeed > 0) {
+              const displayName = expense.description
+                ? `${expense.category} - ${expense.description}`
+                : expense.category;
+              await addDoc(txCollection, {
+                userProfileId: user.uid,
+                type: 'Income',
+                amount: initialSeed,
+                description: `Initial balance seed for ${displayName}`,
+                category: displayName,
+                date: serverTimestamp(),
+                moveGroup: resetGroup,
+                autoGenerated: true,
+              });
+            }
+          }
+        }
+      }
+
+      toast({
+        title: 'Budget Reset Complete',
+        description: 'All available funds have been reset and re-seeded based on payment dates.',
+      });
+      setResetDialogOpen(false);
+    } catch (error) {
+      console.error('Error resetting budget:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not complete the budget reset. Please try again.',
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   return (
     <div className="bg-background font-headline antialiased min-h-screen flex flex-col h-screen overflow-y-auto">
       <PageHeader
@@ -998,6 +1200,16 @@ export default function NewTransactionScreen() {
                 className="w-full py-3 h-12 font-semibold rounded-xl text-base shadow-md"
               >
                 Add
+              </Button>
+
+              {/* Reset Button */}
+              <Button
+                variant="outline"
+                onClick={() => setResetDialogOpen(true)}
+                className="w-full h-10 font-semibold rounded-xl text-sm border-destructive/50 text-destructive hover:bg-destructive/10 gap-2"
+              >
+                <RotateCcw className="size-4" />
+                Reset Budget
               </Button>
             </div>
           )}
@@ -1274,6 +1486,28 @@ export default function NewTransactionScreen() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Reset Budget Confirmation Dialog */}
+      <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to do this?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm leading-relaxed">
+              It will Reset all Available Funds in Essential and Discretionary Expenses and Current Balance Saved in My Savings Goals. This should only be used when you are wanting to restart your budgeting from the beginning. It does not delete any of your planned expenses. That you would have to do one at a time if they have changed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleResetBudget}
+              disabled={isResetting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isResetting ? 'Resetting...' : 'Reset Budget'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
     </div>
   );
