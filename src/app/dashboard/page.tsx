@@ -57,6 +57,7 @@ import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/PageHeader';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { formatCurrency, getWeeklyAmount } from '@/lib/format';
+import { calculateAvailable } from '@/lib/budget';
 import type { Frequency } from '@/lib/constants';
 
 // Data Interfaces
@@ -191,6 +192,11 @@ export default function DashboardScreen() {
     Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6
   };
 
+  // Account summary state (for computing available amounts)
+  const [allTimeSpentByCategory, setAllTimeSpentByCategory] = useState<Record<string, number>>({});
+  const [budgetStartDate, setBudgetStartDate] = useState<Date>(new Date());
+  const hasLoadedAccountSummary = useRef(false);
+
   // Accordion state
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -252,6 +258,64 @@ export default function DashboardScreen() {
   }, [savingsGoals]);
 
   const weeklyBalance = totalWeeklyIncome - totalWeeklyRequired - totalWeeklyDiscretionary;
+
+  // Load all-time spent by category for account summary
+  const loadAccountSummary = useCallback(async () => {
+    if (!firestore || !user || hasLoadedAccountSummary.current) return;
+    try {
+      const txRef = collection(firestore, `users/${user.uid}/transactions`);
+      const snapshot = await getDocs(txRef);
+      const allTimeSpent: Record<string, number> = {};
+      let earliestDate: Date | null = null;
+
+      snapshot.forEach((d) => {
+        const data = d.data();
+        if (!data.date) return;
+        const txDate = data.date.toDate();
+        const cat = data.category || '';
+        let amt = 0;
+        if (data.type === 'Expense') amt = Math.abs(data.amount);
+        else if (data.type === 'Income') amt = -Math.abs(data.amount);
+        else return;
+        allTimeSpent[cat] = (allTimeSpent[cat] || 0) + amt;
+        if (!earliestDate || txDate < earliestDate) earliestDate = txDate;
+      });
+
+      setAllTimeSpentByCategory(allTimeSpent);
+      if (earliestDate) setBudgetStartDate(earliestDate);
+      hasLoadedAccountSummary.current = true;
+    } catch (error) {
+      console.error('Error loading account summary:', error);
+    }
+  }, [firestore, user]);
+
+  useEffect(() => {
+    if (user && firestore) loadAccountSummary();
+  }, [user, firestore, loadAccountSummary]);
+
+  // Account Summary = sum of all Essential/Discretionary Available + all Savings Current Balance Saved
+  const accountSummary = useMemo(() => {
+    const startDay = userProfile?.startDayOfWeek || 'Sunday';
+    const wsOn = dayIndexMap[startDay];
+
+    // Sum essential available
+    const essentialAvailable = (requiredExpenses || []).reduce((total, e) => {
+      const wkAmt = getWeeklyAmount(e.amount, e.frequency);
+      const displayName = e.description ? `${e.category} - ${e.description}` : e.category;
+      const spent = allTimeSpentByCategory[displayName] || 0;
+      return total + calculateAvailable(wkAmt, spent, budgetStartDate, wsOn);
+    }, 0);
+
+    // Sum discretionary available
+    const discretionaryAvailable = (discretionaryExpenses || []).reduce((total, e) => {
+      const wkAmt = getWeeklyAmount(e.plannedAmount, (e as any).frequency || 'Weekly');
+      const displayName = e.description ? `${e.category} - ${e.description}` : e.category;
+      const spent = allTimeSpentByCategory[displayName] || 0;
+      return total + calculateAvailable(wkAmt, spent, budgetStartDate, wsOn);
+    }, 0);
+
+    return essentialAvailable + discretionaryAvailable + totalSaved;
+  }, [requiredExpenses, discretionaryExpenses, allTimeSpentByCategory, budgetStartDate, userProfile, totalSaved]);
 
   // Health indicators
   const essentialHealthy = totalWeeklyRequired <= totalWeeklyIncome * 0.5 || totalWeeklyRequired === 0;
@@ -397,9 +461,9 @@ export default function DashboardScreen() {
               isHealthy={weeklyBalance >= 0}
             />
             <BudgetBalanceCircle
-              amount={totalWeeklyIncome}
-              label="Total Weekly Income"
-              isHealthy={true}
+              amount={accountSummary}
+              label="Account Summary"
+              isHealthy={accountSummary >= 0}
             />
             <HealthDot isHealthy={essentialHealthy} label="My Essential Expenses" />
             <HealthDot isHealthy={discretionaryHealthy} label="My Discretionary Expenses" />

@@ -143,6 +143,7 @@ export default function EssentialExpensesPage() {
   const [allTimeSpentByCategory, setAllTimeSpentByCategory] = useState<Record<string, number>>({});
   const [budgetStartDate, setBudgetStartDate] = useState<Date>(new Date());
   const hasLoadedTransactions = useRef(false);
+  const [autoCalcResult, setAutoCalcResult] = useState<number | null>(null);
 
   const [formState, setFormState] = useState<{
     category: string;
@@ -262,12 +263,14 @@ export default function EssentialExpensesPage() {
       dueDate: undefined,
       description: '',
     });
+    setAutoCalcResult(null);
     setIsEditDialogOpen(true);
   };
 
   // Open edit dialog for an existing expense
   const handleOpenEditDialog = (expense: RequiredExpense) => {
     setExpenseToEdit(expense);
+    setAutoCalcResult(null);
     setIsEditDialogOpen(true);
   };
 
@@ -419,15 +422,7 @@ export default function EssentialExpensesPage() {
       }
 
       const average = total / count;
-      setFormState({
-        ...formState,
-        amount: formatAmountInput(average.toFixed(2)),
-      });
-
-      toast({
-        title: 'Auto Calculated',
-        description: `Average of ${count} transaction(s): ${formatCurrency(average)}`,
-      });
+      setAutoCalcResult(average);
     } catch (error) {
       console.error('Error auto calculating:', error);
       toast({
@@ -743,15 +738,33 @@ export default function EssentialExpensesPage() {
 
             {/* Auto Calculate */}
             <div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleAutoCalculate}
-                className="gap-2"
-              >
-                <Calculator className="size-4" />
-                Auto Calculate
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAutoCalculate}
+                  className="gap-2"
+                >
+                  <Calculator className="size-4" />
+                  Auto Calculate
+                </Button>
+                {autoCalcResult !== null && (
+                  <div className="flex items-center gap-2 bg-muted rounded-lg px-3 py-1.5 border">
+                    <span className="text-sm font-semibold">{formatCurrency(autoCalcResult)}</span>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={() => {
+                        setFormState({ ...formState, amount: formatAmountInput(autoCalcResult.toFixed(2)) });
+                        setAutoCalcResult(null);
+                      }}
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground mt-1">
                 Calculate budget amount based on your previous average spending.
               </p>
