@@ -212,6 +212,16 @@ service cloud.firestore {
         allow update: if isExistingOwner(userProfileId) && ownerIdIsImmutable();
         allow delete: if isExistingOwner(userProfileId);
       }
+
+      /**
+       * @description A user's connected Plaid bank account items.
+       * Clients can read and delete; only the server (Admin SDK) can create/update.
+       */
+      match /plaidItems/{plaidItemId} {
+        allow get, list: if isOwner(userProfileId);
+        allow delete: if isOwner(userProfileId);
+        allow create, update: if false;
+      }
     }
   }
 }
