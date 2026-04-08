@@ -194,7 +194,7 @@ export default function DashboardScreen() {
 
   // Account summary state (for computing available amounts)
   const [allTimeSpentByCategory, setAllTimeSpentByCategory] = useState<Record<string, number>>({});
-  const [budgetStartDate, setBudgetStartDate] = useState<Date>(new Date());
+  const [budgetStartDateByCategory, setBudgetStartDateByCategory] = useState<Record<string, Date>>({});
   const hasLoadedAccountSummary = useRef(false);
 
   // Accordion state
@@ -266,7 +266,7 @@ export default function DashboardScreen() {
       const txRef = collection(firestore, `users/${user.uid}/transactions`);
       const snapshot = await getDocs(txRef);
       const allTimeSpent: Record<string, number> = {};
-      let earliestDate: Date | null = null;
+      const earliestByCategory: Record<string, Date> = {};
 
       snapshot.forEach((d) => {
         const data = d.data();
@@ -278,11 +278,13 @@ export default function DashboardScreen() {
         else if (data.type === 'Income') amt = -Math.abs(data.amount);
         else return;
         allTimeSpent[cat] = (allTimeSpent[cat] || 0) + amt;
-        if (!earliestDate || txDate < earliestDate) earliestDate = txDate;
+        if (!earliestByCategory[cat] || txDate < earliestByCategory[cat]) {
+          earliestByCategory[cat] = txDate;
+        }
       });
 
       setAllTimeSpentByCategory(allTimeSpent);
-      if (earliestDate) setBudgetStartDate(earliestDate);
+      setBudgetStartDateByCategory(earliestByCategory);
       hasLoadedAccountSummary.current = true;
     } catch (error) {
       console.error('Error loading account summary:', error);
@@ -303,7 +305,8 @@ export default function DashboardScreen() {
       const wkAmt = getWeeklyAmount(e.amount, e.frequency);
       const displayName = e.description ? `${e.category} - ${e.description}` : e.category;
       const spent = allTimeSpentByCategory[displayName] || 0;
-      return total + calculateAvailable(wkAmt, spent, budgetStartDate, wsOn);
+      const catStart = budgetStartDateByCategory[displayName] || new Date();
+      return total + calculateAvailable(wkAmt, spent, catStart, wsOn);
     }, 0);
 
     // Sum discretionary available
@@ -311,11 +314,12 @@ export default function DashboardScreen() {
       const wkAmt = getWeeklyAmount(e.plannedAmount, (e as any).frequency || 'Weekly');
       const displayName = e.description ? `${e.category} - ${e.description}` : e.category;
       const spent = allTimeSpentByCategory[displayName] || 0;
-      return total + calculateAvailable(wkAmt, spent, budgetStartDate, wsOn);
+      const catStart = budgetStartDateByCategory[displayName] || new Date();
+      return total + calculateAvailable(wkAmt, spent, catStart, wsOn);
     }, 0);
 
     return essentialAvailable + discretionaryAvailable + totalSaved;
-  }, [requiredExpenses, discretionaryExpenses, allTimeSpentByCategory, budgetStartDate, userProfile, totalSaved]);
+  }, [requiredExpenses, discretionaryExpenses, allTimeSpentByCategory, budgetStartDateByCategory, userProfile, totalSaved]);
 
   // Health indicators
   const essentialHealthy = totalWeeklyRequired <= totalWeeklyIncome * 0.5 || totalWeeklyRequired === 0;

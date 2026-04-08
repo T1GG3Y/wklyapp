@@ -109,7 +109,7 @@ export default function LoansPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [loanToEdit, setLoanToEdit] = useState<Loan | null>(null);
   const [allTimeSpentByCategory, setAllTimeSpentByCategory] = useState<Record<string, number>>({});
-  const [budgetStartDate, setBudgetStartDate] = useState<Date>(new Date());
+  const [budgetStartDateByCategory, setBudgetStartDateByCategory] = useState<Record<string, Date>>({});
   const hasLoadedTransactions = useRef(false);
 
   const [formState, setFormState] = useState<{
@@ -152,7 +152,7 @@ export default function LoansPage() {
       const txRef = collection(firestore, `users/${user.uid}/transactions`);
       const snapshot = await getDocs(txRef);
       const allTimeSpent: Record<string, number> = {};
-      let earliestDate: Date | null = null;
+      const earliestByCategory: Record<string, Date> = {};
 
       snapshot.forEach((d) => {
         const data = d.data();
@@ -170,11 +170,13 @@ export default function LoansPage() {
         }
 
         allTimeSpent[cat] = (allTimeSpent[cat] || 0) + amt;
-        if (!earliestDate || txDate < earliestDate) earliestDate = txDate;
+        if (!earliestByCategory[cat] || txDate < earliestByCategory[cat]) {
+          earliestByCategory[cat] = txDate;
+        }
       });
 
       setAllTimeSpentByCategory(allTimeSpent);
-      if (earliestDate) setBudgetStartDate(earliestDate);
+      setBudgetStartDateByCategory(earliestByCategory);
       hasLoadedTransactions.current = true;
     } catch (error) {
       console.error('Error loading transactions:', error);
@@ -348,8 +350,10 @@ export default function LoansPage() {
         const weeklyAmount = getWeeklyAmount(payment, loan.paymentFrequency);
         const startDay = userProfile?.startDayOfWeek || 'Sunday';
         const wsOn = dayIndexMap[startDay];
-        const totalSpent = allTimeSpentByCategory[getDisplayName(loan)] || 0;
-        const available = calculateAvailable(weeklyAmount, totalSpent, budgetStartDate, wsOn);
+        const dn = getDisplayName(loan);
+        const totalSpent = allTimeSpentByCategory[dn] || 0;
+        const catStart = budgetStartDateByCategory[dn] || new Date();
+        const available = calculateAvailable(weeklyAmount, totalSpent, catStart, wsOn);
 
         if (available > 0) {
           const txCollection = collection(firestore, `users/${user.uid}/transactions`);
@@ -414,12 +418,13 @@ export default function LoansPage() {
       const wkAmt = getWeeklyAmount(payment, loan.paymentFrequency);
       const displayName = loan.description ? `${loan.category} - ${loan.description}` : loan.category;
       const totalSpent = allTimeSpentByCategory[displayName] || 0;
-      const avail = calculateAvailable(wkAmt, totalSpent, budgetStartDate, wsOn);
+      const catStart = budgetStartDateByCategory[displayName] || new Date();
+      const avail = calculateAvailable(wkAmt, totalSpent, catStart, wsOn);
       return total + (avail < 0 ? Math.abs(avail) : 0);
     }, 0);
 
     return { weeklyTotal: weekly, overBudgetTotal: overBudget };
-  }, [loans, allTimeSpentByCategory, budgetStartDate, userProfile]);
+  }, [loans, allTimeSpentByCategory, budgetStartDateByCategory, userProfile]);
 
   // Sort loans alphabetically by category then description
   const sortedLoans = useMemo(() => {
@@ -525,8 +530,10 @@ export default function LoansPage() {
                   const weeklyAmount = getWeeklyAmount(payment, loan.paymentFrequency);
                   const startDay = userProfile?.startDayOfWeek || 'Sunday';
                   const wsOn = dayIndexMap[startDay];
-                  const totalSpent = allTimeSpentByCategory[getDisplayName(loan)] || 0;
-                  const amountAvailable = calculateAvailable(weeklyAmount, totalSpent, budgetStartDate, wsOn);
+                  const dn = getDisplayName(loan);
+                  const totalSpent = allTimeSpentByCategory[dn] || 0;
+                  const catStart = budgetStartDateByCategory[dn] || new Date();
+                  const amountAvailable = calculateAvailable(weeklyAmount, totalSpent, catStart, wsOn);
 
                   return (
                     <div

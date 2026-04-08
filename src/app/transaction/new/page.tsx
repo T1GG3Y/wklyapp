@@ -829,7 +829,7 @@ export default function NewTransactionScreen() {
       // 1. Load all transactions to calculate current available balances
       const txSnapshot = await getDocs(txCollection);
       const allTimeSpent: Record<string, number> = {};
-      let earliestDate: Date | null = null;
+      const earliestByCategory: Record<string, Date> = {};
 
       txSnapshot.forEach((d) => {
         const data = d.data();
@@ -841,10 +841,11 @@ export default function NewTransactionScreen() {
         else if (data.type === 'Income') amt = -Math.abs(data.amount);
         else return;
         allTimeSpent[cat] = (allTimeSpent[cat] || 0) + amt;
-        if (!earliestDate || txDate < earliestDate) earliestDate = txDate;
+        if (!earliestByCategory[cat] || txDate < earliestByCategory[cat]) {
+          earliestByCategory[cat] = txDate;
+        }
       });
 
-      const budgetStart = earliestDate || new Date();
       const startDay = userProfile?.startDayOfWeek || 'Sunday';
       const wsOn = dayIndexMap[startDay];
       const resetGroup = Date.now().toString();
@@ -857,7 +858,8 @@ export default function NewTransactionScreen() {
             : expense.category;
           const weeklyAmount = getWeeklyAmount(expense.amount || 0, expense.frequency || 'Monthly');
           const totalSpent = allTimeSpent[displayName] || 0;
-          const available = calculateAvailable(weeklyAmount, totalSpent, budgetStart, wsOn);
+          const catStart = earliestByCategory[displayName] || new Date();
+          const available = calculateAvailable(weeklyAmount, totalSpent, catStart, wsOn);
 
           if (Math.abs(available) > 0.01) {
             // Create transaction to zero out available
@@ -883,7 +885,8 @@ export default function NewTransactionScreen() {
             : expense.category;
           const weeklyAmount = getWeeklyAmount(expense.plannedAmount || 0, expense.frequency || 'Weekly');
           const totalSpent = allTimeSpent[displayName] || 0;
-          const available = calculateAvailable(weeklyAmount, totalSpent, budgetStart, wsOn);
+          const catStart = earliestByCategory[displayName] || new Date();
+          const available = calculateAvailable(weeklyAmount, totalSpent, catStart, wsOn);
 
           if (Math.abs(available) > 0.01) {
             await addDoc(txCollection, {

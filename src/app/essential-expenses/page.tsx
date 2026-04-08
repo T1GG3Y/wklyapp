@@ -141,7 +141,7 @@ export default function EssentialExpensesPage() {
   const [expenseToEdit, setExpenseToEdit] = useState<RequiredExpense | null>(null);
   const [weeklySpentByCategory, setWeeklySpentByCategory] = useState<Record<string, number>>({});
   const [allTimeSpentByCategory, setAllTimeSpentByCategory] = useState<Record<string, number>>({});
-  const [budgetStartDate, setBudgetStartDate] = useState<Date>(new Date());
+  const [budgetStartDateByCategory, setBudgetStartDateByCategory] = useState<Record<string, Date>>({});
   const hasLoadedTransactions = useRef(false);
   const [autoCalcResult, setAutoCalcResult] = useState<number | null>(null);
 
@@ -183,7 +183,7 @@ export default function EssentialExpensesPage() {
       const snapshot = await getDocs(txRef);
       const currentWeekSpent: Record<string, number> = {};
       const allTimeSpent: Record<string, number> = {};
-      let earliestDate: Date | null = null;
+      const earliestByCategory: Record<string, Date> = {};
 
       snapshot.forEach((d) => {
         const data = d.data();
@@ -204,9 +204,9 @@ export default function EssentialExpensesPage() {
         // All-time net spent for carryover
         allTimeSpent[cat] = (allTimeSpent[cat] || 0) + amt;
 
-        // Track earliest transaction for budget start date
-        if (!earliestDate || txDate < earliestDate) {
-          earliestDate = txDate;
+        // Track earliest transaction per category
+        if (!earliestByCategory[cat] || txDate < earliestByCategory[cat]) {
+          earliestByCategory[cat] = txDate;
         }
 
         // Current week net spent
@@ -217,7 +217,7 @@ export default function EssentialExpensesPage() {
 
       setWeeklySpentByCategory(currentWeekSpent);
       setAllTimeSpentByCategory(allTimeSpent);
-      if (earliestDate) setBudgetStartDate(earliestDate);
+      setBudgetStartDateByCategory(earliestByCategory);
       hasLoadedTransactions.current = true;
     } catch (error) {
       console.error('Error loading weekly transactions:', error);
@@ -366,8 +366,10 @@ export default function EssentialExpensesPage() {
         const weeklyAmount = getWeeklyAmount(expense.amount, expense.frequency);
         const startDay = userProfile?.startDayOfWeek || 'Sunday';
         const wsOn = dayIndexMap[startDay];
-        const totalSpent = allTimeSpentByCategory[expense.description ? `${expense.category} - ${expense.description}` : expense.category] || 0;
-        const available = calculateAvailable(weeklyAmount, totalSpent, budgetStartDate, wsOn);
+        const displayName = expense.description ? `${expense.category} - ${expense.description}` : expense.category;
+        const totalSpent = allTimeSpentByCategory[displayName] || 0;
+        const catStart = budgetStartDateByCategory[displayName] || new Date();
+        const available = calculateAvailable(weeklyAmount, totalSpent, catStart, wsOn);
 
         // If there's a positive available balance, move it to Unassigned Income
         if (available > 0) {
@@ -470,13 +472,15 @@ export default function EssentialExpensesPage() {
     const wsOn = dayIndexMap[startDay];
     const overBudget = expenses.reduce((total, expense) => {
       const wkAmt = getWeeklyAmount(expense.amount, expense.frequency);
-      const totalSpent = allTimeSpentByCategory[expense.description ? `${expense.category} - ${expense.description}` : expense.category] || 0;
-      const avail = calculateAvailable(wkAmt, totalSpent, budgetStartDate, wsOn);
+      const dn = expense.description ? `${expense.category} - ${expense.description}` : expense.category;
+      const totalSpent = allTimeSpentByCategory[dn] || 0;
+      const catStart = budgetStartDateByCategory[dn] || new Date();
+      const avail = calculateAvailable(wkAmt, totalSpent, catStart, wsOn);
       return total + (avail < 0 ? Math.abs(avail) : 0);
     }, 0);
 
     return { weeklyTotal: weekly, overBudgetTotal: overBudget };
-  }, [expenses, allTimeSpentByCategory, budgetStartDate, userProfile]);
+  }, [expenses, allTimeSpentByCategory, budgetStartDateByCategory, userProfile]);
 
   // Sort expenses alphabetically by category then description
   const sortedExpenses = useMemo(() => {
@@ -563,8 +567,10 @@ export default function EssentialExpensesPage() {
                   const weeklyAmount = getWeeklyAmount(expense.amount, expense.frequency);
                   const startDay = userProfile?.startDayOfWeek || 'Sunday';
                   const wsOn = dayIndexMap[startDay];
-                  const totalSpent = allTimeSpentByCategory[expense.description ? `${expense.category} - ${expense.description}` : expense.category] || 0;
-                  const amountAvailable = calculateAvailable(weeklyAmount, totalSpent, budgetStartDate, wsOn);
+                  const dn = expense.description ? `${expense.category} - ${expense.description}` : expense.category;
+                  const totalSpent = allTimeSpentByCategory[dn] || 0;
+                  const catStart = budgetStartDateByCategory[dn] || new Date();
+                  const amountAvailable = calculateAvailable(weeklyAmount, totalSpent, catStart, wsOn);
 
                   return (
                     <div
