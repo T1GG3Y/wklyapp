@@ -312,7 +312,9 @@ export default function LoansPage() {
         if (formState.payoffDate && paymentAmount > 0) {
           const weeklyAmount = getWeeklyAmount(paymentAmount, formState.frequency);
           const weeksUntilDue = Math.max(1, differenceInWeeks(formState.payoffDate, new Date()) + 1);
-          const budgetWillAccumulate = weeklyAmount * weeksUntilDue;
+          // Subtract an extra week because calculateAvailable always includes
+          // the current week's budget (weeksElapsed starts at 1)
+          const budgetWillAccumulate = weeklyAmount * (weeksUntilDue + 1);
           const initialSeed = paymentAmount - budgetWillAccumulate;
 
           if (initialSeed > 0) {

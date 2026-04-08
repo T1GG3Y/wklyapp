@@ -328,7 +328,9 @@ export default function EssentialExpensesPage() {
         if (formState.dueDate) {
           const weeklyAmount = getWeeklyAmount(expenseAmount, formState.frequency);
           const weeksUntilDue = Math.max(1, differenceInWeeks(formState.dueDate, new Date()) + 1);
-          const budgetWillAccumulate = weeklyAmount * weeksUntilDue;
+          // Subtract an extra week because calculateAvailable always includes
+          // the current week's budget (weeksElapsed starts at 1)
+          const budgetWillAccumulate = weeklyAmount * (weeksUntilDue + 1);
           const initialSeed = expenseAmount - budgetWillAccumulate;
 
           if (initialSeed > 0) {

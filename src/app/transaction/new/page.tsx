@@ -920,7 +920,7 @@ export default function NewTransactionScreen() {
             const weeklyAmount = getWeeklyAmount(expense.amount, expense.frequency || 'Monthly');
             const dueDate = parseISO(expense.dueDate);
             const weeksUntilDue = Math.max(1, differenceInWeeks(dueDate, new Date()) + 1);
-            const budgetWillAccumulate = weeklyAmount * weeksUntilDue;
+            const budgetWillAccumulate = weeklyAmount * (weeksUntilDue + 1);
             const initialSeed = expense.amount - budgetWillAccumulate;
 
             if (initialSeed > 0) {
@@ -948,7 +948,7 @@ export default function NewTransactionScreen() {
             const weeklyAmount = getWeeklyAmount(expense.plannedAmount, expense.frequency || 'Weekly');
             const dueDate = parseISO(expense.dueDate);
             const weeksUntilDue = Math.max(1, differenceInWeeks(dueDate, new Date()) + 1);
-            const budgetWillAccumulate = weeklyAmount * weeksUntilDue;
+            const budgetWillAccumulate = weeklyAmount * (weeksUntilDue + 1);
             const initialSeed = expense.plannedAmount - budgetWillAccumulate;
 
             if (initialSeed > 0) {
