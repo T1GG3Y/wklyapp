@@ -153,8 +153,8 @@ export const CATEGORY_HELP: Record<string, string> = {
 // Page Help Text
 export const PAGE_HELP = {
   income: 'Income is the amount that you receive in the paycheck (net). This will be after the company has removed taxes, insurance contributions, etc.',
-  essentialExpenses: 'These are expenses required to sustain life.',
-  discretionaryExpenses: 'These are expenses that make life nicer.',
+  essentialExpenses: 'These are expenses required to sustain life. If the category is in My Loans do not list it here to avoid double counting.',
+  discretionaryExpenses: 'These are expenses that make life nicer. If the category is in My Loans do not list it here to avoid double counting.',
   loans: 'This includes anything you have owing and are making payments on.',
   savings: 'Put money aside so you can pay cash and avoid paying interest.',
 };
