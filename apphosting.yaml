@@ -5,13 +5,3 @@ runConfig:
   # Increase this value if you'd like to automatically spin up
   # more instances in response to increased traffic.
   maxInstances: 1
-
-env:
-  - variable: PLAID_CLIENT_ID
-    value: 695c4379a204c70020047076
-  - variable: PLAID_ENV
-    value: sandbox
-  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    value: studio-8976664643-fedc8
-  - variable: PLAID_SECRET
-    secret: plaid-secret
