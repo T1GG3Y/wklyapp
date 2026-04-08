@@ -1,0 +1,270 @@
+# Consumer Consent Procedures
+
+**Document Owner:** James Bachmeier, CEO
+**Contact:** thetiger@alumni.stanford.edu
+**Effective Date:** January 2025
+**Last Review Date:** January 2025
+**Next Review Date:** July 2025
+
+---
+
+## 1. Purpose
+
+This document describes how Wkly ("the Company") obtains, records, and manages consumer consent for the collection, processing, and storage of their data, particularly financial data accessed through Plaid.
+
+## 2. Consent Principles
+
+### 2.1 Informed Consent
+
+Consumers are provided with clear, understandable information about:
+- What data is collected
+- Why data is collected
+- How data is used
+- Who data is shared with
+- How long data is retained
+- Their rights regarding their data
+
+### 2.2 Freely Given
+
+- Consent is not a condition for basic service access
+- Consumers can withdraw consent at any time
+- No penalty for withdrawing consent beyond loss of related features
+
+### 2.3 Specific
+
+- Consent is obtained for specific purposes
+- Separate consent for materially different uses
+- No bundled consent that obscures specific uses
+
+### 2.4 Unambiguous
+
+- Clear affirmative action required (not pre-checked boxes)
+- Plain language, not legal jargon
+- Consent mechanism clearly distinguishable
+
+## 3. Consent Collection Points
+
+### 3.1 Account Registration
+
+**When:** Consumer creates an account
+
+**Consent Obtained For:**
+- Collection of account information (name, email, phone)
+- Processing for service provision
+- Communication for service updates and support
+
+**Mechanism:**
+- Privacy Policy link displayed
+- Checkbox: "I have read and agree to the [Privacy Policy]"
+- Account cannot be created without affirmative consent
+
+**Record Captured:**
+- Timestamp
+- IP address
+- Version of Privacy Policy accepted
+- Device information
+
+### 3.2 Financial Account Connection (Plaid Link)
+
+**When:** Consumer connects a financial institution through Plaid Link
+
+**Consent Obtained For:**
+- Access to financial account information
+- Access to transaction history
+- Ongoing data sync for connected accounts
+- Data sharing between Plaid and Wkly
+
+**Mechanism:**
+1. **Pre-Link Disclosure:**
+   - Clear explanation of what data will be accessed
+   - Purpose of data access explained
+   - Link to full Privacy Policy
+
+2. **Plaid Link Consent:**
+   - Consumer authenticates with financial institution
+   - Plaid's consent screen explains data access
+   - Consumer explicitly authorizes connection
+
+3. **Post-Link Confirmation:**
+   - Confirmation screen showing connected accounts
+   - Reminder of data usage
+   - Option to disconnect at any time
+
+**Record Captured:**
+- Timestamp of connection
+- Institution connected
+- Account types connected
+- Consent version
+- Plaid consent token reference
+
+### 3.3 Consent Update Screen (Example)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│   Connect Your Bank Account                                 │
+│                                                             │
+│   To help you track your spending and manage your budget,   │
+│   Wkly needs to connect to your bank account.               │
+│                                                             │
+│   We will access:                                           │
+│   • Account balances                                        │
+│   • Transaction history (last 24 months)                    │
+│   • Account and routing numbers (for identification only)   │
+│                                                             │
+│   We will use this data to:                                 │
+│   • Display your balances and transactions                  │
+│   • Categorize your spending                                │
+│   • Provide budgeting insights                              │
+│                                                             │
+│   We will NOT:                                              │
+│   • Share your data with third parties for marketing        │
+│   • Sell your financial data                                │
+│   • Access your accounts without your permission            │
+│                                                             │
+│   You can disconnect your account at any time in Settings.  │
+│                                                             │
+│   [Privacy Policy]  [Learn More About Plaid]                │
+│                                                             │
+│            [Connect Bank Account]                           │
+│                                                             │
+│                    [Cancel]                                 │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 3.4 Marketing Communications (If Applicable)
+
+**When:** Consumer opts in to marketing communications
+
+**Consent Obtained For:**
+- Promotional emails
+- Product updates and announcements
+
+**Mechanism:**
+- Separate, unchecked checkbox
+- Clear description of communication types
+- Not required for service
+
+**Record Captured:**
+- Timestamp
+- Communication types selected
+- Consent version
+
+## 4. Consent Management
+
+### 4.1 Consumer Access to Consent
+
+Consumers can view and manage their consent through:
+- **Settings > Privacy** in the App
+- Requesting consent records via email
+
+### 4.2 Modifying Consent
+
+Consumers can:
+- Disconnect financial accounts (revokes Plaid data access)
+- Opt out of marketing communications
+- Request deletion of data collected under consent
+
+### 4.3 Withdrawing Consent
+
+**Process:**
+1. Consumer initiates withdrawal (app settings or written request)
+2. Company acknowledges within 48 hours
+3. Consent-dependent processing stops immediately
+4. Related data deleted per retention policy
+5. Confirmation sent to consumer
+
+**Impact:**
+- Disconnecting financial accounts removes linked account features
+- Full consent withdrawal may require account deletion
+
+## 5. Consent for Minors
+
+- Service is not intended for users under 18
+- Age verification at registration
+- Accounts of users discovered to be under 18 are suspended
+
+## 6. Record Keeping
+
+### 6.1 Consent Records
+
+For each consent, the following is recorded and retained:
+- Consumer identifier
+- Timestamp (UTC)
+- Type of consent
+- Version of applicable policy/disclosure
+- Method of consent (checkbox, button click, etc.)
+- IP address and device information
+- Any modifications or withdrawals
+
+### 6.2 Retention
+
+Consent records are retained for:
+- Duration of account relationship
+- Plus 7 years after account closure (for legal compliance)
+
+### 6.3 Audit Trail
+
+Consent records are:
+- Immutable (append-only modifications)
+- Available for regulatory audit
+- Backed up securely
+
+## 7. Re-Consent Requirements
+
+Re-consent is required when:
+- Material changes to Privacy Policy
+- New data uses not covered by original consent
+- Regulatory requirements change
+- Significant changes to Plaid integration
+
+**Re-Consent Process:**
+1. Consumer notified of changes
+2. Updated disclosure presented
+3. Affirmative consent required to continue
+4. Grace period for review (if applicable)
+5. Service limited if consent not renewed
+
+## 8. Third-Party Consent (Plaid)
+
+### 8.1 Plaid's Role
+
+Plaid acts as an intermediary for financial data:
+- Plaid obtains direct consent through Plaid Link
+- Plaid maintains its own consent records
+- Consumer can revoke Plaid access through financial institution
+
+### 8.2 Our Obligations
+
+We ensure:
+- Plaid Link consent flow is not modified
+- Consumer sees Plaid's consent disclosures
+- We honor Plaid's consent requirements
+- We respond to Plaid consent revocation signals
+
+## 9. Compliance
+
+This consent framework is designed to comply with:
+- California Consumer Privacy Act (CCPA)
+- Other U.S. state privacy laws
+- Plaid's developer requirements
+- Industry best practices
+
+## 10. Related Documents
+
+- Privacy Policy
+- Data Retention and Deletion Policy
+- Information Security Policy
+
+---
+
+**Document History**
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | January 2025 | James Bachmeier | Initial document creation |
+
+---
+
+*For questions about consent or to exercise your privacy rights, contact: thetiger@alumni.stanford.edu*

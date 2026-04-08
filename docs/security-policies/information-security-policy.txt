@@ -1,0 +1,188 @@
+# Information Security Policy
+
+**Document Owner:** James Bachmeier, CEO
+**Contact:** thetiger@alumni.stanford.edu
+**Effective Date:** January 2025
+**Last Review Date:** January 2025
+**Next Review Date:** July 2025
+
+---
+
+## 1. Purpose
+
+This Information Security Policy establishes the framework for protecting the confidentiality, integrity, and availability of information assets at Wkly ("the Company"). This policy applies to all employees, contractors, and third parties who access company systems and data.
+
+## 2. Scope
+
+This policy covers:
+- All information systems, applications, and infrastructure
+- All data processed, stored, or transmitted by the Company
+- All personnel with access to company systems
+- Third-party service providers and partners
+
+## 3. Information Security Governance
+
+### 3.1 Roles and Responsibilities
+
+**Information Security Lead:** James Bachmeier (CEO)
+- Overall accountability for information security
+- Approval of security policies and procedures
+- Resource allocation for security initiatives
+- Contact: thetiger@alumni.stanford.edu
+
+### 3.2 Security Program Management
+
+The Company maintains an operational information security program that includes:
+- Regular risk assessments (quarterly)
+- Policy review and updates (semi-annually)
+- Security awareness training
+- Incident response procedures
+- Continuous monitoring and improvement
+
+## 4. Risk Management
+
+### 4.1 Risk Assessment
+
+The Company conducts regular risk assessments to:
+- Identify potential threats and vulnerabilities
+- Evaluate the likelihood and impact of security incidents
+- Prioritize risks based on business impact
+- Implement appropriate controls and mitigations
+
+### 4.2 Risk Treatment
+
+Identified risks are addressed through:
+- Risk avoidance
+- Risk mitigation through controls
+- Risk transfer (e.g., insurance, third-party agreements)
+- Risk acceptance with documented justification
+
+## 5. Data Classification
+
+### 5.1 Classification Levels
+
+| Level | Description | Examples |
+|-------|-------------|----------|
+| **Confidential** | Highly sensitive data requiring maximum protection | Consumer financial data, authentication credentials, API keys |
+| **Internal** | Business information for internal use | Internal communications, business plans |
+| **Public** | Information approved for public release | Marketing materials, public documentation |
+
+### 5.2 Handling Requirements
+
+**Confidential Data:**
+- Encrypted at rest and in transit
+- Access restricted to authorized personnel only
+- Logging of all access attempts
+- Secure deletion when no longer needed
+
+## 6. Security Controls
+
+### 6.1 Technical Controls
+
+- **Encryption:** TLS 1.2+ for data in transit; AES-256 for data at rest
+- **Authentication:** Multi-factor authentication for all critical systems
+- **Access Control:** Role-based access control (RBAC) with least privilege principle
+- **Monitoring:** Continuous logging and monitoring of security events
+- **Vulnerability Management:** Regular scanning and patching
+
+### 6.2 Administrative Controls
+
+- Security policies and procedures
+- Employee security training
+- Background checks for personnel with access to sensitive data
+- Vendor security assessments
+
+### 6.3 Physical Controls
+
+- Secure hosting with SOC 2 certified cloud providers
+- Access controls to physical facilities (if applicable)
+
+## 7. Incident Response
+
+### 7.1 Incident Classification
+
+| Severity | Description | Response Time |
+|----------|-------------|---------------|
+| Critical | Active breach, data exfiltration | Immediate |
+| High | Potential breach, system compromise | Within 1 hour |
+| Medium | Suspicious activity, policy violations | Within 4 hours |
+| Low | Minor security events | Within 24 hours |
+
+### 7.2 Incident Response Process
+
+1. **Detection:** Identify and report security incidents
+2. **Analysis:** Assess scope and impact
+3. **Containment:** Limit damage and prevent spread
+4. **Eradication:** Remove threat and root cause
+5. **Recovery:** Restore systems to normal operation
+6. **Lessons Learned:** Document and improve processes
+
+### 7.3 Breach Notification
+
+In the event of a data breach involving consumer financial data:
+- Affected consumers will be notified within 72 hours
+- Regulatory bodies will be notified as required by law
+- Partners (including Plaid) will be notified per contractual obligations
+
+## 8. Third-Party Security
+
+### 8.1 Vendor Assessment
+
+All third-party vendors with access to sensitive data must:
+- Demonstrate appropriate security controls
+- Provide evidence of compliance (SOC 2, ISO 27001, etc.)
+- Sign data processing agreements
+- Undergo periodic security reviews
+
+### 8.2 Data Processing Agreements
+
+Contracts with third parties include:
+- Data protection requirements
+- Security incident notification obligations
+- Audit rights
+- Data return/deletion requirements
+
+## 9. Compliance
+
+The Company maintains compliance with:
+- Applicable data protection regulations (CCPA, state privacy laws)
+- Industry standards and best practices
+- Contractual obligations with partners and customers
+- Plaid's data security requirements
+
+## 10. Policy Enforcement
+
+### 10.1 Violations
+
+Violations of this policy may result in:
+- Disciplinary action up to and including termination
+- Legal action if warranted
+- Reporting to regulatory authorities if required
+
+### 10.2 Exceptions
+
+Exceptions to this policy require:
+- Written justification
+- Risk assessment
+- Approval by the Information Security Lead
+- Compensating controls where applicable
+
+## 11. Policy Review
+
+This policy is reviewed:
+- Semi-annually or after significant changes
+- Following security incidents
+- When new threats or vulnerabilities emerge
+- Upon regulatory or business requirement changes
+
+---
+
+**Document History**
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | January 2025 | James Bachmeier | Initial policy creation |
+
+---
+
+*For questions about this policy, contact: thetiger@alumni.stanford.edu*

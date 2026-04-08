@@ -1,0 +1,6 @@
+# SDK location - update this path after installing SDK via Android Studio
+# On macOS, typically: /Users/<username>/Library/Android/sdk
+# On Windows, typically: C:\\Users\\<username>\\AppData\\Local\\Android\\Sdk
+# On Linux, typically: /home/<username>/Android/Sdk
+
+sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk

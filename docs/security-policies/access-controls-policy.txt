@@ -1,0 +1,253 @@
+# Access Controls Policy
+
+**Document Owner:** James Bachmeier, CEO
+**Contact:** thetiger@alumni.stanford.edu
+**Effective Date:** January 2025
+**Last Review Date:** January 2025
+**Next Review Date:** July 2025
+
+---
+
+## 1. Purpose
+
+This Access Controls Policy establishes requirements for managing access to Wkly's ("the Company") production assets, systems, and sensitive data. The policy ensures that only authorized individuals have appropriate access based on their job responsibilities.
+
+## 2. Scope
+
+This policy applies to:
+- All production systems and infrastructure
+- All applications processing consumer data
+- Cloud services and platforms (Vercel, Firebase/Google Cloud, etc.)
+- Third-party integrations (including Plaid)
+- All employees, contractors, and third parties requiring access
+
+## 3. Access Control Principles
+
+### 3.1 Least Privilege
+
+Users are granted the minimum level of access necessary to perform their job functions. Access rights are:
+- Based on job role and responsibilities
+- Limited to specific systems and data required
+- Regularly reviewed and adjusted as roles change
+
+### 3.2 Separation of Duties
+
+Critical functions are separated to prevent fraud and errors:
+- Development and production access are segregated
+- Code deployment requires peer review
+- Administrative functions require approval
+
+### 3.3 Need-to-Know
+
+Access to sensitive data is restricted to personnel who require it for legitimate business purposes.
+
+## 4. Access Management Procedures
+
+### 4.1 Account Provisioning
+
+**New User Access:**
+1. Manager submits access request specifying required systems and permissions
+2. Request reviewed against job role requirements
+3. Access provisioned following approval
+4. User acknowledges security policies before access granted
+
+**Contractor/Third-Party Access:**
+1. Business justification documented
+2. Access limited to project duration
+3. NDA and security acknowledgment required
+4. Sponsor assigned to monitor access
+
+### 4.2 Account Modification
+
+Access changes are processed when:
+- User changes roles or responsibilities
+- Project requirements change
+- Manager requests modification
+- Periodic review identifies excessive access
+
+### 4.3 Account Deprovisioning
+
+Access is revoked:
+- **Immediately** upon termination (voluntary or involuntary)
+- **Within 24 hours** of role change (excess permissions removed)
+- **Upon project completion** for contractors
+- **Upon contract termination** for third parties
+
+### 4.4 Emergency Access
+
+Emergency access procedures:
+1. Documented request with business justification
+2. Approval from CEO or designated alternate
+3. Time-limited access (maximum 24 hours)
+4. Full audit logging of all actions
+5. Post-incident review and access removal
+
+## 5. Authentication Requirements
+
+### 5.1 Password Policy
+
+| Requirement | Standard |
+|-------------|----------|
+| Minimum Length | 12 characters |
+| Complexity | Mixed case, numbers, special characters |
+| Expiration | 90 days for privileged accounts |
+| History | Cannot reuse last 12 passwords |
+| Lockout | After 5 failed attempts |
+
+### 5.2 Multi-Factor Authentication (MFA)
+
+**Required for:**
+- All production system access
+- Cloud provider consoles (Vercel, Firebase/Google Cloud)
+- Source code repositories (GitHub)
+- Third-party services with access to consumer data
+- Administrative and privileged access
+- Remote access and VPN
+
+**Acceptable MFA Methods:**
+- Hardware security keys (preferred)
+- Authenticator apps (Google Authenticator, Authy)
+- Push notifications from verified devices
+
+**Not Acceptable for Privileged Access:**
+- SMS-based authentication (acceptable for consumer MFA only)
+- Email-based codes for administrative systems
+
+### 5.3 Consumer Authentication
+
+Consumers accessing the application are required to authenticate using:
+- Email/password with MFA enrollment encouraged
+- SMS or email-based MFA for account recovery
+- Session tokens with appropriate expiration
+
+## 6. Authorization Controls
+
+### 6.1 Role-Based Access Control (RBAC)
+
+Access is managed through defined roles:
+
+| Role | Description | Access Level |
+|------|-------------|--------------|
+| Administrator | Full system access | Read/Write/Admin |
+| Developer | Development environment access | Read/Write (non-prod) |
+| Operator | Production monitoring | Read-only |
+| Support | Customer support functions | Limited Read |
+
+### 6.2 Production Access Restrictions
+
+Production environment access is:
+- Limited to essential personnel only
+- Logged and monitored
+- Requires MFA for every session
+- Time-limited where possible
+- Subject to regular audit
+
+### 6.3 Consumer Data Access
+
+Access to consumer financial data (including data from Plaid):
+- Restricted to systems requiring it for functionality
+- Personnel access requires documented business need
+- All access logged with user identification
+- Bulk data exports require approval
+
+## 7. Access Reviews and Audits
+
+### 7.1 Periodic Access Reviews
+
+| Review Type | Frequency | Scope |
+|-------------|-----------|-------|
+| User Access Review | Quarterly | All users |
+| Privileged Access Review | Monthly | Admin/elevated accounts |
+| Third-Party Access Review | Quarterly | Vendors and contractors |
+| Service Account Review | Quarterly | System/service accounts |
+
+### 7.2 Review Process
+
+1. Generate current access reports
+2. Managers verify access appropriateness
+3. Identify and remove excessive permissions
+4. Document review completion and changes
+5. Escalate unresolved issues
+
+### 7.3 Audit Logging
+
+All access-related events are logged:
+- Authentication attempts (success and failure)
+- Authorization decisions
+- Privilege escalation
+- Access to sensitive data
+- Administrative actions
+
+Logs are:
+- Retained for minimum 1 year
+- Protected from unauthorized modification
+- Reviewed for anomalies regularly
+
+## 8. Technical Access Controls
+
+### 8.1 Network Access
+
+- Production systems isolated in secure network segments
+- Firewall rules restrict traffic to necessary ports/protocols
+- No direct public access to databases or internal services
+- VPN or bastion hosts required for administrative access
+
+### 8.2 API Access
+
+- API keys and tokens managed securely
+- Keys rotated periodically (minimum annually)
+- Scoped to minimum required permissions
+- Revoked immediately when compromised
+
+### 8.3 Database Access
+
+- Direct database access restricted to essential personnel
+- Application access through service accounts with limited privileges
+- Query logging enabled for audit purposes
+- Sensitive fields encrypted at the database level
+
+## 9. Physical Access (Cloud Infrastructure)
+
+The Company uses cloud infrastructure providers with:
+- SOC 2 Type II certification
+- Physical access controls to data centers
+- 24/7 security monitoring
+- Environmental controls
+
+## 10. Compliance and Enforcement
+
+### 10.1 Policy Violations
+
+Violations may result in:
+- Immediate access revocation
+- Disciplinary action
+- Termination
+- Legal action if warranted
+
+### 10.2 Exception Process
+
+Exceptions require:
+- Written business justification
+- Risk assessment and compensating controls
+- CEO approval
+- Time-limited duration with review date
+- Documentation in exception register
+
+## 11. Related Documents
+
+- Information Security Policy
+- Data Retention and Deletion Policy
+- Privacy Policy
+- Incident Response Procedures
+
+---
+
+**Document History**
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | January 2025 | James Bachmeier | Initial policy creation |
+
+---
+
+*For questions about this policy, contact: thetiger@alumni.stanford.edu*

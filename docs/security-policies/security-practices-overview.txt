@@ -1,0 +1,234 @@
+# Security Practices Overview
+
+**Plaid Security Questionnaire Reference**
+**Company:** Wkly
+**Prepared By:** James Bachmeier, CEO
+**Contact:** thetiger@alumni.stanford.edu
+**Date:** January 2025
+
+---
+
+This document provides an overview of Wkly's security practices in response to Plaid's Security Questionnaire requirements.
+
+## Governance and Risk Management
+
+### Question 1: Information Security Contact
+
+**Resource Responsible for Information Security:**
+- **Name:** James Bachmeier
+- **Title:** CEO
+- **Email:** thetiger@alumni.stanford.edu
+
+### Question 2: Information Security Policy
+
+**Answer:** Yes - We have a documented policy, procedures, and an operational information security program that is continuously matured.
+
+**Documentation:** See `information-security-policy.md`
+
+**Summary:**
+- Documented Information Security Policy in place
+- Risk assessments conducted quarterly
+- Policy reviewed semi-annually
+- Continuous monitoring and improvement processes
+- Incident response procedures defined
+
+---
+
+## Identity and Access Management
+
+### Question 3: Access Controls
+
+**Answer:**
+- A defined and documented access control policy is in place
+- Periodic access reviews and audits are performed
+
+**Documentation:** See `access-controls-policy.md`
+
+**Summary:**
+- Role-Based Access Control (RBAC) implemented
+- Least privilege principle enforced
+- Quarterly access reviews for all users
+- Monthly reviews for privileged accounts
+- Access logging and monitoring enabled
+
+### Question 4: Consumer MFA (Before Plaid Link)
+
+**Answer:** Yes - Non-phishing-resistant multi-factor authentication is performed (e.g., SMS, email)
+
+**Implementation:**
+- Consumers authenticate with email/password before accessing Plaid Link
+- MFA options include:
+  - SMS verification codes
+  - Email verification codes
+- MFA triggered for:
+  - New device logins
+  - Account recovery
+  - Sensitive actions
+
+**Screenshot:** [You will need to provide an actual screenshot of your app's MFA flow]
+
+### Question 5: MFA for Critical Systems (Consumer Financial Data)
+
+**Answer:** Yes - MFA is required for all access to critical systems
+
+**Implementation:**
+- All production system access requires MFA
+- Cloud console access (Vercel, Firebase/Google Cloud) requires MFA
+- GitHub repository access requires MFA
+- Database access requires MFA
+- MFA methods: Authenticator apps, hardware keys
+
+---
+
+## Infrastructure and Network Security
+
+### Question 6: TLS 1.2+ Encryption in Transit
+
+**Answer:** Yes
+
+**Implementation:**
+- All client-server communication uses TLS 1.2 or higher
+- HTTPS enforced on all endpoints (no HTTP fallback)
+- Vercel provides automatic TLS certificate management
+- Firebase/Firestore connections use TLS encryption
+- API endpoints enforce TLS 1.2 minimum
+
+**Technical Details:**
+- Frontend hosted on Vercel with automatic HTTPS
+- Firebase/Firestore connections use SSL/TLS
+- Firebase Authentication uses secure HTTPS endpoints
+- Plaid API communication uses TLS 1.3
+- HSTS headers enabled
+
+### Question 7: Encryption at Rest
+
+**Answer:** Yes
+
+**Implementation:**
+- Database encryption: Firebase/Firestore uses AES-256 encryption at rest by default
+- All consumer financial data encrypted at the database level
+- Backup encryption enabled
+- Encryption keys managed by Google Cloud with SOC 2 compliance
+
+**Technical Details:**
+- Firestore: Data encrypted at rest using AES-256 (Google default encryption)
+- Firebase Authentication: Credentials securely hashed and stored
+- Vercel: No persistent consumer data stored
+- API keys and secrets: Encrypted in environment variables
+
+---
+
+## Development and Vulnerability Management
+
+### Question 8: Vulnerability Scanning
+
+**Answer:** Yes - We perform vulnerability scanning
+
+**Practices in Place:**
+- Dependency vulnerability scanning (npm audit, Dependabot)
+- Code security scanning in CI/CD pipeline
+- Regular review of security advisories
+- Prompt patching of identified vulnerabilities
+
+**Details:**
+- GitHub Dependabot alerts enabled for dependency vulnerabilities
+- npm audit run as part of build process
+- Critical vulnerabilities addressed within 24-48 hours
+- High vulnerabilities addressed within 1 week
+
+---
+
+## Privacy
+
+### Question 9: Privacy Policy
+
+**Answer:** Yes - Privacy policy is in place
+
+**Documentation:** See `privacy-policy.md`
+
+**Link:** https://studio--studio-8976664643-fedc8.us-central1.hosted.app/privacy
+
+**Summary:**
+- Comprehensive privacy policy covering:
+  - Data collection practices
+  - Use of Plaid for financial data
+  - Data sharing and third parties
+  - Consumer rights
+  - Data retention
+  - Contact information
+
+### Question 10: Consumer Consent
+
+**Answer:** Yes - We obtain consent from consumers
+
+**Documentation:** See `consumer-consent-procedures.md`
+
+**Implementation:**
+- Consent obtained at account registration
+- Explicit consent before Plaid Link connection
+- Clear disclosure of data collection and usage
+- Consumers can withdraw consent at any time
+- Consent records maintained with timestamps
+
+**Consent Points:**
+1. Account registration: Privacy Policy acceptance required
+2. Financial account connection: Pre-Link disclosure + Plaid consent flow
+3. Marketing (optional): Separate opt-in consent
+
+### Question 11: Data Deletion and Retention Policy
+
+**Answer:** Yes - We have a defined and enforced policy that is reviewed periodically
+
+**Documentation:** See `data-retention-deletion-policy.md`
+
+**Summary:**
+- Retention periods defined by data category
+- Consumer data deleted within 30 days of account deletion
+- Policy reviewed semi-annually
+- Consumer deletion requests honored within 30 days
+- Compliant with CCPA and applicable state laws
+
+---
+
+## Documentation Files Included
+
+| File | Purpose |
+|------|---------|
+| `information-security-policy.md` | Q1, Q2 - Security governance and policy |
+| `access-controls-policy.md` | Q3, Q5 - Access control procedures |
+| `privacy-policy.md` | Q9 - Consumer-facing privacy policy |
+| `consumer-consent-procedures.md` | Q10 - Consent collection and management |
+| `data-retention-deletion-policy.md` | Q11 - Data lifecycle management |
+| `security-practices-overview.md` | This summary document |
+
+---
+
+## Items Requiring Your Action
+
+1. **MFA Screenshot (Q4):** Capture a screenshot showing your app's MFA implementation before Plaid Link is displayed
+
+2. **Privacy Policy URL (Q9):** Publish the privacy policy and provide the URL
+
+3. **Review & Customize:** Review all documents and customize company-specific details as needed
+
+---
+
+## Questionnaire Response Summary
+
+| Question | Response | Documentation |
+|----------|----------|---------------|
+| Q1: Security Contact | James Bachmeier, CEO, thetiger@alumni.stanford.edu | N/A |
+| Q2: Security Policy | Yes - Documented and operational | information-security-policy.md |
+| Q3: Access Controls | Policy + Periodic reviews | access-controls-policy.md |
+| Q4: Consumer MFA | Yes - SMS/Email MFA | [Screenshot needed] |
+| Q5: System MFA | Yes - MFA required | access-controls-policy.md |
+| Q6: TLS 1.2+ | Yes | This document |
+| Q7: Encryption at Rest | Yes - AES-256 | This document |
+| Q8: Vulnerability Scanning | Yes | This document |
+| Q9: Privacy Policy | Yes | privacy-policy.md + URL |
+| Q10: Consumer Consent | Yes | consumer-consent-procedures.md |
+| Q11: Data Retention/Deletion | Yes - Defined and reviewed | data-retention-deletion-policy.md |
+
+---
+
+*For questions, contact: thetiger@alumni.stanford.edu*

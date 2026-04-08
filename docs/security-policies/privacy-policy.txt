@@ -1,0 +1,174 @@
+# Privacy Policy
+
+**Effective Date:** January 2025
+**Last Updated:** January 2025
+
+---
+
+## Introduction
+
+Wkly ("we," "us," or "our") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile and web application ("App").
+
+Please read this Privacy Policy carefully. By using the App, you consent to the practices described in this policy.
+
+## Information We Collect
+
+### Information You Provide
+
+- **Account Information:** Name, email address, phone number, and password when you create an account
+- **Profile Information:** Optional information you provide to customize your experience
+- **Communications:** Messages you send to us for support or feedback
+
+### Financial Information via Plaid
+
+When you connect your financial accounts through Plaid, we receive:
+
+- **Account Information:** Account name, type, and current/available balance
+- **Transaction Data:** Transaction history including merchant name, amount, date, and category
+- **Institution Information:** Name of your financial institution
+
+**Important:** We do not receive or store your banking login credentials. Plaid securely handles the connection to your financial institution.
+
+### Information Collected Automatically
+
+- **Device Information:** Device type, operating system, unique device identifiers
+- **Usage Data:** Features used, actions taken within the App
+- **Log Data:** IP address, browser type, access times, pages viewed
+- **Location Data:** General location based on IP address (we do not collect precise GPS location)
+
+## How We Use Your Information
+
+We use the information we collect to:
+
+- **Provide Services:** Display your financial accounts and transactions, track budgets and spending
+- **Personalize Experience:** Customize recommendations and insights based on your financial activity
+- **Improve the App:** Analyze usage patterns to enhance features and fix issues
+- **Communicate:** Send service updates, security alerts, and respond to inquiries
+- **Ensure Security:** Detect and prevent fraud, unauthorized access, and other illegal activities
+- **Comply with Law:** Meet legal obligations and respond to legal requests
+
+## Legal Basis for Processing (Where Applicable)
+
+- **Contract Performance:** Processing necessary to provide our services to you
+- **Legitimate Interests:** Improving services, ensuring security, marketing (where applicable)
+- **Consent:** Where you have given explicit consent for specific processing
+- **Legal Obligation:** Processing required by law
+
+## How We Share Your Information
+
+We do not sell your personal information. We may share information with:
+
+### Service Providers
+
+- **Plaid:** To connect your financial accounts and retrieve financial data
+- **Cloud Providers:** For hosting and infrastructure (e.g., Vercel, Firebase/Google Cloud)
+- **Analytics Providers:** To understand App usage and improve services
+
+### Legal Requirements
+
+We may disclose information if required by law, regulation, legal process, or government request.
+
+### Business Transfers
+
+In connection with a merger, acquisition, or sale of assets, your information may be transferred as part of that transaction.
+
+### With Your Consent
+
+We may share information for other purposes with your explicit consent.
+
+## Data Security
+
+We implement appropriate technical and organizational measures to protect your information:
+
+- **Encryption:** Data is encrypted in transit (TLS 1.2+) and at rest (AES-256)
+- **Access Controls:** Access to data is restricted to authorized personnel only
+- **Authentication:** Multi-factor authentication protects access to systems
+- **Monitoring:** We continuously monitor for security threats and vulnerabilities
+- **Vendor Security:** Third-party providers are vetted for security compliance
+
+## Data Retention
+
+We retain your information for as long as:
+
+- Your account is active
+- Necessary to provide services to you
+- Required by law or for legitimate business purposes
+
+When you delete your account:
+- Personal information is deleted within 30 days
+- Some information may be retained for legal compliance (up to 7 years for financial records)
+- Aggregated, anonymized data may be retained indefinitely
+
+See our Data Retention and Deletion Policy for details.
+
+## Your Rights and Choices
+
+### Access and Portability
+You can access your data through the App or by contacting us.
+
+### Correction
+You can update account information directly in the App.
+
+### Deletion
+You can request deletion of your account and associated data. Some data may be retained for legal compliance.
+
+### Disconnect Financial Accounts
+You can disconnect linked financial accounts at any time through the App settings.
+
+### Marketing Communications
+You can opt out of marketing communications through the App settings or by clicking "unsubscribe" in emails.
+
+### California Residents (CCPA)
+California residents have additional rights:
+- Right to know what personal information is collected
+- Right to delete personal information
+- Right to opt-out of sale (we do not sell personal information)
+- Right to non-discrimination for exercising privacy rights
+
+To exercise these rights, contact us at thetiger@alumni.stanford.edu.
+
+## Children's Privacy
+
+The App is not intended for children under 18. We do not knowingly collect information from children under 18. If we learn we have collected such information, we will delete it.
+
+## Third-Party Links and Services
+
+The App may contain links to third-party websites or services. We are not responsible for the privacy practices of these third parties. We encourage you to review their privacy policies.
+
+## Plaid and Third-Party Financial Services
+
+When you use Plaid to connect financial accounts:
+- Plaid's Privacy Policy governs their collection and use of your data
+- Plaid is certified with SOC 2 Type II and maintains robust security measures
+- You can revoke Plaid's access through your financial institution or the App
+
+For more information, see [Plaid's Privacy Policy](https://plaid.com/legal/#consumers).
+
+## International Data Transfers
+
+Your information may be transferred to and processed in countries other than your own. We ensure appropriate safeguards are in place for such transfers.
+
+## Changes to This Policy
+
+We may update this Privacy Policy from time to time. We will notify you of material changes by:
+- Posting the updated policy in the App
+- Sending an email notification
+- Displaying a prominent notice in the App
+
+Your continued use of the App after changes constitutes acceptance of the updated policy.
+
+## Contact Us
+
+If you have questions about this Privacy Policy or our privacy practices:
+
+**Email:** thetiger@alumni.stanford.edu
+**Address:** [Company Address]
+
+For data protection inquiries or to exercise your privacy rights, contact:
+
+**Data Protection Contact:** James Bachmeier
+**Email:** thetiger@alumni.stanford.edu
+
+---
+
+*This Privacy Policy is designed to comply with applicable privacy laws including the California Consumer Privacy Act (CCPA) and other U.S. state privacy laws.*

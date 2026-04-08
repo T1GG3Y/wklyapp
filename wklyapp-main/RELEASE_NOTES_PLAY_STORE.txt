@@ -1,0 +1,26 @@
+What's New in Version 1.0.8
+
+🚀 Performance Improvements
+• Faster app loading with optimizations
+• 35% smaller app size
+• Better memory management for smoother performance
+
+🔍 Enhanced Discoverability
+• App indexing support for Google Search
+• Deep linking from web searches
+• Better social media sharing previews
+
+📱 User Experience
+• Fixed full-screen display issues
+• Improved Google Sign-In reliability
+• Optimized for modern Android devices
+
+🐛 Bug Fixes
+• Resolved screen width cutoff problems
+• Fixed authentication issues
+• Improved viewport handling
+
+We're constantly working to improve your financial tracking experience. Thank you for using WKLY!
+
+
+

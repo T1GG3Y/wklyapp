@@ -1,0 +1,227 @@
+# Data Retention and Deletion Policy
+
+**Document Owner:** James Bachmeier, CEO
+**Contact:** thetiger@alumni.stanford.edu
+**Effective Date:** January 2025
+**Last Review Date:** January 2025
+**Next Review Date:** July 2025
+
+---
+
+## 1. Purpose
+
+This Data Retention and Deletion Policy establishes requirements for retaining, archiving, and securely deleting data at Wkly ("the Company"). The policy ensures compliance with applicable data privacy laws while meeting legitimate business and legal requirements.
+
+## 2. Scope
+
+This policy applies to:
+- All consumer personal data and financial data
+- Data received from third-party services (including Plaid)
+- Business and operational data
+- System logs and audit trails
+- All data storage systems (databases, backups, file storage)
+
+## 3. Retention Principles
+
+### 3.1 Data Minimization
+
+- Collect only data necessary for specified purposes
+- Retain data only as long as necessary
+- Delete data when retention period expires
+- Anonymize data when full deletion is not feasible
+
+### 3.2 Legal Compliance
+
+Retention periods are determined by:
+- Applicable laws and regulations
+- Contractual obligations
+- Business operational requirements
+- Industry best practices
+
+## 4. Retention Schedule
+
+### 4.1 Consumer Data
+
+| Data Category | Retention Period | Justification |
+|---------------|------------------|---------------|
+| Account Information (name, email, phone) | Duration of account + 30 days | Service provision |
+| Authentication Credentials | Duration of account | Access management |
+| Financial Account Data (from Plaid) | Duration of account + 30 days | Service provision |
+| Transaction Data | Duration of account + 30 days (or 7 years if required for tax/legal) | Service provision / Legal compliance |
+| Session Data | 30 days | Security monitoring |
+| Communication Records | 3 years | Support and dispute resolution |
+
+### 4.2 System and Operational Data
+
+| Data Category | Retention Period | Justification |
+|---------------|------------------|---------------|
+| Application Logs | 1 year | Troubleshooting and security |
+| Security Logs | 1 year | Security monitoring and forensics |
+| Access Logs | 1 year | Audit and compliance |
+| Backup Data | 90 days rolling | Disaster recovery |
+| Analytics Data (aggregated) | 3 years | Business intelligence |
+
+### 4.3 Legal Holds
+
+When litigation, investigation, or audit is anticipated or ongoing:
+- Normal deletion schedules are suspended for relevant data
+- Legal hold notices are issued to affected systems/personnel
+- Data is preserved until hold is released
+- Legal counsel coordinates hold requirements
+
+## 5. Data Deletion Procedures
+
+### 5.1 Routine Deletion
+
+Automated deletion processes:
+1. System identifies data past retention period
+2. Data flagged for deletion review
+3. Deletion executed per schedule
+4. Deletion verified and logged
+
+### 5.2 Consumer Deletion Requests
+
+When a consumer requests account deletion:
+
+**Timeline:**
+- Request acknowledged within 48 hours
+- Deletion completed within 30 days
+- Confirmation sent to consumer
+
+**Process:**
+1. Verify consumer identity
+2. Identify all data associated with account
+3. Check for legal holds or retention requirements
+4. Execute deletion across all systems
+5. Verify deletion in primary and backup systems
+6. Document completion
+
+**Retained Data:**
+Data may be retained beyond deletion request if required for:
+- Legal compliance (tax records, fraud prevention)
+- Active disputes or investigations
+- Anonymized/aggregated analytics (non-identifiable)
+
+Consumer is informed of any retained data and justification.
+
+### 5.3 Secure Deletion Standards
+
+| Storage Type | Deletion Method |
+|--------------|-----------------|
+| Database Records | Hard delete (not soft delete) with verification |
+| File Storage | Secure deletion with overwrite |
+| Backups | Natural expiration per backup rotation schedule |
+| Logs | Automated purge per retention schedule |
+| Physical Media | Secure destruction (if applicable) |
+
+### 5.4 Third-Party Data Deletion
+
+For data shared with third parties:
+- Plaid: Consumers can revoke access directly through Plaid or financial institution
+- Other Providers: Deletion requests forwarded to processors per DPA requirements
+
+## 6. Data from Plaid
+
+### 6.1 Plaid Data Handling
+
+Financial data received through Plaid:
+- Used only for purposes disclosed to consumer
+- Retained per this policy's schedule
+- Deleted when consumer disconnects account or deletes their account
+- Subject to Plaid's data handling requirements
+
+### 6.2 Consumer Control
+
+Consumers can:
+- Disconnect financial accounts at any time through App settings
+- Request deletion of historical transaction data
+- Revoke Plaid access through their financial institution
+
+## 7. Backup and Archive Management
+
+### 7.1 Backup Retention
+
+- **Daily Backups:** Retained 7 days
+- **Weekly Backups:** Retained 4 weeks
+- **Monthly Backups:** Retained 3 months
+
+### 7.2 Backup Deletion
+
+When data must be deleted:
+- Deleted from production systems immediately
+- Naturally expires from backups per rotation schedule
+- For urgent deletion requirements, specific backup restoration and re-deletion may be performed
+
+## 8. Policy Review and Compliance
+
+### 8.1 Periodic Review
+
+This policy is reviewed:
+- Semi-annually
+- When laws or regulations change
+- After significant business changes
+- Following data breaches or incidents
+
+### 8.2 Compliance Monitoring
+
+- Quarterly audit of retention compliance
+- Verification that deletion procedures are executed
+- Documentation of exceptions and justifications
+
+### 8.3 Applicable Laws
+
+This policy is designed to comply with:
+- California Consumer Privacy Act (CCPA)
+- Other U.S. state privacy laws
+- IRS record retention requirements
+- Financial industry regulations
+
+## 9. Consumer Rights
+
+Consumers have the right to:
+
+| Right | Description |
+|-------|-------------|
+| **Access** | Request copy of their data |
+| **Deletion** | Request deletion of their data |
+| **Portability** | Receive data in portable format |
+| **Correction** | Request correction of inaccurate data |
+
+To exercise these rights, consumers can:
+- Use in-app settings
+- Email: thetiger@alumni.stanford.edu
+- Written request to company address
+
+## 10. Exceptions
+
+Exceptions to this policy require:
+- Written business or legal justification
+- Risk assessment
+- Approval from CEO
+- Documentation with review date
+
+## 11. Enforcement
+
+Violations of this policy may result in:
+- Disciplinary action
+- Termination
+- Legal consequences if laws are violated
+
+## 12. Related Documents
+
+- Information Security Policy
+- Access Controls Policy
+- Privacy Policy
+- Incident Response Procedures
+
+---
+
+**Document History**
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | January 2025 | James Bachmeier | Initial policy creation |
+
+---
+
+*For questions about this policy or to submit a data deletion request, contact: thetiger@alumni.stanford.edu*
