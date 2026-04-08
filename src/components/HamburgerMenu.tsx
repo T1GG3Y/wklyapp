@@ -13,6 +13,7 @@ import {
   Plus,
   PieChart,
   User,
+  Link2,
 } from "lucide-react";
 import {
   Sheet,
@@ -33,6 +34,7 @@ const menuItems = [
   { href: "/savings-goals", icon: PiggyBank, label: "Savings Goals" },
   { href: "/transaction/new", icon: Plus, label: "Transactions" },
   { href: "/reports", icon: PieChart, label: "Reports" },
+  { href: "/connected-accounts", icon: Link2, label: "Connected Accounts" },
   { href: "/profile", icon: User, label: "Profile" },
 ];
 
