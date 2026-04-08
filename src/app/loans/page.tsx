@@ -625,7 +625,7 @@ export default function LoansPage() {
 
       {/* Edit Box – My Loan */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent onPointerDownOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Edit Box – My Loan</DialogTitle>
           </DialogHeader>

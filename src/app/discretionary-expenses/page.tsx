@@ -639,7 +639,7 @@ export default function DiscretionaryExpensesPage() {
 
       {/* Edit Box – My Discretionary Expense */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
+        <DialogContent onPointerDownOutside={(e) => e.preventDefault()} onFocusOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Edit Box – My Discretionary Expense</DialogTitle>
           </DialogHeader>
