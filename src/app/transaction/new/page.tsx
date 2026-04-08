@@ -703,11 +703,11 @@ export default function NewTransactionScreen() {
           });
         }
       } else if (isToLoan) {
-        // Loan destination: increment totalBalance (adding to balance/debt payment pool)
+        // Loan destination: decrease totalBalance (paying down the loan)
         const loan = findLoan(toCat);
         if (loan) {
           const loanRef = doc(firestore, `users/${user.uid}/loans`, loan.id);
-          await updateDoc(loanRef, { totalBalance: increment(moveAmt) });
+          await updateDoc(loanRef, { totalBalance: increment(-moveAmt) });
         }
       } else {
         // Essential/Discretionary destination: create Income transaction (increases available)

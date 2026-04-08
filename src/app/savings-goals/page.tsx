@@ -161,6 +161,12 @@ export default function SavingsGoalsPage() {
     return Math.max(0, weeklyIncome - weeklyExpenses - weeklyPlannedSavings);
   }, [weeklyIncome, weeklyExpenses, weeklyPlannedSavings]);
 
+  const unassignedSaved = useMemo(() => {
+    if (!goals) return 0;
+    const incomeBalanceGoal = goals.find(g => g.category === 'Income Balance');
+    return incomeBalanceGoal?.currentAmount || 0;
+  }, [goals]);
+
   const savingsTotals = useMemo(() => {
     if (!goals || goals.length === 0) {
       return { totalTarget: 0, totalSaved: 0, percentSaved: 0 };
@@ -427,7 +433,16 @@ export default function SavingsGoalsPage() {
                   </div>
                   <span className="font-semibold text-foreground">Unassigned Income</span>
                 </div>
-                <p className="text-lg font-bold text-primary">{formatCurrency(incomeBalance)}<span className="text-sm font-normal text-muted-foreground"> / week</span></p>
+                <div className="flex items-center gap-4">
+                  <div>
+                    <span className="text-sm text-muted-foreground">Saved: </span>
+                    <span className="text-lg font-bold text-primary">{formatCurrency(unassignedSaved)}</span>
+                  </div>
+                  <div>
+                    <span className="text-lg font-bold text-primary">{formatCurrency(incomeBalance)}</span>
+                    <span className="text-sm font-normal text-muted-foreground"> / week</span>
+                  </div>
+                </div>
               </div>
 
               {loading ? (
