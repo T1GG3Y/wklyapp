@@ -197,6 +197,10 @@ export default function DashboardScreen() {
   const [budgetStartDateByCategory, setBudgetStartDateByCategory] = useState<Record<string, Date>>({});
   const hasLoadedAccountSummary = useRef(false);
 
+  // Bank balance state (from Plaid connected accounts)
+  const [bankAccounts, setBankAccounts] = useState<{ name: string; mask: string | null; balance: number | null; type: string }[]>([]);
+  const hasLoadedBankBalance = useRef(false);
+
   // Accordion state
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -294,6 +298,35 @@ export default function DashboardScreen() {
   useEffect(() => {
     if (user && firestore) loadAccountSummary();
   }, [user, firestore, loadAccountSummary]);
+
+  // Load bank balances from Plaid (if connected)
+  useEffect(() => {
+    if (!user || hasLoadedBankBalance.current) return;
+    const loadBankBalances = async () => {
+      try {
+        const res = await fetch('/api/plaid/balances', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.uid }),
+        });
+        const data = await res.json();
+        if (data.accounts && data.accounts.length > 0) {
+          setBankAccounts(
+            data.accounts.map((a: any) => ({
+              name: a.name,
+              mask: a.mask,
+              balance: a.balance,
+              type: a.type,
+            }))
+          );
+        }
+        hasLoadedBankBalance.current = true;
+      } catch {
+        // Silently fail — bank balance is optional
+      }
+    };
+    loadBankBalances();
+  }, [user]);
 
   // Account Summary = sum of all Essential/Discretionary Available + all Savings Current Balance Saved
   const accountSummary = useMemo(() => {
@@ -475,6 +508,30 @@ export default function DashboardScreen() {
             <HealthDot isHealthy={savingsHealthy} label="My Savings Goals" />
           </div>
         </div>
+
+        {/* Bank Balance (from connected accounts) */}
+        {bankAccounts.length > 0 && (
+          <div className="bg-card rounded-xl border shadow-sm p-4">
+            <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider text-center mb-3">
+              Bank Balance
+            </h3>
+            <div className="space-y-2">
+              {bankAccounts
+                .filter((a) => a.type === 'depository')
+                .map((account, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      {account.name}
+                      {account.mask && <span> ••{account.mask}</span>}
+                    </span>
+                    <span className="font-bold text-lg">
+                      {account.balance !== null ? formatCurrency(account.balance) : '—'}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
 
         {/* My Budget Plan */}
         <div className="bg-card rounded-xl border shadow-sm p-4">
