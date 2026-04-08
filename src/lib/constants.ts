@@ -91,13 +91,13 @@ export const SAVINGS_CATEGORIES = [
 export const CATEGORY_HELP: Record<string, string> = {
   // Income
   'Salary': 'Regular employment wages or salary.',
-  'Tips': 'Tips, gratuities, and bonuses.',
+  'Tips': 'Tips, gratuities, bonuses, etc. These should typically be identified as "one-time" payments for the frequency.',
   'Freelance': 'Freelance or contract work income.',
   'Side Work': 'Side jobs, gig work, odd jobs, etc.',
   'Bank Transfer': 'Transfers from savings, other accounts, etc.',
   'Investment': 'Dividends, interest, capital gains, etc.',
-  'Refund': 'Tax refunds, rebates, reimbursements, etc.',
-  'Gift': 'Monetary gifts received.',
+  'Refund': 'Tax refunds, rebates, reimbursements, etc. These should typically be identified as "one-time" payments for the frequency.',
+  'Gift': 'Monetary gifts received. These should typically be identified as "one-time" payments for the frequency.',
 
   // Essential
   'Groceries': 'Food, soaps, toiletry etc.',
@@ -133,7 +133,7 @@ export const CATEGORY_HELP: Record<string, string> = {
   'Personal Expenses': 'Personal money that is yours to spend any way you want.',
 
   // Loans
-  'Credit Cards': 'For unpaid credit cards that are no longer being used or the unpaid amount of active used credit cards that interest is being paid on. It is not the current purchases that are budgeted for under the Essential, Discretionary and Loan subcategories.',
+  'Credit Cards': 'Credit card tracking will be available when we connect to your lending institution. If you have identified all of your expense categories, and entered all of your transactions, then they have been accounted for in this budgeting app.',
   'Auto Loan': 'Cars, motorcycles, trailers, boats, etc.',
   'Home Mortgages': 'Primary residence, secondary residence, etc.',
   'Student Loan': 'Federal Loan, Private, Direct consolidation, etc.',

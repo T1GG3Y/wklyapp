@@ -107,6 +107,7 @@ export default function LoansPage() {
   const firestore = useFirestore();
   const [isCategoryPickerOpen, setIsCategoryPickerOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isCreditCardInfoOpen, setIsCreditCardInfoOpen] = useState(false);
   const [loanToEdit, setLoanToEdit] = useState<Loan | null>(null);
   const [allTimeSpentByCategory, setAllTimeSpentByCategory] = useState<Record<string, number>>({});
   const [budgetStartDateByCategory, setBudgetStartDateByCategory] = useState<Record<string, Date>>({});
@@ -226,6 +227,13 @@ export default function LoansPage() {
 
   const handleCategorySelected = (category: string) => {
     setIsCategoryPickerOpen(false);
+
+    // Credit Cards: show info dialog only, do not allow adding
+    if (category === 'Credit Cards') {
+      setIsCreditCardInfoOpen(true);
+      return;
+    }
+
     setLoanToEdit(null);
     setFormState({
       category,
@@ -233,7 +241,7 @@ export default function LoansPage() {
       paymentAmount: '',
       balance: '',
       paidAmount: '',
-      originalLoanAmount: category === 'Credit Cards' ? '0' : '',
+      originalLoanAmount: '',
       interestRate: '',
       frequency: 'Monthly',
       payoffDate: undefined,
@@ -773,6 +781,23 @@ export default function LoansPage() {
                 Cancel
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Credit Card Info Dialog */}
+      <Dialog open={isCreditCardInfoOpen} onOpenChange={setIsCreditCardInfoOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Credit Cards</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground leading-relaxed py-2">
+            {CATEGORY_HELP['Credit Cards']}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreditCardInfoOpen(false)}>
+              OK
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
