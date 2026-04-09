@@ -687,7 +687,6 @@ export default function NewTransactionScreen() {
 
       const isFromSavings = moveFromCategory.startsWith('Savings:');
       const isToSavings = moveToCategory.startsWith('Savings:');
-      const isToLoan = moveToCategory.startsWith('Loan:');
 
       // Helper to find matching savings goal by display name
       const findSavingsGoal = (displayName: string) => {
@@ -697,18 +696,58 @@ export default function NewTransactionScreen() {
         });
       };
 
-      // Helper to find matching loan by display name
-      const findLoan = (displayName: string) => {
-        return (loans || []).find(l => {
-          const dn = l.description ? `${l.category} - ${l.description}` : l.category;
+      // Match expense docs by display name
+      const matchByDisplayName = <T extends { category: string; description?: string }>(
+        items: T[] | null | undefined,
+        displayName: string
+      ) => {
+        return (items || []).find((e) => {
+          const dn = e.description ? `${e.category} - ${e.description}` : e.category;
           return dn === displayName;
         });
       };
 
-      // For Essential/Discretionary: use transactions to track available
-      // For Savings: update currentAmount on the document
-      // For Loans: update totalBalance on the document
+      // ---- Compute source available and prohibit over-move ----
+      let sourceAvailable: number | null = null;
 
+      if (isFromSavings) {
+        if (fromCat === 'Unassigned Income') {
+          const incomeBalanceGoal = (savingsGoals || []).find(g => g.category === 'Income Balance');
+          sourceAvailable = incomeBalanceGoal?.currentAmount || 0;
+        } else {
+          const goal = findSavingsGoal(fromCat);
+          sourceAvailable = goal?.currentAmount || 0;
+        }
+      } else {
+        // Essential/Discretionary source: compute Available from transactions
+        const essential = matchByDisplayName(requiredExpenses, fromCat);
+        const discretionary = matchByDisplayName(discretionaryExpenses, fromCat);
+
+        if (essential) {
+          const weeklyAmount = getWeeklyAmount(essential.amount || 0, essential.frequency || 'Monthly');
+          const { totalSpent, catStart } = await computeCategoryTotals(fromCat);
+          const startDay = userProfile?.startDayOfWeek || 'Sunday';
+          const wsOn = dayIndexMap[startDay];
+          sourceAvailable = calculateAvailable(weeklyAmount, totalSpent, catStart, wsOn);
+        } else if (discretionary) {
+          const weeklyAmount = getWeeklyAmount(discretionary.plannedAmount || 0, discretionary.frequency || 'Weekly');
+          const { totalSpent, catStart } = await computeCategoryTotals(fromCat);
+          const startDay = userProfile?.startDayOfWeek || 'Sunday';
+          const wsOn = dayIndexMap[startDay];
+          sourceAvailable = calculateAvailable(weeklyAmount, totalSpent, catStart, wsOn);
+        }
+      }
+
+      if (sourceAvailable !== null && moveAmt > sourceAvailable + 0.01) {
+        toast({
+          variant: 'destructive',
+          title: 'Insufficient Available',
+          description: `${fromCat} only has ${formatCurrency(Math.max(0, sourceAvailable))} available.`,
+        });
+        return;
+      }
+
+      // ---- Execute the source side ----
       if (isFromSavings) {
         // Savings source: decrement currentAmount on the goal doc
         const goal = findSavingsGoal(fromCat);
@@ -732,6 +771,7 @@ export default function NewTransactionScreen() {
         });
       }
 
+      // ---- Execute the destination side ----
       if (isToSavings) {
         // Savings destination: increment currentAmount on the goal doc
         const goal = findSavingsGoal(toCat);
@@ -746,15 +786,10 @@ export default function NewTransactionScreen() {
             date: toTxTimestamp(), moveGroup,
           });
         }
-      } else if (isToLoan) {
-        // Loan destination: decrease totalBalance (paying down the loan)
-        const loan = findLoan(toCat);
-        if (loan) {
-          const loanRef = doc(firestore, `users/${user.uid}/loans`, loan.id);
-          await updateDoc(loanRef, { totalBalance: increment(-moveAmt) });
-        }
       } else {
-        // Essential/Discretionary destination: create Income transaction (increases available)
+        // Essential / Discretionary / Loan destination: create Income transaction.
+        // Loans track "amount available to pay" via transactions just like Essential/Discretionary,
+        // so the same path works for all three — it credits the category's Available bucket.
         await addDoc(transactionsCollection, {
           userProfileId: user.uid, type: 'Income', amount: moveAmt,
           description: `Move from ${fromCat}`, category: toCat,
@@ -770,6 +805,31 @@ export default function NewTransactionScreen() {
       console.error('Error moving funds:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not complete the move.' });
     }
+  };
+
+  // Compute total net spent + earliest transaction date for a category,
+  // by reading the full transactions collection once. Used to validate moves.
+  const computeCategoryTotals = async (
+    displayName: string
+  ): Promise<{ totalSpent: number; catStart: Date }> => {
+    if (!firestore || !user) return { totalSpent: 0, catStart: new Date() };
+    const txRef = collection(firestore, `users/${user.uid}/transactions`);
+    const snap = await getDocs(txRef);
+    let totalSpent = 0;
+    let catStart: Date | null = null;
+    snap.forEach((d) => {
+      const data = d.data();
+      if (!data.date) return;
+      if ((data.category || '') !== displayName) return;
+      const txDate = data.date.toDate();
+      let amt = 0;
+      if (data.type === 'Expense') amt = Math.abs(data.amount);
+      else if (data.type === 'Income') amt = -Math.abs(data.amount);
+      else return;
+      totalSpent += amt;
+      if (!catStart || txDate < catStart) catStart = txDate;
+    });
+    return { totalSpent, catStart: catStart || new Date() };
   };
 
   const handleCreateTransaction = async (andNew: boolean = false) => {
