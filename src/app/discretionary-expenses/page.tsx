@@ -133,6 +133,7 @@ export default function DiscretionaryExpensesPage() {
   const [budgetStartDateByCategory, setBudgetStartDateByCategory] = useState<Record<string, Date>>({});
   const hasLoadedTransactions = useRef(false);
   const [autoCalcResult, setAutoCalcResult] = useState<number | null>(null);
+  const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
 
   const [formState, setFormState] = useState<{
     category: string;
@@ -147,7 +148,7 @@ export default function DiscretionaryExpensesPage() {
     amount: '',
     frequency: 'Weekly',
     description: '',
-    dueDate: undefined,
+    dueDate: new Date(),
   });
 
   const userProfilePath = useMemo(() => (user ? `users/${user.uid}` : null), [user]);
@@ -225,7 +226,8 @@ export default function DiscretionaryExpensesPage() {
         amount: formatAmountInput(expenseToEdit.plannedAmount.toFixed(2)),
         frequency: (expenseToEdit.frequency as Frequency) || 'Weekly',
         description: expenseToEdit.description || '',
-        dueDate: expenseToEdit.dueDate ? parseISO(expenseToEdit.dueDate) : undefined,
+        // Backfill legacy expenses missing a payment date with today
+        dueDate: expenseToEdit.dueDate ? parseISO(expenseToEdit.dueDate) : new Date(),
       });
     }
   }, [expenseToEdit]);
@@ -248,7 +250,7 @@ export default function DiscretionaryExpensesPage() {
       amount: '',
       frequency: 'Weekly',
       description: '',
-      dueDate: undefined,
+      dueDate: new Date(),
     });
     setAutoCalcResult(null);
     setIsEditDialogOpen(true);
@@ -290,6 +292,9 @@ export default function DiscretionaryExpensesPage() {
       return;
     }
 
+    // Payment Date is required. Auto-fill to today if missing.
+    const effectiveDueDate = formState.dueDate ?? new Date();
+
     const expenseData = {
       userProfileId: user.uid,
       category: formState.category,
@@ -297,9 +302,7 @@ export default function DiscretionaryExpensesPage() {
       plannedAmount: amount,
       frequency: formState.frequency,
       description: formState.description,
-      ...(formState.dueDate && {
-        dueDate: format(formState.dueDate, 'yyyy-MM-dd'),
-      }),
+      dueDate: format(effectiveDueDate, 'yyyy-MM-dd'),
     };
 
     try {
@@ -310,10 +313,10 @@ export default function DiscretionaryExpensesPage() {
         const coll = collection(firestore, `users/${user.uid}/discretionaryExpenses`);
         await addDoc(coll, expenseData);
 
-        // Seed initial available balance if payment date is set
-        if (formState.dueDate) {
+        // Seed initial available balance based on payment date (always set now)
+        {
           const weeklyAmount = getWeeklyAmount(amount, formState.frequency);
-          const weeksUntilDue = Math.max(1, differenceInWeeks(formState.dueDate, new Date()) + 1);
+          const weeksUntilDue = Math.max(1, differenceInWeeks(effectiveDueDate, new Date()) + 1);
           // Subtract an extra week because calculateAvailable always includes
           // the current week's budget (weeksElapsed starts at 1)
           const budgetWillAccumulate = weeklyAmount * (weeksUntilDue + 1);
@@ -698,8 +701,8 @@ export default function DiscretionaryExpensesPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Payment Date <span className="text-muted-foreground font-normal text-xs">(Opt.)</span></Label>
-                <Popover>
+                <Label>Payment Date <span className="text-destructive">*</span></Label>
+                <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -717,7 +720,12 @@ export default function DiscretionaryExpensesPage() {
                     <CalendarPicker
                       mode="single"
                       selected={formState.dueDate}
-                      onSelect={(date) => setFormState({ ...formState, dueDate: date as Date })}
+                      onSelect={(date) => {
+                        if (date) {
+                          setFormState((prev) => ({ ...prev, dueDate: date as Date }));
+                          setIsDatePopoverOpen(false);
+                        }
+                      }}
                       initialFocus
                     />
                   </PopoverContent>

@@ -111,6 +111,7 @@ export default function LoansPage() {
   const [allTimeSpentByCategory, setAllTimeSpentByCategory] = useState<Record<string, number>>({});
   const [budgetStartDateByCategory, setBudgetStartDateByCategory] = useState<Record<string, Date>>({});
   const hasLoadedTransactions = useRef(false);
+  const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
 
   const [formState, setFormState] = useState<{
     category: string;
@@ -132,7 +133,7 @@ export default function LoansPage() {
     originalLoanAmount: '',
     interestRate: '',
     frequency: 'Monthly',
-    payoffDate: undefined,
+    payoffDate: new Date(),
     description: '',
   });
 
@@ -198,7 +199,8 @@ export default function LoansPage() {
         originalLoanAmount: loanToEdit.originalLoanAmount ? formatAmountInput(loanToEdit.originalLoanAmount.toFixed(2)) : '',
         interestRate: loanToEdit.interestRate?.toString() || '',
         frequency: loanToEdit.paymentFrequency as Frequency,
-        payoffDate: loanToEdit.payoffDate ? parseISO(loanToEdit.payoffDate) : undefined,
+        // Backfill legacy loans missing a payment date with today
+        payoffDate: loanToEdit.payoffDate ? parseISO(loanToEdit.payoffDate) : new Date(),
         description: loanToEdit.description || '',
       });
     }
@@ -243,7 +245,7 @@ export default function LoansPage() {
       originalLoanAmount: '',
       interestRate: '',
       frequency: 'Monthly',
-      payoffDate: undefined,
+      payoffDate: new Date(),
       description: '',
     });
     setIsEditDialogOpen(true);
@@ -293,6 +295,9 @@ export default function LoansPage() {
     const paidAmount = parseFormattedAmount(formState.paidAmount);
     const originalLoanAmount = parseFormattedAmount(formState.originalLoanAmount);
 
+    // payoffDate is guaranteed non-null by the validation above.
+    const effectivePayoffDate = formState.payoffDate!;
+
     const loanData = {
       userProfileId: user.uid,
       name: formState.category,
@@ -303,8 +308,8 @@ export default function LoansPage() {
       originalLoanAmount: originalLoanAmount || 0,
       paymentFrequency: formState.frequency,
       description: formState.description,
+      payoffDate: format(effectivePayoffDate, 'yyyy-MM-dd'),
       ...(formState.interestRate && { interestRate: parseFloat(formState.interestRate) }),
-      ...(formState.payoffDate && { payoffDate: format(formState.payoffDate, 'yyyy-MM-dd') }),
     };
 
     try {
@@ -692,8 +697,8 @@ export default function LoansPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Payment Date</Label>
-                <Popover>
+                <Label>Payment Date <span className="text-destructive">*</span></Label>
+                <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -711,7 +716,12 @@ export default function LoansPage() {
                     <CalendarPicker
                       mode="single"
                       selected={formState.payoffDate}
-                      onSelect={(date) => setFormState({ ...formState, payoffDate: date as Date })}
+                      onSelect={(date) => {
+                        if (date) {
+                          setFormState((prev) => ({ ...prev, payoffDate: date as Date }));
+                          setIsDatePopoverOpen(false);
+                        }
+                      }}
                       initialFocus
                     />
                   </PopoverContent>
