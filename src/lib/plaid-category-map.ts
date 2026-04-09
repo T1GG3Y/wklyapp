@@ -108,16 +108,38 @@ const primaryMap: Record<string, WklyMapping> = {
 /**
  * Map a Plaid transaction category to a WKLY budget category.
  * Returns the best match or null if no mapping found.
+ *
+ * Plaid formats:
+ *   primary = "FOOD_AND_DRINK"
+ *   detailed = "FOOD_AND_DRINK_GROCERIES"
+ *
+ * Our table keys use: "FOOD_AND_DRINK.GROCERIES"
  */
 export function mapPlaidCategory(
   primaryCategory: string,
   detailedCategory?: string
 ): WklyMapping | null {
-  // Try detailed match first
   if (detailedCategory) {
-    const detailedKey = `${primaryCategory}.${detailedCategory}`;
-    if (detailedMap[detailedKey]) {
-      return detailedMap[detailedKey];
+    // Try exact detailed key: "PRIMARY.DETAILED"
+    const exactKey = `${primaryCategory}.${detailedCategory}`;
+    if (detailedMap[exactKey]) {
+      return detailedMap[exactKey];
+    }
+
+    // Plaid detailed format is "PRIMARY_SUFFIX" — strip the primary prefix to get suffix
+    // e.g., "FOOD_AND_DRINK_GROCERIES" → strip "FOOD_AND_DRINK_" → "GROCERIES"
+    const prefix = primaryCategory + '_';
+    if (detailedCategory.startsWith(prefix)) {
+      const suffix = detailedCategory.slice(prefix.length);
+      const strippedKey = `${primaryCategory}.${suffix}`;
+      if (detailedMap[strippedKey]) {
+        return detailedMap[strippedKey];
+      }
+    }
+
+    // Try the detailed string directly as a primary lookup
+    if (primaryMap[detailedCategory]) {
+      return primaryMap[detailedCategory];
     }
   }
 
