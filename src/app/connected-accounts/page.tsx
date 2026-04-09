@@ -125,6 +125,7 @@ export default function ConnectedAccountsPage() {
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
+  const [batchImporting, setBatchImporting] = useState(false);
   const [disconnectItem, setDisconnectItem] = useState<ConnectedItem | null>(null);
   const [showImportSection, setShowImportSection] = useState(false);
 
@@ -267,17 +268,32 @@ export default function ConnectedAccountsPage() {
         setBankTransactions(data.transactions);
 
         // Build import rows with category suggestions and duplicate detection
+        // Match Plaid's suggested category against the user's actual budget categories
+        const categoryValues = wklyCategories.map((c) => c.value);
+        const findMatchingCategory = (suggested: string): string => {
+          if (!suggested) return '';
+          // Exact match against user's budget category display names
+          if (categoryValues.includes(suggested)) return suggested;
+          // Partial match: check if any budget category contains the suggested name
+          const lower = suggested.toLowerCase();
+          const match = categoryValues.find(
+            (v) => v.toLowerCase() === lower || v.toLowerCase().includes(lower) || lower.includes(v.toLowerCase())
+          );
+          return match || '';
+        };
+
         const rows: ImportRow[] = data.transactions
           .filter((tx: PlaidTransaction) => tx.amount > 0 && !tx.pending) // Only expenses (positive in Plaid = money out), skip pending
           .map((tx: PlaidTransaction) => {
             const mapping = mapPlaidCategory(tx.category, tx.subcategory);
             const suggested = mapping?.category || '';
+            const matched = findMatchingCategory(suggested);
             const alreadyImported = checkAlreadyImported(tx.id);
 
             return {
               plaidTx: tx,
               suggestedCategory: suggested,
-              selectedCategory: suggested,
+              selectedCategory: matched,
               isDuplicate: !alreadyImported && checkDuplicate(tx),
               isImported: alreadyImported,
               status: alreadyImported ? 'imported' as const : 'pending' as const,
@@ -293,7 +309,7 @@ export default function ConnectedAccountsPage() {
     } finally {
       setSyncing(false);
     }
-  }, [user, checkDuplicate, checkAlreadyImported, toast]);
+  }, [user, checkDuplicate, checkAlreadyImported, toast, wklyCategories]);
 
   useEffect(() => {
     if (user) {
@@ -371,6 +387,48 @@ export default function ConnectedAccountsPage() {
     }
   };
 
+  // Batch import all pending transactions with their mapped categories
+  const handleImportAll = async () => {
+    if (!firestore || !user) return;
+    const pendingRows = importRows
+      .map((r, i) => ({ row: r, index: i }))
+      .filter(({ row }) => row.status === 'pending' && row.selectedCategory);
+
+    if (pendingRows.length === 0) {
+      toast({ variant: 'destructive', title: 'Nothing to import', description: 'No pending transactions with categories.' });
+      return;
+    }
+
+    setBatchImporting(true);
+    let imported = 0;
+    const txCollection = collection(firestore, `users/${user.uid}/transactions`);
+
+    for (const { row, index } of pendingRows) {
+      try {
+        await addDoc(txCollection, {
+          userProfileId: user.uid,
+          type: 'Expense',
+          amount: Math.abs(row.plaidTx.amount),
+          description: row.plaidTx.merchantName || row.plaidTx.name,
+          category: row.selectedCategory,
+          date: Timestamp.fromDate(new Date(row.plaidTx.date + 'T12:00:00')),
+          plaidTransactionId: row.plaidTx.id,
+        });
+        setImportRows((prev) =>
+          prev.map((r, i) =>
+            i === index ? { ...r, status: 'imported' as const, isImported: true } : r
+          )
+        );
+        imported++;
+      } catch (error) {
+        console.error('Error importing transaction:', row.plaidTx.id, error);
+      }
+    }
+
+    setBatchImporting(false);
+    toast({ title: 'Batch Import Complete', description: `${imported} transaction${imported !== 1 ? 's' : ''} imported.` });
+  };
+
   // Skip a bank transaction
   const handleSkipTransaction = (index: number) => {
     setImportRows((prev) =>
@@ -403,6 +461,7 @@ export default function ConnectedAccountsPage() {
 
   // Count pending import rows
   const pendingCount = importRows.filter((r) => r.status === 'pending').length;
+  const readyCount = importRows.filter((r) => r.status === 'pending' && r.selectedCategory).length;
   const importedCount = importRows.filter((r) => r.status === 'imported').length;
 
   // Group categories for the select dropdown
@@ -547,6 +606,18 @@ export default function ConnectedAccountsPage() {
                     {pendingCount} to review
                     {importedCount > 0 && <span className="text-primary"> · {importedCount} imported</span>}
                   </span>
+                  {readyCount > 0 && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="h-7 px-3 text-xs gap-1.5 font-semibold"
+                      disabled={batchImporting}
+                      onClick={handleImportAll}
+                    >
+                      <Check className="size-3" />
+                      {batchImporting ? 'Importing...' : `Import All (${readyCount})`}
+                    </Button>
+                  )}
                 </div>
 
                 {/* Import rows */}
