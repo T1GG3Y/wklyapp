@@ -7,11 +7,12 @@ import { useFirestore, useUser, useDoc, useCollection } from '@/firebase';
 import {
   deleteDoc,
   doc,
-  serverTimestamp,
+  Timestamp,
   updateDoc,
   type DocumentData
 } from 'firebase/firestore';
 import { ArrowLeft, DollarSign, Trash2 } from 'lucide-react';
+import { format } from 'date-fns';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
@@ -44,6 +45,7 @@ interface Transaction extends DocumentData {
   amount: number;
   description: string;
   category: string;
+  date?: Timestamp;
 }
 
 interface RequiredExpense extends DocumentData {
@@ -78,6 +80,9 @@ export default function EditTransactionScreen() {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
+  // Every transaction must have a date. Initialize to today; overwrite once the
+  // transaction loads. Legacy transactions without a date get "today" as a safe default.
+  const [dateInput, setDateInput] = useState(() => format(new Date(), 'yyyy-MM-dd'));
 
   // Fetch categories
   const requiredExpensesPath = useMemo(() => user ? `users/${user.uid}/requiredExpenses` : null, [user]);
@@ -97,6 +102,10 @@ export default function EditTransactionScreen() {
       setAmount(transaction.amount.toString());
       setDescription(transaction.description);
       setCategory(transaction.category);
+      // Legacy transactions may have no date — keep the "today" default in that case.
+      if (transaction.date) {
+        setDateInput(format(transaction.date.toDate(), 'yyyy-MM-dd'));
+      }
     }
   }, [transaction]);
 
@@ -113,17 +122,29 @@ export default function EditTransactionScreen() {
       return;
     }
 
+    if (!dateInput) {
+      toast({
+        variant: 'destructive',
+        title: 'Date Required',
+        description: 'Please select a date for this transaction.',
+      });
+      return;
+    }
+
     try {
       const transactionRef = doc(
         firestore,
         `users/${user.uid}/transactions`,
         transaction.id
       );
+      const [y, m, d] = dateInput.split('-').map(Number);
+      const txDate = Timestamp.fromDate(new Date(y, m - 1, d, 12, 0, 0));
       await updateDoc(transactionRef, {
         type,
         amount: transactionAmount,
         description,
         category,
+        date: txDate,
       });
 
       toast({
@@ -333,6 +354,23 @@ export default function EditTransactionScreen() {
               placeholder="e.g., Coffee with a friend"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-3">
+            <Label
+              htmlFor="date"
+              className="block text-sm font-semibold text-muted-foreground"
+            >
+              Date <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="date"
+              type="date"
+              className="block w-full px-4 py-3 rounded-lg bg-background border text-base text-foreground focus:ring-2 focus:ring-primary h-auto"
+              value={dateInput}
+              onChange={(e) => setDateInput(e.target.value)}
+              required
             />
           </div>
         </main>

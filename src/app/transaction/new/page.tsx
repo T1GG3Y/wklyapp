@@ -10,8 +10,8 @@ import {
   doc,
   getDocs,
   increment,
-  serverTimestamp,
   updateDoc,
+  writeBatch,
   type DocumentData,
   Timestamp,
 } from 'firebase/firestore';
@@ -32,7 +32,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -316,7 +316,8 @@ export default function NewTransactionScreen() {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState(SELECT_EXPENSE_CATEGORY);
-  const [expenseDate, setExpenseDate] = useState('');
+  // Every transaction must have a date. Default to today (local yyyy-MM-dd).
+  const [expenseDate, setExpenseDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
 
   // Credit card state
   const [paidWithCreditCard, setPaidWithCreditCard] = useState(false);
@@ -327,9 +328,21 @@ export default function NewTransactionScreen() {
   const [moveFromCategory, setMoveFromCategory] = useState('');
   const [moveToCategory, setMoveToCategory] = useState('');
 
-  // Track which section is active (Expense or Move)
-  const hasExpenseInput = !!(amount || description || (category && category !== SELECT_EXPENSE_CATEGORY) || expenseDate);
+  // Track which section is active (Expense or Move).
+  // expenseDate is always populated (defaults to today), so don't count it as user input.
+  const hasExpenseInput = !!(amount || description || (category && category !== SELECT_EXPENSE_CATEGORY));
   const hasMoveInput = !!(moveAmount || moveFromCategory || moveToCategory);
+
+  // Build a real Firestore Timestamp at local noon for a yyyy-MM-dd string,
+  // or fall back to "now" if no string given. We never want serverTimestamp()
+  // for transactions — every tx must have a concrete date the user can see.
+  const toTxTimestamp = (yyyyMmDd?: string): Timestamp => {
+    if (yyyyMmDd) {
+      const [y, m, d] = yyyyMmDd.split('-').map(Number);
+      if (y && m && d) return Timestamp.fromDate(new Date(y, m - 1, d, 12, 0, 0));
+    }
+    return Timestamp.fromDate(new Date());
+  };
 
   // Split transaction state
   const [splitDialogOpen, setSplitDialogOpen] = useState(false);
@@ -341,7 +354,7 @@ export default function NewTransactionScreen() {
   // Transaction history filters
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState('30days');
+  const [dateFilter, setDateFilter] = useState('all');
 
   // Fetch user's categories
   const requiredExpensesPath = useMemo(
@@ -373,6 +386,35 @@ export default function NewTransactionScreen() {
     orderBy: ['date', 'desc'],
     limit: 100,
   });
+
+  // One-time backfill: any transaction missing `date` gets today's date.
+  // Runs once per session after user loads. Uses a raw getDocs because the
+  // hook above filters by date ordering and will never surface dateless rows.
+  const didBackfillRef = useRef(false);
+  useEffect(() => {
+    if (didBackfillRef.current) return;
+    if (!firestore || !user) return;
+    didBackfillRef.current = true;
+    (async () => {
+      try {
+        const txCol = collection(firestore, `users/${user.uid}/transactions`);
+        const snap = await getDocs(txCol);
+        const missing = snap.docs.filter((d) => !d.data().date);
+        if (missing.length === 0) return;
+        const today = Timestamp.fromDate(new Date());
+        // Batch in chunks of 400 to stay under Firestore's 500-write limit
+        for (let i = 0; i < missing.length; i += 400) {
+          const batch = writeBatch(firestore);
+          for (const d of missing.slice(i, i + 400)) {
+            batch.update(d.ref, { date: today });
+          }
+          await batch.commit();
+        }
+      } catch (err) {
+        console.error('Error backfilling transaction dates:', err);
+      }
+    })();
+  }, [firestore, user]);
 
   // Credit card loans for the "paid with credit card" dropdown
   const creditCardLoans = useMemo(() => {
@@ -508,7 +550,8 @@ export default function NewTransactionScreen() {
         `users/${user.uid}/transactions`
       );
 
-      // Create a transaction for each split row
+      // Create a transaction for each split row, sharing the expense date
+      const splitTxDate = toTxTimestamp(expenseDate);
       for (const row of validRows) {
         await addDoc(transactionsCollection, {
           userProfileId: user.uid,
@@ -516,7 +559,7 @@ export default function NewTransactionScreen() {
           amount: parseFormattedAmount(row.amount),
           description: row.description || '',
           category: row.category.replace(/^(Savings|Loan): /, ''),
-          date: serverTimestamp(),
+          date: splitTxDate,
           splitGroup: Date.now().toString(),
         });
       }
@@ -593,7 +636,8 @@ export default function NewTransactionScreen() {
       }
 
       filtered = filtered.filter((t) => {
-        if (!t.date) return false;
+        // Always include transactions without a date so users can see & fix them.
+        if (!t.date) return true;
         const transactionDate = t.date.toDate();
         if (endDate) {
           return transactionDate >= startOfDay(startDate) && transactionDate <= endDate;
@@ -676,7 +720,7 @@ export default function NewTransactionScreen() {
           await addDoc(transactionsCollection, {
             userProfileId: user.uid, type: 'Expense', amount: moveAmt,
             description: `Move to ${toCat}`, category: fromCat,
-            date: serverTimestamp(), moveGroup,
+            date: toTxTimestamp(), moveGroup,
           });
         }
       } else {
@@ -684,7 +728,7 @@ export default function NewTransactionScreen() {
         await addDoc(transactionsCollection, {
           userProfileId: user.uid, type: 'Expense', amount: moveAmt,
           description: `Move to ${toCat}`, category: fromCat,
-          date: serverTimestamp(), moveGroup,
+          date: toTxTimestamp(), moveGroup,
         });
       }
 
@@ -699,7 +743,7 @@ export default function NewTransactionScreen() {
           await addDoc(transactionsCollection, {
             userProfileId: user.uid, type: 'Income', amount: moveAmt,
             description: `Move from ${fromCat}`, category: toCat,
-            date: serverTimestamp(), moveGroup,
+            date: toTxTimestamp(), moveGroup,
           });
         }
       } else if (isToLoan) {
@@ -714,7 +758,7 @@ export default function NewTransactionScreen() {
         await addDoc(transactionsCollection, {
           userProfileId: user.uid, type: 'Income', amount: moveAmt,
           description: `Move from ${fromCat}`, category: toCat,
-          date: serverTimestamp(), moveGroup,
+          date: toTxTimestamp(), moveGroup,
         });
       }
 
@@ -757,14 +801,21 @@ export default function NewTransactionScreen() {
       return;
     }
 
+    if (!expenseDate) {
+      toast({
+        variant: 'destructive',
+        title: 'Date Required',
+        description: 'Please select a date for this transaction.',
+      });
+      return;
+    }
+
     try {
       const transactionsCollection = collection(
         firestore,
         `users/${user.uid}/transactions`
       );
-      const txDate = expenseDate
-        ? Timestamp.fromDate(new Date(expenseDate + 'T12:00:00'))
-        : serverTimestamp();
+      const txDate = toTxTimestamp(expenseDate);
 
       // Strip "Loan: " and "Savings: " prefixes so categories match budget pages
       const storedCategory = category.replace(/^(Savings|Loan): /, '');
@@ -806,7 +857,7 @@ export default function NewTransactionScreen() {
       setAmount('');
       setDescription('');
       setCategory(SELECT_EXPENSE_CATEGORY);
-      setExpenseDate('');
+      setExpenseDate(format(new Date(), 'yyyy-MM-dd'));
       setPaidWithCreditCard(false);
       setSelectedCreditCardId('');
     } catch (error) {
@@ -869,7 +920,7 @@ export default function NewTransactionScreen() {
               amount: Math.abs(available),
               description: 'Budget reset',
               category: displayName,
-              date: serverTimestamp(),
+              date: toTxTimestamp(),
               moveGroup: resetGroup,
               autoGenerated: true,
             });
@@ -895,7 +946,7 @@ export default function NewTransactionScreen() {
               amount: Math.abs(available),
               description: 'Budget reset',
               category: displayName,
-              date: serverTimestamp(),
+              date: toTxTimestamp(),
               moveGroup: resetGroup,
               autoGenerated: true,
             });
@@ -933,7 +984,7 @@ export default function NewTransactionScreen() {
                 amount: initialSeed,
                 description: `Initial balance seed for ${displayName}`,
                 category: displayName,
-                date: serverTimestamp(),
+                date: toTxTimestamp(),
                 moveGroup: resetGroup,
                 autoGenerated: true,
               });
@@ -961,7 +1012,7 @@ export default function NewTransactionScreen() {
                 amount: initialSeed,
                 description: `Initial balance seed for ${displayName}`,
                 category: displayName,
-                date: serverTimestamp(),
+                date: toTxTimestamp(),
                 moveGroup: resetGroup,
                 autoGenerated: true,
               });
@@ -1096,13 +1147,16 @@ export default function NewTransactionScreen() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold text-muted-foreground">Date</Label>
+                    <Label className="text-xs font-semibold text-muted-foreground">
+                      Date <span className="text-destructive">*</span>
+                    </Label>
                     <Input
                       type="date"
                       className="h-10"
                       value={expenseDate}
                       onChange={(e) => setExpenseDate(e.target.value)}
                       disabled={hasMoveInput}
+                      required
                     />
                   </div>
                 </div>

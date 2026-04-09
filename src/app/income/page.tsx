@@ -130,6 +130,7 @@ export default function IncomePage() {
   const { toast } = useToast();
   const [isCategoryPickerOpen, setIsCategoryPickerOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
   const [sourceToEdit, setSourceToEdit] = useState<IncomeSource | null>(null);
 
   const [formState, setFormState] = useState<{
@@ -182,7 +183,8 @@ export default function IncomePage() {
         description: sourceToEdit.description || '',
         amount: formatAmountInput(sourceToEdit.amount.toFixed(2)),
         frequency: sourceToEdit.frequency,
-        dueDate: sourceToEdit.dueDate ? parseISO(sourceToEdit.dueDate) : undefined,
+        // Backfill legacy sources missing a payment date with today
+        dueDate: sourceToEdit.dueDate ? parseISO(sourceToEdit.dueDate) : new Date(),
       });
     }
   }, [sourceToEdit]);
@@ -207,7 +209,7 @@ export default function IncomePage() {
       description: '',
       amount: '',
       frequency: 'Monthly',
-      dueDate: undefined,
+      dueDate: new Date(),
     });
     setIsEditDialogOpen(true);
   };
@@ -249,6 +251,9 @@ export default function IncomePage() {
       return;
     }
 
+    // Payment Date is required for income. Auto-fill to today if missing.
+    const effectiveDueDate = formState.dueDate ?? new Date();
+
     const sourceData: Record<string, unknown> = {
       userProfileId: user.uid,
       category: formState.category,
@@ -256,11 +261,8 @@ export default function IncomePage() {
       description: formState.description || '',
       amount: amount,
       frequency: formState.frequency,
+      dueDate: format(effectiveDueDate, 'yyyy-MM-dd'),
     };
-
-    if (formState.dueDate) {
-      sourceData.dueDate = format(formState.dueDate, 'yyyy-MM-dd');
-    }
 
     try {
       if (sourceToEdit) {
@@ -411,9 +413,17 @@ export default function IncomePage() {
                         <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
                           <Icon className="size-4" />
                         </div>
-                        <p className="font-semibold text-foreground truncate">
-                          {getDisplayName(source)}
-                        </p>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-foreground truncate">
+                            {getDisplayName(source)}
+                          </p>
+                          {source.dueDate && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <CalendarIcon className="size-3" />
+                              {format(parseISO(source.dueDate), 'MMM d, yyyy')}
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-3 text-sm shrink-0">
                         <div className="text-right">
@@ -560,8 +570,8 @@ export default function IncomePage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Payment Date <span className="text-muted-foreground font-normal text-xs">(Opt.)</span></Label>
-                <Popover>
+                <Label>Payment Date <span className="text-destructive">*</span></Label>
+                <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -582,9 +592,12 @@ export default function IncomePage() {
                     <CalendarPicker
                       mode="single"
                       selected={formState.dueDate}
-                      onSelect={(date) =>
-                        setFormState({ ...formState, dueDate: date as Date })
-                      }
+                      onSelect={(date) => {
+                        if (date) {
+                          setFormState((prev) => ({ ...prev, dueDate: date as Date }));
+                          setIsDatePopoverOpen(false);
+                        }
+                      }}
                       initialFocus
                     />
                   </PopoverContent>
