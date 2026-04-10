@@ -63,7 +63,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
-import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval, differenceInWeeks } from 'date-fns';
+import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/PageHeader';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
@@ -82,7 +82,7 @@ import {
   parseFormattedAmount,
   getWeeklyAmount,
 } from '@/lib/format';
-import { calculateAvailable } from '@/lib/budget';
+import { getAvailable, getSpentThisCycle } from '@/lib/budget';
 import { useToast } from '@/hooks/use-toast';
 
 interface DiscretionaryExpense extends DocumentData {
@@ -131,6 +131,7 @@ export default function DiscretionaryExpensesPage() {
   const [weeklySpentByCategory, setWeeklySpentByCategory] = useState<Record<string, number>>({});
   const [allTimeSpentByCategory, setAllTimeSpentByCategory] = useState<Record<string, number>>({});
   const [budgetStartDateByCategory, setBudgetStartDateByCategory] = useState<Record<string, Date>>({});
+  const [rawTransactions, setRawTransactions] = useState<Array<{ category: string; type: string; amount: number; date?: any }>>([]);
   const hasLoadedTransactions = useRef(false);
   const [autoCalcResult, setAutoCalcResult] = useState<number | null>(null);
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
@@ -148,7 +149,7 @@ export default function DiscretionaryExpensesPage() {
     amount: '',
     frequency: 'Weekly',
     description: '',
-    dueDate: new Date(),
+    dueDate: undefined,
   });
 
   const userProfilePath = useMemo(() => (user ? `users/${user.uid}` : null), [user]);
@@ -205,6 +206,14 @@ export default function DiscretionaryExpensesPage() {
         }
       });
 
+      const txList: Array<{ category: string; type: string; amount: number; date?: any }> = [];
+      snapshot.forEach((d) => {
+        const data = d.data();
+        if (data.date) {
+          txList.push({ category: data.category || '', type: data.type, amount: data.amount, date: data.date });
+        }
+      });
+      setRawTransactions(txList);
       setWeeklySpentByCategory(currentWeekSpent);
       setAllTimeSpentByCategory(allTimeSpent);
       setBudgetStartDateByCategory(earliestByCategory);
@@ -218,6 +227,18 @@ export default function DiscretionaryExpensesPage() {
     if (user && firestore && userProfile) loadWeeklyTransactions();
   }, [user, firestore, userProfile, loadWeeklyTransactions]);
 
+  // Compute spent-this-cycle per category for Path B (target-date) expenses
+  const spentThisCycleByCategory = useMemo(() => {
+    if (!expenses || rawTransactions.length === 0) return {} as Record<string, number>;
+    const result: Record<string, number> = {};
+    for (const expense of expenses) {
+      if (!expense.dueDate) continue;
+      const dn = expense.description ? `${expense.category} - ${expense.description}` : expense.category;
+      result[dn] = getSpentThisCycle(rawTransactions, dn, expense.dueDate, (expense.frequency as Frequency) || 'Weekly');
+    }
+    return result;
+  }, [expenses, rawTransactions]);
+
   useEffect(() => {
     if (expenseToEdit) {
       setFormState({
@@ -226,8 +247,7 @@ export default function DiscretionaryExpensesPage() {
         amount: formatAmountInput(expenseToEdit.plannedAmount.toFixed(2)),
         frequency: (expenseToEdit.frequency as Frequency) || 'Weekly',
         description: expenseToEdit.description || '',
-        // Backfill legacy expenses missing a payment date with today
-        dueDate: expenseToEdit.dueDate ? parseISO(expenseToEdit.dueDate) : new Date(),
+        dueDate: expenseToEdit.dueDate ? parseISO(expenseToEdit.dueDate) : undefined,
       });
     }
   }, [expenseToEdit]);
@@ -250,7 +270,7 @@ export default function DiscretionaryExpensesPage() {
       amount: '',
       frequency: 'Weekly',
       description: '',
-      dueDate: new Date(),
+      dueDate: undefined,
     });
     setAutoCalcResult(null);
     setIsEditDialogOpen(true);
@@ -292,18 +312,17 @@ export default function DiscretionaryExpensesPage() {
       return;
     }
 
-    // Payment Date is required. Auto-fill to today if missing.
-    const effectiveDueDate = formState.dueDate ?? new Date();
-
-    const expenseData = {
+    const expenseData: Record<string, unknown> = {
       userProfileId: user.uid,
       category: formState.category,
       name: formState.category,
       plannedAmount: amount,
       frequency: formState.frequency,
       description: formState.description,
-      dueDate: format(effectiveDueDate, 'yyyy-MM-dd'),
     };
+    if (formState.dueDate) {
+      expenseData.dueDate = format(formState.dueDate, 'yyyy-MM-dd');
+    }
 
     try {
       if (expenseToEdit) {
@@ -312,32 +331,7 @@ export default function DiscretionaryExpensesPage() {
       } else {
         const coll = collection(firestore, `users/${user.uid}/discretionaryExpenses`);
         await addDoc(coll, expenseData);
-
-        // Seed initial available balance based on payment date (always set now)
-        {
-          const weeklyAmount = getWeeklyAmount(amount, formState.frequency);
-          const weeksUntilDue = Math.max(1, differenceInWeeks(effectiveDueDate, new Date()) + 1);
-          // Subtract an extra week because calculateAvailable always includes
-          // the current week's budget (weeksElapsed starts at 1)
-          const budgetWillAccumulate = weeklyAmount * (weeksUntilDue + 1);
-          const initialSeed = amount - budgetWillAccumulate;
-
-          if (initialSeed > 0) {
-            const displayName = formState.description
-              ? `${formState.category} - ${formState.description}`
-              : formState.category;
-            const txCollection = collection(firestore, `users/${user.uid}/transactions`);
-            await addDoc(txCollection, {
-              userProfileId: user.uid,
-              type: 'Income',
-              amount: initialSeed,
-              description: `Initial balance seed for ${displayName}`,
-              category: displayName,
-              date: Timestamp.fromDate(new Date()),
-              autoGenerated: true,
-            });
-          }
-        }
+        // No initial seed needed — Path B (target-date) handles accumulation naturally.
       }
       setIsEditDialogOpen(false);
       setExpenseToEdit(null);
@@ -353,13 +347,18 @@ export default function DiscretionaryExpensesPage() {
     try {
       const expense = expenses?.find((e) => e.id === expenseId);
       if (expense) {
-        const weeklyAmount = getWeeklyAmount(expense.plannedAmount, expense.frequency || 'Weekly');
         const startDay = userProfile?.startDayOfWeek || 'Sunday';
         const wsOn = dayIndexMap[startDay];
         const displayName = expense.description ? `${expense.category} - ${expense.description}` : expense.category;
-        const totalSpent = allTimeSpentByCategory[displayName] || 0;
-        const catStart = budgetStartDateByCategory[displayName] || new Date();
-        const available = calculateAvailable(weeklyAmount, totalSpent, catStart, wsOn);
+        const { available } = getAvailable({
+          amount: expense.plannedAmount,
+          frequency: (expense.frequency as Frequency) || 'Weekly',
+          dueDate: expense.dueDate || null,
+          startDay: wsOn,
+          totalSpentAllTime: allTimeSpentByCategory[displayName] || 0,
+          budgetStartDate: budgetStartDateByCategory[displayName] || new Date(),
+          spentThisCycle: spentThisCycleByCategory[displayName] || 0,
+        });
 
         if (available > 0) {
           const txCollection = collection(firestore, `users/${user.uid}/transactions`);
@@ -448,24 +447,40 @@ export default function DiscretionaryExpensesPage() {
 
   const { weeklyTotal, overBudgetTotal } = useMemo(() => {
     if (!expenses) return { weeklyTotal: 0, overBudgetTotal: 0 };
-    const weekly = expenses.reduce((total, expense) => {
-      const freq = expense.frequency || 'Weekly';
-      return total + getWeeklyAmount(expense.plannedAmount, freq);
-    }, 0);
 
     const startDay = userProfile?.startDayOfWeek || 'Sunday';
     const wsOn = dayIndexMap[startDay];
-    const overBudget = expenses.reduce((total, expense) => {
-      const wkAmt = getWeeklyAmount(expense.plannedAmount, expense.frequency || 'Weekly');
+
+    const weekly = expenses.reduce((total, expense) => {
       const dn = expense.description ? `${expense.category} - ${expense.description}` : expense.category;
-      const totalSpent = allTimeSpentByCategory[dn] || 0;
-      const catStart = budgetStartDateByCategory[dn] || new Date();
-      const avail = calculateAvailable(wkAmt, totalSpent, catStart, wsOn);
-      return total + (avail < 0 ? Math.abs(avail) : 0);
+      const { weeklyRate } = getAvailable({
+        amount: expense.plannedAmount,
+        frequency: (expense.frequency as Frequency) || 'Weekly',
+        dueDate: expense.dueDate || null,
+        startDay: wsOn,
+        totalSpentAllTime: allTimeSpentByCategory[dn] || 0,
+        budgetStartDate: budgetStartDateByCategory[dn] || new Date(),
+        spentThisCycle: spentThisCycleByCategory[dn] || 0,
+      });
+      return total + weeklyRate;
+    }, 0);
+
+    const overBudget = expenses.reduce((total, expense) => {
+      const dn = expense.description ? `${expense.category} - ${expense.description}` : expense.category;
+      const { available } = getAvailable({
+        amount: expense.plannedAmount,
+        frequency: (expense.frequency as Frequency) || 'Weekly',
+        dueDate: expense.dueDate || null,
+        startDay: wsOn,
+        totalSpentAllTime: allTimeSpentByCategory[dn] || 0,
+        budgetStartDate: budgetStartDateByCategory[dn] || new Date(),
+        spentThisCycle: spentThisCycleByCategory[dn] || 0,
+      });
+      return total + (available < 0 ? Math.abs(available) : 0);
     }, 0);
 
     return { weeklyTotal: weekly, overBudgetTotal: overBudget };
-  }, [expenses, allTimeSpentByCategory, budgetStartDateByCategory, userProfile]);
+  }, [expenses, allTimeSpentByCategory, budgetStartDateByCategory, spentThisCycleByCategory, userProfile]);
 
   // Sort expenses alphabetically by category then description
   const sortedExpenses = useMemo(() => {
@@ -542,13 +557,18 @@ export default function DiscretionaryExpensesPage() {
               ) : sortedExpenses.length > 0 ? (
                 sortedExpenses.map((expense) => {
                   const Icon = iconMap[expense.category] || MoreHorizontal;
-                  const weeklyAmount = getWeeklyAmount(expense.plannedAmount, expense.frequency || 'Weekly');
                   const startDay = userProfile?.startDayOfWeek || 'Sunday';
                   const wsOn = dayIndexMap[startDay];
                   const dn = expense.description ? `${expense.category} - ${expense.description}` : expense.category;
-                  const totalSpent = allTimeSpentByCategory[dn] || 0;
-                  const catStart = budgetStartDateByCategory[dn] || new Date();
-                  const amountAvailable = calculateAvailable(weeklyAmount, totalSpent, catStart, wsOn);
+                  const { available: amountAvailable, weeklyRate: weeklyAmount } = getAvailable({
+                    amount: expense.plannedAmount,
+                    frequency: (expense.frequency as Frequency) || 'Weekly',
+                    dueDate: expense.dueDate || null,
+                    startDay: wsOn,
+                    totalSpentAllTime: allTimeSpentByCategory[dn] || 0,
+                    budgetStartDate: budgetStartDateByCategory[dn] || new Date(),
+                    spentThisCycle: spentThisCycleByCategory[dn] || 0,
+                  });
 
                   return (
                     <div key={expense.id} className="flex items-center px-4 py-3 hover:bg-muted/50 transition-colors">
@@ -701,7 +721,7 @@ export default function DiscretionaryExpensesPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Payment Date <span className="text-destructive">*</span></Label>
+                <Label>Payment Date</Label>
                 <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button

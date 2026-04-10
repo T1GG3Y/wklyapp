@@ -57,7 +57,7 @@ import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/PageHeader';
 import { HamburgerMenu } from '@/components/HamburgerMenu';
 import { formatCurrency, getWeeklyAmount } from '@/lib/format';
-import { calculateAvailable } from '@/lib/budget';
+import { getAvailable, getSpentThisCycle } from '@/lib/budget';
 import type { Frequency } from '@/lib/constants';
 
 // Data Interfaces
@@ -195,6 +195,7 @@ export default function DashboardScreen() {
   // Account summary state (for computing available amounts)
   const [allTimeSpentByCategory, setAllTimeSpentByCategory] = useState<Record<string, number>>({});
   const [budgetStartDateByCategory, setBudgetStartDateByCategory] = useState<Record<string, Date>>({});
+  const [rawTransactions, setRawTransactions] = useState<Array<{ category: string; type: string; amount: number; date?: any }>>([]);
   const hasLoadedAccountSummary = useRef(false);
 
   // Accordion state
@@ -283,6 +284,14 @@ export default function DashboardScreen() {
         }
       });
 
+      const txList: Array<{ category: string; type: string; amount: number; date?: any }> = [];
+      snapshot.forEach((d) => {
+        const data = d.data();
+        if (data.date) {
+          txList.push({ category: data.category || '', type: data.type, amount: data.amount, date: data.date });
+        }
+      });
+      setRawTransactions(txList);
       setAllTimeSpentByCategory(allTimeSpent);
       setBudgetStartDateByCategory(earliestByCategory);
       hasLoadedAccountSummary.current = true;
@@ -295,6 +304,23 @@ export default function DashboardScreen() {
     if (user && firestore) loadAccountSummary();
   }, [user, firestore, loadAccountSummary]);
 
+  // Compute spent-this-cycle per category for Path B (target-date) expenses
+  const spentThisCycleByCategory = useMemo(() => {
+    if (rawTransactions.length === 0) return {} as Record<string, number>;
+    const result: Record<string, number> = {};
+    for (const e of (requiredExpenses || [])) {
+      if (!e.dueDate) continue;
+      const dn = e.description ? `${e.category} - ${e.description}` : e.category;
+      result[dn] = getSpentThisCycle(rawTransactions, dn, e.dueDate, e.frequency);
+    }
+    for (const e of (discretionaryExpenses || [])) {
+      if (!e.dueDate) continue;
+      const dn = e.description ? `${e.category} - ${e.description}` : e.category;
+      result[dn] = getSpentThisCycle(rawTransactions, dn, e.dueDate, (e as any).frequency || 'Weekly');
+    }
+    return result;
+  }, [requiredExpenses, discretionaryExpenses, rawTransactions]);
+
   // Account Summary = sum of all Essential/Discretionary Available + all Savings Current Balance Saved
   const accountSummary = useMemo(() => {
     const startDay = userProfile?.startDayOfWeek || 'Sunday';
@@ -302,24 +328,36 @@ export default function DashboardScreen() {
 
     // Sum essential available
     const essentialAvailable = (requiredExpenses || []).reduce((total, e) => {
-      const wkAmt = getWeeklyAmount(e.amount, e.frequency);
       const displayName = e.description ? `${e.category} - ${e.description}` : e.category;
-      const spent = allTimeSpentByCategory[displayName] || 0;
-      const catStart = budgetStartDateByCategory[displayName] || new Date();
-      return total + calculateAvailable(wkAmt, spent, catStart, wsOn);
+      const { available } = getAvailable({
+        amount: e.amount,
+        frequency: e.frequency,
+        dueDate: e.dueDate || null,
+        startDay: wsOn,
+        totalSpentAllTime: allTimeSpentByCategory[displayName] || 0,
+        budgetStartDate: budgetStartDateByCategory[displayName] || new Date(),
+        spentThisCycle: spentThisCycleByCategory[displayName] || 0,
+      });
+      return total + available;
     }, 0);
 
     // Sum discretionary available
     const discretionaryAvailable = (discretionaryExpenses || []).reduce((total, e) => {
-      const wkAmt = getWeeklyAmount(e.plannedAmount, (e as any).frequency || 'Weekly');
       const displayName = e.description ? `${e.category} - ${e.description}` : e.category;
-      const spent = allTimeSpentByCategory[displayName] || 0;
-      const catStart = budgetStartDateByCategory[displayName] || new Date();
-      return total + calculateAvailable(wkAmt, spent, catStart, wsOn);
+      const { available } = getAvailable({
+        amount: e.plannedAmount,
+        frequency: (e as any).frequency || 'Weekly',
+        dueDate: e.dueDate || null,
+        startDay: wsOn,
+        totalSpentAllTime: allTimeSpentByCategory[displayName] || 0,
+        budgetStartDate: budgetStartDateByCategory[displayName] || new Date(),
+        spentThisCycle: spentThisCycleByCategory[displayName] || 0,
+      });
+      return total + available;
     }, 0);
 
     return essentialAvailable + discretionaryAvailable + totalSaved;
-  }, [requiredExpenses, discretionaryExpenses, allTimeSpentByCategory, budgetStartDateByCategory, userProfile, totalSaved]);
+  }, [requiredExpenses, discretionaryExpenses, allTimeSpentByCategory, budgetStartDateByCategory, spentThisCycleByCategory, userProfile, totalSaved]);
 
   // Health indicators
   const essentialHealthy = totalWeeklyRequired <= totalWeeklyIncome * 0.5 || totalWeeklyRequired === 0;

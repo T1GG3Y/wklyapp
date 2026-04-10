@@ -71,9 +71,9 @@ import {
   SAVINGS_CATEGORIES,
   PAGE_SUBHEADERS,
 } from '@/lib/constants';
-import { formatCurrency, formatAmountInput, parseFormattedAmount, getWeeklyAmount } from '@/lib/format';
-import { calculateAvailable } from '@/lib/budget';
-import { format, startOfDay, startOfWeek, subDays, subWeeks, subMonths, subYears, differenceInWeeks, parseISO } from 'date-fns';
+import { formatCurrency, formatAmountInput, parseFormattedAmount } from '@/lib/format';
+import { getAvailable, getSpentThisCycle } from '@/lib/budget';
+import { format, startOfDay, startOfWeek, subDays, subWeeks, subMonths, subYears } from 'date-fns';
 import { type Frequency } from '@/lib/constants';
 import Link from 'next/link';
 
@@ -724,17 +724,33 @@ export default function NewTransactionScreen() {
         const discretionary = matchByDisplayName(discretionaryExpenses, fromCat);
 
         if (essential) {
-          const weeklyAmount = getWeeklyAmount(essential.amount || 0, essential.frequency || 'Monthly');
-          const { totalSpent, catStart } = await computeCategoryTotals(fromCat);
+          const { totalSpent, catStart, spentThisCycle } = await computeCategoryTotals(fromCat, essential.dueDate, essential.frequency || 'Monthly');
           const startDay = userProfile?.startDayOfWeek || 'Sunday';
           const wsOn = dayIndexMap[startDay];
-          sourceAvailable = calculateAvailable(weeklyAmount, totalSpent, catStart, wsOn);
+          const { available } = getAvailable({
+            amount: essential.amount || 0,
+            frequency: essential.frequency || 'Monthly',
+            dueDate: essential.dueDate || null,
+            startDay: wsOn,
+            totalSpentAllTime: totalSpent,
+            budgetStartDate: catStart,
+            spentThisCycle,
+          });
+          sourceAvailable = available;
         } else if (discretionary) {
-          const weeklyAmount = getWeeklyAmount(discretionary.plannedAmount || 0, discretionary.frequency || 'Weekly');
-          const { totalSpent, catStart } = await computeCategoryTotals(fromCat);
+          const { totalSpent, catStart, spentThisCycle } = await computeCategoryTotals(fromCat, discretionary.dueDate, discretionary.frequency || 'Weekly');
           const startDay = userProfile?.startDayOfWeek || 'Sunday';
           const wsOn = dayIndexMap[startDay];
-          sourceAvailable = calculateAvailable(weeklyAmount, totalSpent, catStart, wsOn);
+          const { available } = getAvailable({
+            amount: discretionary.plannedAmount || 0,
+            frequency: discretionary.frequency || 'Weekly',
+            dueDate: discretionary.dueDate || null,
+            startDay: wsOn,
+            totalSpentAllTime: totalSpent,
+            budgetStartDate: catStart,
+            spentThisCycle,
+          });
+          sourceAvailable = available;
         }
       }
 
@@ -810,15 +826,19 @@ export default function NewTransactionScreen() {
   // Compute total net spent + earliest transaction date for a category,
   // by reading the full transactions collection once. Used to validate moves.
   const computeCategoryTotals = async (
-    displayName: string
-  ): Promise<{ totalSpent: number; catStart: Date }> => {
-    if (!firestore || !user) return { totalSpent: 0, catStart: new Date() };
+    displayName: string,
+    dueDate?: string,
+    frequency?: Frequency,
+  ): Promise<{ totalSpent: number; catStart: Date; spentThisCycle: number }> => {
+    if (!firestore || !user) return { totalSpent: 0, catStart: new Date(), spentThisCycle: 0 };
     const txRef = collection(firestore, `users/${user.uid}/transactions`);
     const snap = await getDocs(txRef);
     let totalSpent = 0;
     let catStart: Date | null = null;
+    const txList: Array<{ category: string; type: string; amount: number; date?: { toDate(): Date } }> = [];
     snap.forEach((d) => {
       const data = d.data();
+      txList.push({ category: data.category || '', type: data.type, amount: data.amount, date: data.date });
       if (!data.date) return;
       if ((data.category || '') !== displayName) return;
       const txDate = data.date.toDate();
@@ -829,7 +849,11 @@ export default function NewTransactionScreen() {
       totalSpent += amt;
       if (!catStart || txDate < catStart) catStart = txDate;
     });
-    return { totalSpent, catStart: catStart || new Date() };
+    let spentThisCycle = 0;
+    if (dueDate && frequency) {
+      spentThisCycle = getSpentThisCycle(txList, displayName, dueDate, frequency);
+    }
+    return { totalSpent, catStart: catStart || new Date(), spentThisCycle };
   };
 
   const handleCreateTransaction = async (andNew: boolean = false) => {
@@ -942,8 +966,10 @@ export default function NewTransactionScreen() {
       const allTimeSpent: Record<string, number> = {};
       const earliestByCategory: Record<string, Date> = {};
 
+      const txList: Array<{ category: string; type: string; amount: number; date?: { toDate(): Date } }> = [];
       txSnapshot.forEach((d) => {
         const data = d.data();
+        txList.push({ category: data.category || '', type: data.type, amount: data.amount, date: data.date });
         if (!data.date) return;
         const txDate = data.date.toDate();
         const cat = data.category || '';
@@ -967,10 +993,15 @@ export default function NewTransactionScreen() {
           const displayName = expense.description
             ? `${expense.category} - ${expense.description}`
             : expense.category;
-          const weeklyAmount = getWeeklyAmount(expense.amount || 0, expense.frequency || 'Monthly');
-          const totalSpent = allTimeSpent[displayName] || 0;
-          const catStart = earliestByCategory[displayName] || new Date();
-          const available = calculateAvailable(weeklyAmount, totalSpent, catStart, wsOn);
+          const { available } = getAvailable({
+            amount: expense.amount || 0,
+            frequency: expense.frequency || 'Monthly',
+            dueDate: expense.dueDate || null,
+            startDay: wsOn,
+            totalSpentAllTime: allTimeSpent[displayName] || 0,
+            budgetStartDate: earliestByCategory[displayName] || new Date(),
+            spentThisCycle: expense.dueDate ? getSpentThisCycle(txList, displayName, expense.dueDate, expense.frequency || 'Monthly') : 0,
+          });
 
           if (Math.abs(available) > 0.01) {
             // Create transaction to zero out available
@@ -994,10 +1025,15 @@ export default function NewTransactionScreen() {
           const displayName = expense.description
             ? `${expense.category} - ${expense.description}`
             : expense.category;
-          const weeklyAmount = getWeeklyAmount(expense.plannedAmount || 0, expense.frequency || 'Weekly');
-          const totalSpent = allTimeSpent[displayName] || 0;
-          const catStart = earliestByCategory[displayName] || new Date();
-          const available = calculateAvailable(weeklyAmount, totalSpent, catStart, wsOn);
+          const { available } = getAvailable({
+            amount: expense.plannedAmount || 0,
+            frequency: expense.frequency || 'Weekly',
+            dueDate: expense.dueDate || null,
+            startDay: wsOn,
+            totalSpentAllTime: allTimeSpent[displayName] || 0,
+            budgetStartDate: earliestByCategory[displayName] || new Date(),
+            spentThisCycle: expense.dueDate ? getSpentThisCycle(txList, displayName, expense.dueDate, expense.frequency || 'Weekly') : 0,
+          });
 
           if (Math.abs(available) > 0.01) {
             await addDoc(txCollection, {
@@ -1024,66 +1060,9 @@ export default function NewTransactionScreen() {
         }
       }
 
-      // 5. Re-seed each category with initial available funds based on payment dates
-      if (requiredExpenses) {
-        for (const expense of requiredExpenses) {
-          if (expense.dueDate && expense.amount) {
-            const weeklyAmount = getWeeklyAmount(expense.amount, expense.frequency || 'Monthly');
-            const dueDate = parseISO(expense.dueDate);
-            const weeksUntilDue = Math.max(1, differenceInWeeks(dueDate, new Date()) + 1);
-            const budgetWillAccumulate = weeklyAmount * (weeksUntilDue + 1);
-            const initialSeed = expense.amount - budgetWillAccumulate;
-
-            if (initialSeed > 0) {
-              const displayName = expense.description
-                ? `${expense.category} - ${expense.description}`
-                : expense.category;
-              await addDoc(txCollection, {
-                userProfileId: user.uid,
-                type: 'Income',
-                amount: initialSeed,
-                description: `Initial balance seed for ${displayName}`,
-                category: displayName,
-                date: toTxTimestamp(),
-                moveGroup: resetGroup,
-                autoGenerated: true,
-              });
-            }
-          }
-        }
-      }
-
-      if (discretionaryExpenses) {
-        for (const expense of discretionaryExpenses) {
-          if (expense.dueDate && expense.plannedAmount) {
-            const weeklyAmount = getWeeklyAmount(expense.plannedAmount, expense.frequency || 'Weekly');
-            const dueDate = parseISO(expense.dueDate);
-            const weeksUntilDue = Math.max(1, differenceInWeeks(dueDate, new Date()) + 1);
-            const budgetWillAccumulate = weeklyAmount * (weeksUntilDue + 1);
-            const initialSeed = expense.plannedAmount - budgetWillAccumulate;
-
-            if (initialSeed > 0) {
-              const displayName = expense.description
-                ? `${expense.category} - ${expense.description}`
-                : expense.category;
-              await addDoc(txCollection, {
-                userProfileId: user.uid,
-                type: 'Income',
-                amount: initialSeed,
-                description: `Initial balance seed for ${displayName}`,
-                category: displayName,
-                date: toTxTimestamp(),
-                moveGroup: resetGroup,
-                autoGenerated: true,
-              });
-            }
-          }
-        }
-      }
-
       toast({
         title: 'Budget Reset Complete',
-        description: 'All available funds have been reset and re-seeded based on payment dates.',
+        description: 'All available funds have been zeroed out.',
       });
       setResetDialogOpen(false);
     } catch (error) {

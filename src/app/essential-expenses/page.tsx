@@ -47,7 +47,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
-import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval, differenceInWeeks } from 'date-fns';
+import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -82,7 +82,7 @@ import {
   parseFormattedAmount,
   getWeeklyAmount,
 } from '@/lib/format';
-import { calculateAvailable } from '@/lib/budget';
+import { getAvailable, getSpentThisCycle } from '@/lib/budget';
 import { useToast } from '@/hooks/use-toast';
 
 interface RequiredExpense extends DocumentData {
@@ -141,6 +141,7 @@ export default function EssentialExpensesPage() {
   const [weeklySpentByCategory, setWeeklySpentByCategory] = useState<Record<string, number>>({});
   const [allTimeSpentByCategory, setAllTimeSpentByCategory] = useState<Record<string, number>>({});
   const [budgetStartDateByCategory, setBudgetStartDateByCategory] = useState<Record<string, Date>>({});
+  const [rawTransactions, setRawTransactions] = useState<Array<{ category: string; type: string; amount: number; date?: any }>>([]);
   const hasLoadedTransactions = useRef(false);
   const [autoCalcResult, setAutoCalcResult] = useState<number | null>(null);
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
@@ -157,7 +158,7 @@ export default function EssentialExpensesPage() {
     name: '',
     amount: '',
     frequency: 'Monthly',
-    dueDate: new Date(),
+    dueDate: undefined,
     description: '',
   });
 
@@ -215,6 +216,15 @@ export default function EssentialExpensesPage() {
         }
       });
 
+      // Store raw tx data for spentThisCycle computation in useMemo
+      const txList: Array<{ category: string; type: string; amount: number; date?: any }> = [];
+      snapshot.forEach((d) => {
+        const data = d.data();
+        if (data.date) {
+          txList.push({ category: data.category || '', type: data.type, amount: data.amount, date: data.date });
+        }
+      });
+      setRawTransactions(txList);
       setWeeklySpentByCategory(currentWeekSpent);
       setAllTimeSpentByCategory(allTimeSpent);
       setBudgetStartDateByCategory(earliestByCategory);
@@ -228,6 +238,18 @@ export default function EssentialExpensesPage() {
     if (user && firestore && userProfile) loadWeeklyTransactions();
   }, [user, firestore, userProfile, loadWeeklyTransactions]);
 
+  // Compute spent-this-cycle per category for Path B (target-date) expenses
+  const spentThisCycleByCategory = useMemo(() => {
+    if (!expenses || rawTransactions.length === 0) return {} as Record<string, number>;
+    const result: Record<string, number> = {};
+    for (const expense of expenses) {
+      if (!expense.dueDate) continue;
+      const dn = expense.description ? `${expense.category} - ${expense.description}` : expense.category;
+      result[dn] = getSpentThisCycle(rawTransactions, dn, expense.dueDate, expense.frequency);
+    }
+    return result;
+  }, [expenses, rawTransactions]);
+
   useEffect(() => {
     if (expenseToEdit) {
       setFormState({
@@ -235,8 +257,7 @@ export default function EssentialExpensesPage() {
         name: expenseToEdit.name || expenseToEdit.category,
         amount: formatAmountInput(expenseToEdit.amount.toFixed(2)),
         frequency: expenseToEdit.frequency as Frequency,
-        // Backfill legacy expenses missing a payment date with today
-        dueDate: expenseToEdit.dueDate ? parseISO(expenseToEdit.dueDate) : new Date(),
+        dueDate: expenseToEdit.dueDate ? parseISO(expenseToEdit.dueDate) : undefined,
         description: expenseToEdit.description || '',
       });
     }
@@ -261,7 +282,7 @@ export default function EssentialExpensesPage() {
       name: category,
       amount: '',
       frequency: 'Monthly',
-      dueDate: new Date(),
+      dueDate: undefined,
       description: '',
     });
     setAutoCalcResult(null);
@@ -305,18 +326,17 @@ export default function EssentialExpensesPage() {
       return;
     }
 
-    // Payment Date is required. Auto-fill to today if missing.
-    const effectiveDueDate = formState.dueDate ?? new Date();
-
-    const expenseData = {
+    const expenseData: Record<string, unknown> = {
       userProfileId: user.uid,
       category: formState.category,
       name: formState.category,
       amount: expenseAmount,
       frequency: formState.frequency,
       description: formState.description,
-      dueDate: format(effectiveDueDate, 'yyyy-MM-dd'),
     };
+    if (formState.dueDate) {
+      expenseData.dueDate = format(formState.dueDate, 'yyyy-MM-dd');
+    }
 
     try {
       if (expenseToEdit) {
@@ -325,32 +345,7 @@ export default function EssentialExpensesPage() {
       } else {
         const requiredExpensesCollection = collection(firestore, `users/${user.uid}/requiredExpenses`);
         await addDoc(requiredExpensesCollection, expenseData);
-
-        // Seed initial available balance based on payment date (always set now)
-        {
-          const weeklyAmount = getWeeklyAmount(expenseAmount, formState.frequency);
-          const weeksUntilDue = Math.max(1, differenceInWeeks(effectiveDueDate, new Date()) + 1);
-          // Subtract an extra week because calculateAvailable always includes
-          // the current week's budget (weeksElapsed starts at 1)
-          const budgetWillAccumulate = weeklyAmount * (weeksUntilDue + 1);
-          const initialSeed = expenseAmount - budgetWillAccumulate;
-
-          if (initialSeed > 0) {
-            const displayName = formState.description
-              ? `${formState.category} - ${formState.description}`
-              : formState.category;
-            const txCollection = collection(firestore, `users/${user.uid}/transactions`);
-            await addDoc(txCollection, {
-              userProfileId: user.uid,
-              type: 'Income',
-              amount: initialSeed,
-              description: `Initial balance seed for ${displayName}`,
-              category: displayName,
-              date: Timestamp.fromDate(new Date()),
-              autoGenerated: true,
-            });
-          }
-        }
+        // No initial seed needed — Path B (target-date) handles accumulation naturally.
       }
       setIsEditDialogOpen(false);
       setExpenseToEdit(null);
@@ -367,13 +362,18 @@ export default function EssentialExpensesPage() {
       // Find the expense to get its available amount before deleting
       const expense = expenses?.find((e) => e.id === expenseId);
       if (expense) {
-        const weeklyAmount = getWeeklyAmount(expense.amount, expense.frequency);
         const startDay = userProfile?.startDayOfWeek || 'Sunday';
         const wsOn = dayIndexMap[startDay];
         const displayName = expense.description ? `${expense.category} - ${expense.description}` : expense.category;
-        const totalSpent = allTimeSpentByCategory[displayName] || 0;
-        const catStart = budgetStartDateByCategory[displayName] || new Date();
-        const available = calculateAvailable(weeklyAmount, totalSpent, catStart, wsOn);
+        const { available } = getAvailable({
+          amount: expense.amount,
+          frequency: expense.frequency,
+          dueDate: expense.dueDate || null,
+          startDay: wsOn,
+          totalSpentAllTime: allTimeSpentByCategory[displayName] || 0,
+          budgetStartDate: budgetStartDateByCategory[displayName] || new Date(),
+          spentThisCycle: spentThisCycleByCategory[displayName] || 0,
+        });
 
         // If there's a positive available balance, move it to Unassigned Income
         if (available > 0) {
@@ -468,23 +468,39 @@ export default function EssentialExpensesPage() {
   const { weeklyTotal, overBudgetTotal } = useMemo(() => {
     if (!expenses) return { weeklyTotal: 0, overBudgetTotal: 0 };
 
-    const weekly = expenses.reduce((total, expense) => {
-      return total + getWeeklyAmount(expense.amount, expense.frequency);
-    }, 0);
-
     const startDay = userProfile?.startDayOfWeek || 'Sunday';
     const wsOn = dayIndexMap[startDay];
-    const overBudget = expenses.reduce((total, expense) => {
-      const wkAmt = getWeeklyAmount(expense.amount, expense.frequency);
+
+    const weekly = expenses.reduce((total, expense) => {
       const dn = expense.description ? `${expense.category} - ${expense.description}` : expense.category;
-      const totalSpent = allTimeSpentByCategory[dn] || 0;
-      const catStart = budgetStartDateByCategory[dn] || new Date();
-      const avail = calculateAvailable(wkAmt, totalSpent, catStart, wsOn);
-      return total + (avail < 0 ? Math.abs(avail) : 0);
+      const { weeklyRate } = getAvailable({
+        amount: expense.amount,
+        frequency: expense.frequency,
+        dueDate: expense.dueDate || null,
+        startDay: wsOn,
+        totalSpentAllTime: allTimeSpentByCategory[dn] || 0,
+        budgetStartDate: budgetStartDateByCategory[dn] || new Date(),
+        spentThisCycle: spentThisCycleByCategory[dn] || 0,
+      });
+      return total + weeklyRate;
+    }, 0);
+
+    const overBudget = expenses.reduce((total, expense) => {
+      const dn = expense.description ? `${expense.category} - ${expense.description}` : expense.category;
+      const { available } = getAvailable({
+        amount: expense.amount,
+        frequency: expense.frequency,
+        dueDate: expense.dueDate || null,
+        startDay: wsOn,
+        totalSpentAllTime: allTimeSpentByCategory[dn] || 0,
+        budgetStartDate: budgetStartDateByCategory[dn] || new Date(),
+        spentThisCycle: spentThisCycleByCategory[dn] || 0,
+      });
+      return total + (available < 0 ? Math.abs(available) : 0);
     }, 0);
 
     return { weeklyTotal: weekly, overBudgetTotal: overBudget };
-  }, [expenses, allTimeSpentByCategory, budgetStartDateByCategory, userProfile]);
+  }, [expenses, allTimeSpentByCategory, budgetStartDateByCategory, spentThisCycleByCategory, userProfile]);
 
   // Sort expenses alphabetically by category then description
   const sortedExpenses = useMemo(() => {
@@ -568,13 +584,18 @@ export default function EssentialExpensesPage() {
               ) : sortedExpenses.length > 0 ? (
                 sortedExpenses.map((expense) => {
                   const Icon = iconMap[expense.category] || MoreHorizontal;
-                  const weeklyAmount = getWeeklyAmount(expense.amount, expense.frequency);
                   const startDay = userProfile?.startDayOfWeek || 'Sunday';
                   const wsOn = dayIndexMap[startDay];
                   const dn = expense.description ? `${expense.category} - ${expense.description}` : expense.category;
-                  const totalSpent = allTimeSpentByCategory[dn] || 0;
-                  const catStart = budgetStartDateByCategory[dn] || new Date();
-                  const amountAvailable = calculateAvailable(weeklyAmount, totalSpent, catStart, wsOn);
+                  const { available: amountAvailable, weeklyRate: weeklyAmount } = getAvailable({
+                    amount: expense.amount,
+                    frequency: expense.frequency,
+                    dueDate: expense.dueDate || null,
+                    startDay: wsOn,
+                    totalSpentAllTime: allTimeSpentByCategory[dn] || 0,
+                    budgetStartDate: budgetStartDateByCategory[dn] || new Date(),
+                    spentThisCycle: spentThisCycleByCategory[dn] || 0,
+                  });
 
                   return (
                     <div
@@ -740,7 +761,7 @@ export default function EssentialExpensesPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Payment Date <span className="text-destructive">*</span></Label>
+                <Label>Payment Date</Label>
                 <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
                   <PopoverTrigger asChild>
                     <Button
