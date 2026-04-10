@@ -93,6 +93,13 @@ interface DiscretionaryExpense extends DocumentData {
   plannedAmount: number;
 }
 
+interface Transaction extends DocumentData {
+  id: string;
+  type: 'Income' | 'Expense';
+  amount: number;
+  category: string;
+}
+
 const iconMap: Record<string, LucideIcon> = {
   'Emergency Fund': ShieldAlert,
   'Real Estate Purchase': Home,
@@ -133,11 +140,13 @@ export default function SavingsGoalsPage() {
   const incomeSourcesPath = useMemo(() => (user ? `users/${user.uid}/incomeSources` : null), [user]);
   const requiredExpensesPath = useMemo(() => (user ? `users/${user.uid}/requiredExpenses` : null), [user]);
   const discretionaryExpensesPath = useMemo(() => (user ? `users/${user.uid}/discretionaryExpenses` : null), [user]);
+  const transactionsPath = useMemo(() => (user ? `users/${user.uid}/transactions` : null), [user]);
 
   const { data: goals, loading } = useCollection<SavingsGoal>(savingsGoalsPath);
   const { data: incomeSources } = useCollection<IncomeSource>(incomeSourcesPath);
   const { data: requiredExpenses } = useCollection<RequiredExpense>(requiredExpensesPath);
   const { data: discretionaryExpenses } = useCollection<DiscretionaryExpense>(discretionaryExpensesPath);
+  const { data: transactions } = useCollection<Transaction>(transactionsPath);
 
   const weeklyIncome = useMemo(() => {
     if (!incomeSources) return 0;
@@ -161,11 +170,21 @@ export default function SavingsGoalsPage() {
     return Math.max(0, weeklyIncome - weeklyExpenses - weeklyPlannedSavings);
   }, [weeklyIncome, weeklyExpenses, weeklyPlannedSavings]);
 
+  // Current Balance Saved in Unassigned Income.
+  // Sum Income - Expense across all transactions tagged with either
+  // 'Unassigned Income' (from Move flows) or 'Savings: Unassigned Income'
+  // (from category-deletion flows). Net positive = currently saved.
   const unassignedSaved = useMemo(() => {
-    if (!goals) return 0;
-    const incomeBalanceGoal = goals.find(g => g.category === 'Income Balance');
-    return incomeBalanceGoal?.currentAmount || 0;
-  }, [goals]);
+    if (!transactions) return 0;
+    const isUnassignedTag = (cat: string) =>
+      cat === 'Unassigned Income' || cat === 'Savings: Unassigned Income';
+    return transactions.reduce((sum, t) => {
+      if (!isUnassignedTag(t.category || '')) return sum;
+      if (t.type === 'Income') return sum + Math.abs(t.amount);
+      if (t.type === 'Expense') return sum - Math.abs(t.amount);
+      return sum;
+    }, 0);
+  }, [transactions]);
 
   const savingsTotals = useMemo(() => {
     if (!goals || goals.length === 0) {
@@ -439,6 +458,7 @@ export default function SavingsGoalsPage() {
                     <span className="text-lg font-bold text-primary">{formatCurrency(unassignedSaved)}</span>
                   </div>
                   <div>
+                    <span className="text-sm text-muted-foreground">Saved: </span>
                     <span className="text-lg font-bold text-primary">{formatCurrency(incomeBalance)}</span>
                     <span className="text-sm font-normal text-muted-foreground"> / week</span>
                   </div>
