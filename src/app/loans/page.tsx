@@ -560,36 +560,43 @@ export default function LoansPage() {
                   return (
                     <div
                       key={loan.id}
-                      className="flex items-center px-4 py-3 hover:bg-muted/50 transition-colors"
+                      className="px-4 py-3 hover:bg-muted/50 transition-colors"
                     >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                          <Icon className="size-4" />
-                        </div>
-                        <p className="font-semibold text-foreground truncate">
-                          {getDisplayName(loan)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3 text-sm shrink-0">
-                        <div className="text-right">
-                          <p className="text-xs text-muted-foreground">Wk Budget</p>
-                          <p className="font-semibold">{formatCurrency(weeklyAmount)}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-muted-foreground">Available</p>
-                          <p className={cn("font-semibold", amountAvailable < 0 ? "text-destructive" : "")}>
-                            {formatCurrency(amountAvailable)}
+                      <div className="flex items-center">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                            <Icon className="size-4" />
+                          </div>
+                          <p className="font-semibold text-foreground truncate">
+                            {getDisplayName(loan)}
                           </p>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-8"
-                          onClick={() => handleOpenEditDialog(loan)}
-                        >
-                          <Edit className="size-4" />
-                        </Button>
+                        <div className="flex items-center gap-3 text-sm shrink-0">
+                          <div className="text-right">
+                            <p className="text-xs text-muted-foreground">Wk Budget</p>
+                            <p className="font-semibold">{formatCurrency(weeklyAmount)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-muted-foreground">Available</p>
+                            <p className={cn("font-semibold", amountAvailable < 0 ? "text-destructive" : "")}>
+                              {formatCurrency(amountAvailable)}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            onClick={() => handleOpenEditDialog(loan)}
+                          >
+                            <Edit className="size-4" />
+                          </Button>
+                        </div>
                       </div>
+                      {loan.payoffDate && (
+                        <p className="text-[11px] text-muted-foreground mt-1 ml-11">
+                          Due {format(parseISO(loan.payoffDate), 'MMM d')} — saving {formatCurrency(weeklyAmount)}/wk to reach {formatCurrency(payment)} on time
+                        </p>
+                      )}
                     </div>
                   );
                 })
